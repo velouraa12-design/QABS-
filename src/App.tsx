@@ -84,8 +84,12 @@ const WORKSPACE_HASH_PREFIXES = [
   '/bank-accounts'
 ];
 
+const isWorkspacePreviewLocation = (): boolean =>
+  typeof window !== 'undefined' &&
+  new URLSearchParams(window.location.search).get('workspacePreview') === '1';
+
 const isWorkspaceLocation = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || isWorkspacePreviewLocation()) return false;
   const hash = window.location.hash || '';
   const path = normalizePath(window.location.pathname || '/');
   if (path === '/workspace' || path.startsWith('/workspace/')) return true;
@@ -150,7 +154,7 @@ const MainLayout: React.FC = () => {
       if (!isWorkspaceLocation()) {
         window.history.replaceState({ qabsWorkspace: 'overview' }, '', `${window.location.pathname}#/overview`);
       }
-    } else if (window.location.hash && WORKSPACE_HASH_PREFIXES.some(p => window.location.hash.startsWith(`#${p}`))) {
+    } else if (!isWorkspacePreviewLocation() && window.location.hash && WORKSPACE_HASH_PREFIXES.some(p => window.location.hash.startsWith(`#${p}`))) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
   }, [mode, isAuthenticated]);
@@ -275,9 +279,18 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       <main className="flex-1">
-        {(mode === 'landing' || !isAuthenticated) && renderPublicRoute()}
+        {isWorkspacePreviewLocation() && (
+          <div className="mx-auto mt-4 max-w-7xl px-4">
+            <div className="rounded-xl border border-amber-400/60 bg-amber-50 px-4 py-3 text-xs font-bold text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+              {isAr
+                ? 'وضع معاينة مساحة العمل: بيانات تجريبية محلية للاختبار فقط. لا تستخدمه لإدخال بيانات عملاء أو تنفيذ مدفوعات حقيقية.'
+                : 'Workspace preview: local demo data for testing only. Do not enter customer data or use it for real payments.'}
+            </div>
+          </div>
+        )}
+        {!isWorkspacePreviewLocation() && (mode === 'landing' || !isAuthenticated) && renderPublicRoute()}
 
-        {isAuthenticated && mode === 'portal' && (
+        {(isAuthenticated && mode === 'portal' || isWorkspacePreviewLocation()) && (
           <PortalView
             onOpenFormationModal={() => handleOpenFormationWithState()}
             onOpenStoreModal={() => setStoreModalOpen(true)}
