@@ -4,26 +4,31 @@ on:
   push:
     branches:
       - preview/workspace-reference-layout
+  pull_request:
+    branches:
+      - preview/workspace-reference-layout
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: qabs-preview-deploy
+  group: qabs-preview-${{ github.event.pull_request.number || github.ref_name }}
   cancel-in-progress: true
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout preview branch
+      - name: Checkout pull request head (or selected ref)
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install dependencies
         run: npm install --ignore-scripts --legacy-peer-deps
@@ -55,4 +60,4 @@ jobs:
             echo "::error::Missing GitHub Actions secret CLOUDFLARE_API_TOKEN."
             exit 1
           fi
-          npx --yes wrangler@latest pages deploy dist --project-name=qabs-workspace-reference-preview --branch=preview
+          npx --yes wrangler@latest pages deploy dist --project-name=qabs-workspace-reference-preview --branch=pr-${{ github.event.pull_request.number || 'manual' }}

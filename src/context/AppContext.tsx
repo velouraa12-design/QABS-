@@ -321,14 +321,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (localStorage.getItem('qabs_theme_v2') as 'dark' | 'light') || 'light';
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(persisted.isAuthenticated ?? false);
+  // Authentication must come from the server, never from editable localStorage.
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [mode, setMode] = useState<AppMode>(() =>
     persisted.isAuthenticated && isWorkspaceUrl() ? 'portal' : 'landing'
   );
   const [isProductionMode, setIsProductionMode] = useState<boolean>(persisted.isProductionMode ?? false);
-  const [user, setUser] = useState<UserProfile>(() =>
-    persisted.isAuthenticated && persisted.user ? persisted.user : INITIAL_USER
-  );
+  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [companies, setCompanies] = useState<CompanyFormation[]>(persisted.companies ?? INITIAL_COMPANIES);
   const [stores, setStores] = useState<StoreInstance[]>(persisted.stores ?? INITIAL_STORES);
   const [activeStoreId, setActiveStoreId] = useState<string>(
@@ -501,20 +500,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchRole = (newRole: UserRole) => {
+    // Role changes are server-authorized only. The client cannot promote itself.
     if (newRole === 'super_admin') {
-      setUser(OWNER_USER_PROFILE);
-      setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'تم التبديل إلى حساب المالك الوحيد: أنور الغزالي (Super Admin)' : 'Switched to Owner: Anwar Al-Ghazali (Super Admin)');
-    } else {
-      setUser(prev => ({
-        ...prev,
-        id: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'usr_client_01' : prev.id,
-        role: 'merchant',
-        name: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'عميل منصة قبس' : prev.name
-      }));
-      setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'تم التبديل إلى لوحة العميل' : 'Switched to Client Dashboard');
+      showToast(language === 'ar' ? 'لا يمكن منح صلاحية المدير من الواجهة. يلزم تحقق الخادم.' : 'Admin access must be granted by the server.');
+      return;
     }
+    setUser(prev => ({ ...prev, role: 'merchant' }));
+    showToast(language === 'ar' ? 'تم اختيار مساحة العميل' : 'Client workspace selected');
   };
 
   const addCompany = (comp: Omit<CompanyFormation, 'id' | 'filingDate' | 'status' | 'documents'>) => {
@@ -1610,72 +1602,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
-  const login = (email: string, role: UserRole) => {
-    const cleanEmail = email.trim() || (role === 'super_admin' ? OWNER_USER_PROFILE.email : 'client@qabs1.store');
-    if (role === 'super_admin') {
-      setUser({
-        ...OWNER_USER_PROFILE,
-        email: cleanEmail
-      });
-    } else {
-      const friendlyName = cleanEmail.split('@')[0] || 'عميل منصة قبس';
-      setUser({
-        id: `usr_client_${Date.now()}`,
-        name: friendlyName,
-        email: cleanEmail,
-        role: 'merchant',
-        avatar: '',
-        companyName: '',
-        credits: 250
-      });
-    }
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم تسجيل الدخول! تابع إتمام الدفع لخدمتك المختارة'
-          : 'Signed in! Complete checkout for your selected service'
-      );
-    } else if (role === 'super_admin') {
-      setMode('admin');
-      showToast(language === 'ar' ? `أهلاً بك ${OWNER_USER_PROFILE.name} — لوحة الإدارة الكاملة` : 'Welcome Owner Anwar Al-Ghazali');
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'مرحباً بك في مساحة عملك الخاصة!' : 'Welcome to your client workspace!');
-    }
+  const login = (_email: string, _role: UserRole) => {
+    showToast(language === 'ar'
+      ? 'تسجيل الدخول متوقف مؤقتاً حتى ربط النموذج بمصادقة الخادم والتحقق من كلمة المرور.'
+      : 'Sign-in is disabled until server authentication and password verification are connected.');
   };
 
-  const loginOwner = (email?: string) => {
-    login(email?.trim() || OWNER_USER_PROFILE.email, 'super_admin');
+  const loginOwner = (_email?: string) => {
+    showToast(language === 'ar' ? 'دخول الإدارة يتطلب مصادقة خادمية وصلاحية مالك معتمدة.' : 'Admin sign-in requires verified server-side owner authorization.');
   };
 
-  const register = (name: string, email: string, companyName: string, _role?: UserRole) => {
-    setUser({
-      id: `usr_client_${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role: 'merchant',
-      avatar: '',
-      companyName: companyName.trim(),
-      credits: 200
-    });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم إنشاء حسابك! أكمل الآن دفع الخدمة التي اخترتها'
-          : 'Account created! Complete checkout for your selected service'
-      );
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'تم إنشاء حساب العميل وفتح مساحة العمل!' : 'Client account created successfully!');
-    }
+  const register = (_name: string, _email: string, _companyName: string, _role?: UserRole) => {
+    showToast(language === 'ar'
+      ? 'إنشاء الحساب متوقف مؤقتاً حتى ربط التسجيل الفعلي والتحقق من البريد.'
+      : 'Registration is disabled until live signup and email verification are connected.');
   };
 
   const logout = () => {
