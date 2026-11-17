@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-ar: 'Cairo', system-ui, sans-serif;
+    --font-en: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  body {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Direction font adjustments */
+[dir="rtl"] {
+  font-family: 'Cairo', system-ui, sans-serif;
+}
+
+[dir="ltr"] {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+}
+
+/* Tabular numerals utility */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Keep wide native controls inside the viewport on compact dashboard layouts. */
+@media (max-width: 1023px) {
+  select[class*="bg-white/10"] {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+
+/* QABS workspace: consistent page canvas and independent hash routes. */
+:root {
+  --qabs-navy: #14243E;
+  --qabs-navy-deep: #0D1B30;
+  --qabs-gold: #D5B46B;
+  --qabs-gold-ink: #92743A;
+  --qabs-ivory: #F8F7F2;
+  --qabs-border: #EAE6DC;
+}
+body { background: var(--qabs-ivory); }
+#root > div.min-h-screen { background: var(--qabs-ivory) !important; color: var(--qabs-navy) !important; }
+#root [class*="bg-[#004457]"], #root [class*="bg-[#005B70]"] { background-color: var(--qabs-navy) !important; }
+#root [class*="text-[#004457]"], #root [class*="text-[#003E52]"] { color: var(--qabs-navy) !important; }
+#root [class*="bg-[#00A896]"] { background-color: var(--qabs-gold) !important; }
+#root [class*="text-[#00A896]"], #root [class*="text-teal-"] { color: var(--qabs-gold-ink) !important; }
+#root [class*="border-[#00A896]"] { border-color: rgb(213 180 107 / 55%) !important; }
+#root [class*="bg-[#E5C158]"] { background-color: var(--qabs-gold) !important; color: var(--qabs-navy) !important; }
+#root main .rounded-2xl, .qabs-workspace-sidebar { border-color: var(--qabs-border); }
+
+@media (min-width: 1024px) {
+  .qabs-workspace-layout { align-items: start; }
+  .qabs-workspace-sidebar {
+    position: sticky;
+    top: 96px;
+  }
+}
+
+.qabs-workspace-content > div > div,
+.qabs-workspace-content > div > section {
+  border-color: var(--qabs-border) !important;
+}
+.qabs-workspace-content [class*="bg-white"] {
+  border-color: var(--qabs-border) !important;
+}
+.qabs-workspace-heading { color: var(--qabs-navy); }
+.qabs-workspace-tools select { max-width: 180px; }
+
+@media (max-width: 639px) {
+  .qabs-workspace-content > div { min-width: 0; }
+  .qabs-workspace-content input,
+  .qabs-workspace-content select,
+  .qabs-workspace-content textarea {
+    min-width: 0;
+  }
+}
