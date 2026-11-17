@@ -436,41 +436,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Quantitative Trust Metrics */}
-          <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#004457] dark:text-[#E5C158] font-mono">
-                +1,450
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'شركة تم تأسيسها رسمياً' : 'Companies Incorporated'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#00A896] font-mono">
-                100%
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'نسبة نجاح استخراج EIN' : 'EIN Issuance Success'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#004457] dark:text-[#E5C158] font-mono">
-                48h
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'متوسط سرعة الإيداع لدى الولاية' : 'Avg State Filing Speed'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#00A896] font-mono">
-                $0
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'ضريبة دخل في وايومنغ' : 'State Tax in Wyoming'}
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
