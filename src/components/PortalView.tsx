@@ -1198,7 +1198,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
           {isOwner ? (
             <button
               type="button"
-              onClick={() => previewOnly ? showToast(isAr ? 'تغيير وضع الإنتاج غير متاح في المعاينة' : 'Production mode changes are disabled in preview', 'info') : toggleProductionMode()}
+              onClick={() => previewOnly ? showToast(isAr ? 'تغيير وضع الإنتاج غير متاح في المعاينة' : 'Production mode changes are disabled in preview') : toggleProductionMode()}
               className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-black transition-colors cursor-pointer ${
                 isProductionMode
                   ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
@@ -1253,7 +1253,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
             </div>
           </div>
           <button
-            onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال المتجر للمراجعة' : 'Local preview only — store was not submitted', 'info') : submitStoreForApproval(currentStore.id)}
+            onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال المتجر للمراجعة' : 'Local preview only — store was not submitted') : submitStoreForApproval(currentStore.id)}
             className="px-3 py-1.5 rounded-xl bg-amber-700 text-white text-xs font-bold hover:bg-amber-800 cursor-pointer shrink-0"
           >
             {isAr ? 'إعادة الإرسال بعد التعديل' : 'Resubmit Store'}
@@ -1404,7 +1404,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       </div>
                       <button
                         type="button"
-                        onClick={() => previewOnly ? showToast(isAr ? 'تغيير وضع الإنتاج غير متاح في المعاينة' : 'Production mode changes are disabled in preview', 'info') : toggleProductionMode()}
+                        onClick={() => previewOnly ? showToast(isAr ? 'تغيير وضع الإنتاج غير متاح في المعاينة' : 'Production mode changes are disabled in preview') : toggleProductionMode()}
                         className="px-3.5 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer shrink-0 self-start sm:self-center"
                       >
                         {isAr ? 'العودة لوضع الاختبار' : 'Switch to Test Mode'}
@@ -1428,7 +1428,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       {!previewOnly && (
                         <button
                           type="button"
-                          onClick={() => previewOnly ? showToast(isAr ? 'تفعيل الإنتاج غير متاح في المعاينة' : 'Production activation is disabled in preview', 'info') : activateProductionMode(currentStore.id)}
+                          onClick={() => previewOnly ? showToast(isAr ? 'تفعيل الإنتاج غير متاح في المعاينة' : 'Production activation is disabled in preview') : activateProductionMode(currentStore.id)}
                           className="px-4 py-2 rounded-xl bg-[#14243E] text-white text-xs font-black hover:bg-[#1d3559] cursor-pointer shrink-0 self-start sm:self-center flex items-center gap-1.5 shadow-xs"
                         >
                           <Rocket className="w-3.5 h-3.5 text-[#D5B46B]" />
@@ -2634,7 +2634,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       </p>
                     </div>
                     <button
-                      onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب تفعيل' : 'Local preview only — no activation request was sent', 'info') : requestPaymentActivation(currentStore.id, gw)}
+                      onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب تفعيل' : 'Local preview only — no activation request was sent') : requestPaymentActivation(currentStore.id, gw)}
                       className="w-full py-2.5 rounded-xl bg-[#004457] hover:bg-[#003342] text-white text-xs font-black cursor-pointer"
                     >
                       {isAr ? `طلب تفعيل ${gw} من إدارة قبس` : `Request ${gw} Activation`}
@@ -2746,7 +2746,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                 onSubmit={e => {
                   e.preventDefault();
                   if (!domainInput.trim()) return;
-                  if (previewOnly) { showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent', 'info'); return; }
+                  if (previewOnly) { showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent'); return; }
                   requestDomainVerification(currentStore.id, domainInput);
                 }}
                 className="space-y-3"
@@ -4479,7 +4479,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     />
                     <button
                       type="button"
-                      onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent', 'info') : domainInput.trim() && requestDomainVerification(currentStore.id, domainInput.trim())}
+                      onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent') : domainInput.trim() && requestDomainVerification(currentStore.id, domainInput.trim())}
                       className="px-4 py-2 rounded-xl bg-[#14243E] text-white font-black cursor-pointer"
                     >
                       {isAr ? 'ربط وفحص DNS' : 'Connect & Verify'}
@@ -4507,7 +4507,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     <div className="font-black text-[#14243E]">{isAr ? 'حالة النشر وموافقة قبس' : 'Publication & Approval'}</div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-bold text-emerald-700">{currentStore.approvalStatus || 'draft'}</span>
-                      <button type="button" onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال المتجر للمراجعة' : 'Local preview only — store was not submitted', 'info') : submitStoreForApproval(currentStore.id)} className="px-3 py-1.5 rounded-lg bg-[#14243E] text-white font-bold cursor-pointer">
+                      <button type="button" onClick={() => previewOnly ? showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال المتجر للمراجعة' : 'Local preview only — store was not submitted') : submitStoreForApproval(currentStore.id)} className="px-3 py-1.5 rounded-lg bg-[#14243E] text-white font-bold cursor-pointer">
                         {isAr ? 'طلب اعتماد ونشر' : 'Submit Review'}
                       </button>
                     </div>
@@ -4515,7 +4515,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                   {!previewOnly && (
                     <div className="p-4 rounded-xl border border-[#EAE6DC] space-y-2">
                       <div className="font-black text-[#14243E]">{isAr ? 'وضع التشغيل الفعلي' : 'Live Production Status'}</div>
-                      <button type="button" onClick={() => previewOnly ? showToast(isAr ? 'تفعيل الإنتاج غير متاح في المعاينة' : 'Production activation is disabled in preview', 'info') : activateProductionMode(currentStore.id)} className="w-full py-2 rounded-lg bg-emerald-700 text-white font-black cursor-pointer">
+                      <button type="button" onClick={() => previewOnly ? showToast(isAr ? 'تفعيل الإنتاج غير متاح في المعاينة' : 'Production activation is disabled in preview') : activateProductionMode(currentStore.id)} className="w-full py-2 rounded-lg bg-emerald-700 text-white font-black cursor-pointer">
                         {isProductionMode ? (isAr ? 'وضع الإنتاج مفعّل ✓' : 'Production Active ✓') : isAr ? 'اعتماد الدفع والشحن الآن' : 'Approve & Go Live'}
                       </button>
                     </div>
