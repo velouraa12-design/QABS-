@@ -78,6 +78,7 @@ import {
 interface PortalViewProps {
   onOpenFormationModal: () => void;
   onOpenStoreModal: () => void;
+  previewOnly?: boolean;
 }
 
 type ClientTab =
@@ -116,7 +117,7 @@ type ClientTab =
   | 'company_formation'
   | 'company_formation_settings';
 
-export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpenFormationModal }) => {
+export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpenFormationModal, previewOnly = false }) => {
   const {
     language,
     setMode,
@@ -1419,19 +1420,21 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                           <div className="text-sm font-black">{isAr ? 'وضع الاختبار التفاعلي — التغييرات محفوظة محلياً' : 'Interactive Test Workspace — Local State Persisted'}</div>
                           <p className="mt-1 text-xs leading-5">
                             {isAr
-                              ? 'يمكنك تجربة إضافة المنتجات والطلبات وأوامر قبس AI، أو تفعيل البوابة الحقيقية لاعتماد الدفع والشحن والانتقال لوضع الإنتاج.'
-                              : 'Test adding products, creating orders, and running QABS AI commands, or activate Production Mode to approve payment & shipping.'}
+                              ? 'يمكنك تجربة الأقسام وإضافة بيانات وهمية محلياً. تفعيل الإنتاج والدفع والشحن الحقيقي غير متاح في رابط المعاينة.'
+                              : 'Explore sections and add local demo data. Production, real payments, and shipping activation are disabled in this preview.'}
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => activateProductionMode(currentStore.id)}
-                        className="px-4 py-2 rounded-xl bg-[#14243E] text-white text-xs font-black hover:bg-[#1d3559] cursor-pointer shrink-0 self-start sm:self-center flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Rocket className="w-3.5 h-3.5 text-[#D5B46B]" />
-                        <span>{isAr ? 'تفعيل البوابة الحقيقية (إنتاج)' : 'Activate Production Mode'}</span>
-                      </button>
+                      {!previewOnly && (
+                        <button
+                          type="button"
+                          onClick={() => activateProductionMode(currentStore.id)}
+                          className="px-4 py-2 rounded-xl bg-[#14243E] text-white text-xs font-black hover:bg-[#1d3559] cursor-pointer shrink-0 self-start sm:self-center flex items-center gap-1.5 shadow-xs"
+                        >
+                          <Rocket className="w-3.5 h-3.5 text-[#D5B46B]" />
+                          <span>{isAr ? 'تفعيل البوابة الحقيقية (إنتاج)' : 'Activate Production Mode'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -4508,12 +4511,14 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       </button>
                     </div>
                   </div>
-                  <div className="p-4 rounded-xl border border-[#EAE6DC] space-y-2">
-                    <div className="font-black text-[#14243E]">{isAr ? 'وضع التشغيل الفعلي' : 'Live Production Status'}</div>
-                    <button type="button" onClick={() => activateProductionMode(currentStore.id)} className="w-full py-2 rounded-lg bg-emerald-700 text-white font-black cursor-pointer">
-                      {isProductionMode ? (isAr ? 'وضع الإنتاج مفعّل ✓' : 'Production Active ✓') : isAr ? 'اعتماد الدفع والشحن الآن' : 'Approve & Go Live'}
-                    </button>
-                  </div>
+                  {!previewOnly && (
+                    <div className="p-4 rounded-xl border border-[#EAE6DC] space-y-2">
+                      <div className="font-black text-[#14243E]">{isAr ? 'وضع التشغيل الفعلي' : 'Live Production Status'}</div>
+                      <button type="button" onClick={() => activateProductionMode(currentStore.id)} className="w-full py-2 rounded-lg bg-emerald-700 text-white font-black cursor-pointer">
+                        {isProductionMode ? (isAr ? 'وضع الإنتاج مفعّل ✓' : 'Production Active ✓') : isAr ? 'اعتماد الدفع والشحن الآن' : 'Approve & Go Live'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {renderShopifyIntegrationCard()}
