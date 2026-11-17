@@ -2746,7 +2746,8 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                 onSubmit={e => {
                   e.preventDefault();
                   if (!domainInput.trim()) return;
-                  if (previewOnly) { showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent', 'info'); return; }\n                  requestDomainVerification(currentStore.id, domainInput);
+                  if (previewOnly) { showToast(isAr ? 'المعاينة محلية فقط — لم يتم إرسال طلب ربط النطاق' : 'Local preview only — no domain request was sent', 'info'); return; }
+                  requestDomainVerification(currentStore.id, domainInput);
                 }}
                 className="space-y-3"
               >
