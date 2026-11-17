@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - preview/workspace-reference-layout
+  pull_request:
+    branches:
+      - preview/workspace-reference-layout
   workflow_dispatch:
 
 permissions:
