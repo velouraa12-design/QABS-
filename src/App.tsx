@@ -294,6 +294,7 @@ const MainLayout: React.FC = () => {
           <PortalView
             onOpenFormationModal={() => handleOpenFormationWithState()}
             onOpenStoreModal={() => setStoreModalOpen(true)}
+            previewOnly={isWorkspacePreviewLocation()}
           />
         )}
 
