@@ -61,16 +61,12 @@ export const AuthModal: React.FC = () => {
   const handleRecoverSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) return;
-    setResetSent(true);
+    setResetSent(false);
     showToast(
       isAr
-        ? `تم إرسال رابط استعادة كلمة المرور إلى ${email}`
-        : `Password recovery link dispatched to ${email}`
+        ? 'استعادة كلمة المرور غير متاحة حتى ربط النموذج بخدمة الاستعادة الفعلية.'
+        : 'Password recovery is unavailable until connected to the live recovery service.'
     );
-    setTimeout(() => {
-      setResetSent(false);
-      setAuthMode('login');
-    }, 2500);
   };
 
   return (
@@ -297,18 +293,8 @@ export const AuthModal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quick Client Sign-in */}
-                  <div className="p-3 rounded-xl bg-[#051724] border border-cyan-950/60 text-[11px] flex items-center justify-between gap-2">
-                    <span className="text-slate-400 font-semibold">
-                      {isAr ? 'دخول سريع للعميل:' : 'Quick Client Access:'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => login('client@qabs1.store', 'merchant')}
-                      className="px-3 py-1.5 bg-[#00A389]/20 hover:bg-[#00A389]/30 border border-[#00A389]/40 text-[#2DD4BF] font-bold rounded-lg text-[11px] cursor-pointer"
-                    >
-                      {isAr ? 'دخول حساب عميل الآن' : 'Instant Client Sign In'}
-                    </button>
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-[11px] text-amber-200">
+                    {isAr ? 'الدخول التجريبي السريع معطّل لحماية حسابات العملاء.' : 'Quick demo sign-in is disabled to protect customer accounts.'}
                   </div>
 
                   <button
