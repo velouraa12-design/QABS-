@@ -1602,46 +1602,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return newOrder;
   };
 
-  const login = (email: string, role: UserRole) => {
-    void email;
-    void role;
-    showToast(language === 'ar' ? 'تسجيل الدخول غير متاح حتى ربط نموذج الدخول بخدمة المصادقة والتحقق من كلمة المرور.' : 'Sign-in is unavailable until the form is connected to server-side authentication.');
-    return;
-    const cleanEmail = email.trim() || (role === 'super_admin' ? OWNER_USER_PROFILE.email : 'client@qabs1.store');
-    if (role === 'super_admin') {
-      setUser({
-        ...OWNER_USER_PROFILE,
-        email: cleanEmail
-      });
-    } else {
-      const friendlyName = cleanEmail.split('@')[0] || 'عميل منصة قبس';
-      setUser({
-        id: `usr_client_${Date.now()}`,
-        name: friendlyName,
-        email: cleanEmail,
-        role: 'merchant',
-        avatar: '',
-        companyName: '',
-        credits: 250
-      });
-    }
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم تسجيل الدخول! تابع إتمام الدفع لخدمتك المختارة'
-          : 'Signed in! Complete checkout for your selected service'
-      );
-    } else if (role === 'super_admin') {
-      setMode('admin');
-      showToast(language === 'ar' ? `أهلاً بك ${OWNER_USER_PROFILE.name} — لوحة الإدارة الكاملة` : 'Welcome Owner Anwar Al-Ghazali');
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'مرحباً بك في مساحة عملك الخاصة!' : 'Welcome to your client workspace!');
-    }
+  const login = (_email: string, _role: UserRole) => {
+    showToast(language === 'ar'
+      ? 'تسجيل الدخول متوقف مؤقتاً حتى ربط النموذج بمصادقة الخادم والتحقق من كلمة المرور.'
+      : 'Sign-in is disabled until server authentication and password verification are connected.');
   };
 
   const loginOwner = (_email?: string) => {
@@ -1649,31 +1613,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const register = (_name: string, _email: string, _companyName: string, _role?: UserRole) => {
-    showToast(language === 'ar' ? 'إنشاء الحساب غير متاح حتى ربط النموذج بخدمة التسجيل والتحقق من البريد.' : 'Registration is unavailable until server-side signup and email verification are connected.');
-    return;
-    setUser({
-      id: `usr_client_${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role: 'merchant',
-      avatar: '',
-      companyName: companyName.trim(),
-      credits: 200
-    });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم إنشاء حسابك! أكمل الآن دفع الخدمة التي اخترتها'
-          : 'Account created! Complete checkout for your selected service'
-      );
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'تم إنشاء حساب العميل وفتح مساحة العمل!' : 'Client account created successfully!');
-    }
+    showToast(language === 'ar'
+      ? 'إنشاء الحساب متوقف مؤقتاً حتى ربط التسجيل الفعلي والتحقق من البريد.'
+      : 'Registration is disabled until live signup and email verification are connected.');
   };
 
   const logout = () => {
