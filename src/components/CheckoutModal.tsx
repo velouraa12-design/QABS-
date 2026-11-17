@@ -13,7 +13,7 @@ import {
   LockKeyhole
 } from 'lucide-react';
 
-type PaymentMethodType = 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer';
+type PaymentMethodType = 'Tap' | 'Moyasar' | 'BankTransfer' | 'Stripe' | 'PayPal' | 'Crypto';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -27,7 +27,7 @@ export const CheckoutModal: React.FC = () => {
   } = useApp();
 
   const isAr = language === 'ar';
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('BankTransfer');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('Tap');
 
   if (!checkoutModalOpen || !pendingServiceOrder) return null;
 
@@ -51,8 +51,24 @@ export const CheckoutModal: React.FC = () => {
     icon: React.ElementType;
   }[] = [
     {
+      id: 'Tap',
+      titleAr: 'Tap Payments — الخليج (مدى / Apple Pay — معاينة)',
+      titleEn: 'Tap Payments — GCC (mada / Apple Pay Sandbox)',
+      descAr: 'الأولوية لمتاجر الخليج؛ يصدر الطلب/الفاتورة بانتظار التحقق دون خصم',
+      descEn: 'GCC primary gateway; records request pending verification (no live charge)',
+      icon: CreditCard
+    },
+    {
+      id: 'Moyasar',
+      titleAr: 'Moyasar ميسر — السعودية (مدى / سداد / STC Pay)',
+      titleEn: 'Moyasar — KSA (mada / SADAD / STC Pay Sandbox)',
+      descAr: 'مخصص للسوق السعودي؛ تسجيل آمن بوضع المعاينة دون تحصيل فعلي',
+      descEn: 'KSA local rail configuration in gated preview mode',
+      icon: ShieldCheck
+    },
+    {
       id: 'BankTransfer',
-      titleAr: 'طلب تحويل بنكي / فاتورة مرجعية (IBAN)',
+      titleAr: 'تحويل بنكي / فاتورة مرجعية (IBAN)',
       titleEn: 'Bank Wire / Reference Invoice (Pending Proof)',
       descAr: 'يصدر فاتورة غير مسددة حتى مراجعة مرجع التحويل',
       descEn: 'Issues invoice pending proof reference verification',
@@ -60,8 +76,8 @@ export const CheckoutModal: React.FC = () => {
     },
     {
       id: 'Stripe',
-      titleAr: 'بطاقة ائتمان (Stripe — مقيد في المعاينة)',
-      titleEn: 'Card via Stripe (Gated in Preview)',
+      titleAr: 'بطاقة دولية (Stripe Connect — مقيد في المعاينة)',
+      titleEn: 'Global Card (Stripe Connect — Gated in Preview)',
       descAr: 'لا يتم خصم أي بطاقات تلقائياً في بيئة المعاينة',
       descEn: 'No live card charging executed in preview mode',
       icon: CreditCard

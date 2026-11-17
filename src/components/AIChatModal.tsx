@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
+import { ApiError, qabsApi } from '../services/qabsApi.ts';
 import { X, Sparkles, Send, Bot, Copy, Check, RefreshCw } from 'lucide-react';
 
 interface AIChatModalProps {
@@ -8,20 +9,20 @@ interface AIChatModalProps {
 }
 
 export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => {
-  const { language, showToast } = useApp();
+  const { language, showToast, backendStatus, isAuthenticated, activeStoreId, user, refreshWorkspace, openClientAuth } = useApp();
   const isAr = language === 'ar';
 
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [messages, setMessages] = useState<
-    { role: 'user' | 'assistant'; text: string; category?: string }[]
+    { role: 'user' | 'assistant'; text: string; provider?: string }[]
   >([
     {
       role: 'assistant',
       text: isAr
-        ? 'مرحباً بك في مستشار قبس الذكي (QABS AI Studio). يمكنني مساعدتك في صياغة قرارات التأسيس للشركات الأمريكية، كتابة أوصاف تسويقية مقنعة لمنتجات متاجرك، وتجهيز خطط الامتثال الضريبي مع IRS و Companies House. كيف أخدمك اليوم؟'
-        : 'Welcome to QABS AI Studio. I can help generate US/UK corporate resolutions, write persuasive high-conversion product copy, structure tax compliance memos, or draft marketing ad hooks. How can I assist your business today?'
+        ? 'مرحباً بك في مستشار قبس الذكي (QABS AI Studio). يرتبط هذا الاستوديو مباشرة برصيد حسابك وبخادم قبس الآمن لصياغة قرارات التأسيس، تحليل بيانات متجرك الفعلية، وتخطيط ربط بوابات الخليج (Tap و Moyasar). كيف أخدمك اليوم؟'
+        : 'Welcome to QABS AI Studio. Connected directly to your tenant credit ledger and workspace database to draft corporate resolutions, analyze live store inventory, and plan Tap/Moyasar & Stripe readiness. How can I help today?'
     }
   ]);
 
@@ -35,22 +36,28 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
       promptEn: 'Draft a formal Banking Authorization Resolution for a Wyoming LLC to open a commercial account with Mercury Bank.'
     },
     {
-      titleAr: 'وصف تسويقي لمتجر عطور فاخر',
-      titleEn: 'High-conversion Luxury Fragrance Copy',
-      promptAr: 'اكتب وصفاً تسويقياً فاخراً ومغرياً لمنتج دهن عود ملكي يستهدف عملاء الخليج العربي بأسلوب راقٍ ومقنع.',
-      promptEn: 'Write high-conversion luxury product description for royal agarwood oil targeting premium executive clientele.'
+      titleAr: 'تهيئة بوابة Tap و Moyasar لمتجري',
+      titleEn: 'Configure Tap & Moyasar for GCC Store',
+      promptAr: 'لخّص متطلبات ربط بوابتي Tap Payments و Moyasar لقبول مدى وأبل باي في متجر خليجي مع عرض حالة المتجر الحالية.',
+      promptEn: 'Outline Tap Payments & Moyasar setup requirements for mada/Apple Pay alongside current store inventory metrics.'
     },
     {
-      titleAr: 'حملة إعلانية لموسم التخفيضات',
+      titleAr: 'حملة إعلانية لزيادة المبيعات',
       titleEn: 'Multi-Channel Ad Copy & Hooks',
-      promptAr: 'اقترح 3 أفكار إعلانية مع خطافات قوية (Hooks) لحملة تيك توك وسناب شات لمتجر إلكتروني لبيع الساعات والإكسسوارات.',
-      promptEn: 'Generate 3 high-impact hooks and scripts for TikTok & Instagram ads promoting executive luxury watches.'
+      promptAr: 'اقترح 3 أفكار إعلانية مع خطافات قوية (Hooks) لحملة تيك توك وسناب شات لمنتجات متجرنا الحالية.',
+      promptEn: 'Generate 3 high-impact hooks and scripts for TikTok & Snapchat ads tailored to our store catalog.'
     }
   ];
 
   const handleSend = async (userText?: string) => {
-    const textToSend = userText || prompt;
-    if (!textToSend.trim()) return;
+    const textToSend = (userText || prompt).trim();
+    if (!textToSend) return;
+
+    if (backendStatus === 'connected' && !isAuthenticated) {
+      showToast(isAr ? 'يرجى تسجيل الدخول لاستخدام QABS AI وخصم الرصيد الموثق' : 'Please sign in to execute AI requests');
+      openClientAuth('login');
+      return;
+    }
 
     const newMsgs = [...messages, { role: 'user' as const, text: textToSend }];
     setMessages(newMsgs);
@@ -58,33 +65,32 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
     setLoading(true);
 
     try {
-      // Simulate intelligent domain engine or call server/API
-      await new Promise(resolve => setTimeout(resolve, 1100));
-
-      let generatedResponse = '';
-      if (textToSend.includes('Mercury') || textToSend.includes('بنك') || textToSend.includes('قرار')) {
-        generatedResponse = isAr
-          ? `### قرار تفويض مصرفي رسمي — RESOLUTION OF THE MEMBERS\n\n**الشركة:** QABS GLOBAL COMMERCE LLC  \n**الولاية:** State of Wyoming, USA  \n\nبموجب هذا القرار المتخذ بالإجماع من أعضاء الشركة في تاريخ اليوم:\n1. يُفوض العضو والمدير التنفيذي لفتح وتشغيل وإدارة الحسابات المصرفية لدى **Mercury Bank (Choice Financial Group / Evolve Bank & Trust)**.\n2. يُمنح المفوض الصلاحية التامة في إجراء الحوالات البنكية، إصدار بطاقات السحب الآلي للشركة، وإيداع الإيرادات.\n3. يُعتبر هذا القرار سارياً وملزماً لكافة الأطراف ومطابقاً للوائح الولاية.\n\n*(جاهز للتصدير والتوقيع الرقمي PDF عبر قبس)*`
-          : `### BANKING AUTHORIZATION RESOLUTION\n\n**Entity:** QABS GLOBAL COMMERCE LLC  \n**Jurisdiction:** State of Wyoming, USA  \n\nBE IT RESOLVED, that the authorized member is hereby empowered on behalf of the Company to establish commercial banking accounts with **Mercury Bank** (Choice Financial Group member FDIC).\n- Authorized to initiate wire transfers, receive client settlements, and issue corporate debit cards.\n- This resolution remains in full effect until formally rescinded.`;
-      } else if (textToSend.includes('عطر') || textToSend.includes('Fragrance') || textToSend.includes('ساعات')) {
-        generatedResponse = isAr
-          ? `### وصف المنتج المقترح (جاهز للنشر على متجرك):\n\n**العنوان:** دهن العود الكمبودي المعتق — لمسة الفخامة الملكية الخالدة\n\n**الوصف:**\nاستخلصنا لك نقاء الطبيعة من أعماق غابات كمبوديا العتيقة. قطرات من العود الطبيعي الصافي، تفيض بعبق خ الشيوخ وتدوم لأكثر من 36 ساعة على الملابس والبشرة.\n\n- **المقدمة:** نفحات بخورية دافئة تمتزج بالعنبر.\n- **قلب العطر:** عبق الخشب المعتق والزعفران.\n- **القاعدة:** استقرار ملكي ثابت يليق بالمناسبات الكبرى.\n\n**الدعوة للشراء (CTA):** اقتنِ زجاجتك الآن مع توصيل مجاني سريع وضمان ذهبي للاسترجاع.`
-          : `### High-Conversion Product Copy:\n\n**Title:** Royal Aged Agarwood Essence — Timeless Executive Elegance\n\n**Description:**\nDistilled from aged wild Cambodian trees, this pure agarwood oil delivers a rich, smoky resin profile tailored for discerning connoisseurs. Endures for over 36 hours with commanding sillage.\n- **Top:** Warm spiced saffron and dark amber.\n- **Heart:** Resinous wild agarwood smoke.\n- **Base:** Velvet leather and earthy accords.\n\n*Included: Complimentary insured global express courier.*`;
+      if (backendStatus === 'connected') {
+        const res = await qabsApi.executeAI(textToSend, activeStoreId || undefined, 'chat', language);
+        await refreshWorkspace();
+        const replyText = isAr ? res.result.responseAr : res.result.responseEn;
+        setMessages([...newMsgs, { role: 'assistant', text: replyText, provider: res.provider || res.result.provider }]);
+        showToast(isAr ? `تم التنفيذ — الرصيد المتبقي: ${res.creditsBalance}` : `Executed — Credits left: ${res.creditsBalance}`);
       } else {
-        generatedResponse = isAr
-          ? `### استشارة قبس الذكية:\nبناءً على طلبك، قمنا بمراجعة وتجهيز الإجابة المخصصة لنموذج عملك:\n\n1. **الخطوة الأولى:** التأكد من سريان السجل التجاري ورقم الـ EIN.\n2. **التكامل الرقمي:** ربط بوابة الدفع Stripe أو Tap مع تفعيل نظام الحماية من الاحتيال 3D-Secure.\n3. **التوسع في المبيعات:** إطلاق متجر فرعي موجه للدول المستهدفة مع تسعير بالعملة المحلية وتكامل شحن آلي مع DHL / Aramex.`
-          : `### QABS Strategic AI Analysis:\nHere is the tailored operational roadmap:\n1. **Corporate Structure:** Maintain Wyoming annual filing compliance.\n2. **Fintech Gateways:** Deploy Stripe Connect multi-currency settlements with Tap Middle East fallbacks.\n3. **Conversion:** Run localized storefront subdomains with native checkout currencies.`;
+        setMessages([
+          ...newMsgs,
+          {
+            role: 'assistant',
+            text: isAr
+              ? 'الخادم غير متصل حالياً (وضع المعاينة غير المتصل). أعد تشغيل الخادم للاتصال بمحرك QABS AI وسجل الرصيد.'
+              : 'Backend is unreachable in offline preview mode. Connect to the QABS server to execute AI requests.'
+          }
+        ]);
       }
-
-      setMessages([...newMsgs, { role: 'assistant', text: generatedResponse }]);
-    } catch {
-      setMessages([
-        ...newMsgs,
-        {
-          role: 'assistant',
-          text: isAr ? 'حدث خطأ أثناء الاتصال بنموذج الذكاء الاصطناعي، يرجى المحاولة ثانية.' : 'Failed to reach AI service, please retry.'
-        }
-      ]);
+    } catch (err) {
+      const apiErr = err as ApiError;
+      const msg =
+        apiErr?.code === 'INSUFFICIENT_CREDITS'
+          ? isAr
+            ? 'رصيد الذكاء الاصطناعي غير كافٍ. يرجى شحن الرصيد من قسم الفوترة.'
+            : 'Insufficient AI credits. Please top up credits in Billing.'
+          : apiErr?.message || (isAr ? 'تعذر تنفيذ الطلب في الخادم.' : 'Failed to execute AI request.');
+      setMessages([...newMsgs, { role: 'assistant', text: msg }]);
     } finally {
       setLoading(false);
     }
@@ -110,7 +116,7 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <span>{isAr ? 'استوديو قبس للذكاء الاصطناعي' : 'QABS AI Business Studio'}</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00A389]/20 text-[#00A389] font-mono">
-                  Gemini & Dify Engine
+                  {isAuthenticated ? `${user.credits} credits` : 'Server-Side Gemini & SQLite'}
                 </span>
               </h2>
               <p className="text-xs text-slate-400">

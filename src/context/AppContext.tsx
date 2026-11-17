@@ -59,7 +59,7 @@ import {
   INITIAL_STORE_TEMPLATES,
   DEFAULT_STORE_SECTIONS
 } from '../data/mockData.ts';
-import { AdminOverviewResponse, ApiError, BootstrapResponse, qabsApi } from '../services/qabsApi.ts';
+import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi } from '../services/qabsApi.ts';
 import {
   mapApiUserToProfile,
   mapDbAuditLog,
@@ -117,7 +117,17 @@ interface AppContextType {
     decision: 'approved_published' | 'changes_requested' | 'rejected',
     feedback?: string
   ) => void;
-  requestPaymentActivation: (storeId: string, gatewayType: StoreInstance['gatewayType']) => void;
+  requestPaymentActivation: (
+    storeId: string,
+    gatewayType: StoreInstance['gatewayType'],
+    sandboxConfig?: {
+      madaEnabled?: boolean;
+      applePayEnabled?: boolean;
+      sadadEnabled?: boolean;
+      stcPayEnabled?: boolean;
+      merchantReference?: string;
+    }
+  ) => void;
   approveStorePayment: (storeId: string, approved: boolean) => void;
   requestDomainVerification: (storeId: string, customDomain: string) => void;
   verifyStoreDomain: (storeId: string) => void;
@@ -212,6 +222,7 @@ interface AppContextType {
 
   // Admin Governance Overview (connected backend)
   adminOverview: AdminOverviewResponse | null;
+  integrationsStatus: IntegrationsStatusResponse | null;
   adminCreateStaffUser: (input: { name: string; email: string; password: string; role: string }) => Promise<boolean>;
   adminUpdateStaffUser: (userId: string, input: { role?: string; status?: 'active' | 'suspended' }) => Promise<boolean>;
   adminUpdateServiceCatalog: (slug: string, input: { startingPriceUsd?: number; active?: boolean }) => Promise<boolean>;
@@ -236,7 +247,7 @@ interface AppContextType {
   checkoutModalOpen: boolean;
   setCheckoutModalOpen: (open: boolean) => void;
   requestServiceAction: (order: PendingServiceOrder) => void;
-  completeServiceCheckout: (paymentMethod: 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => void;
+  completeServiceCheckout: (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => void;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
   authMode: 'login' | 'register' | 'recover';
@@ -448,6 +459,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [creditLedger, setCreditLedger] = useState<CreditLedgerItem[]>([]);
   const [subscriptionHistory, setSubscriptionHistory] = useState<SubscriptionHistoryItem[]>([]);
   const [adminOverview, setAdminOverview] = useState<AdminOverviewResponse | null>(null);
+  const [integrationsStatus, setIntegrationsStatus] = useState<IntegrationsStatusResponse | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [subscription, setSubscription] = useState<UserSubscription>(INITIAL_USER_SUBSCRIPTION);
@@ -549,6 +561,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
       const boot = await qabsApi.bootstrap();
       applyBootstrapPayload(boot);
+      try {
+        const integ = await qabsApi.getIntegrationsStatus();
+        setIntegrationsStatus(integ);
+      } catch {
+        // non-blocking
+      }
       if (PRIVILEGED_ROLES.has(sess.user.role as UserRole)) {
         try {
           const ov = await qabsApi.adminOverview();
@@ -578,6 +596,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           const boot = await qabsApi.bootstrap();
           if (!active) return;
           applyBootstrapPayload(boot);
+          try {
+            const integ = await qabsApi.getIntegrationsStatus();
+            if (active) setIntegrationsStatus(integ);
+          } catch {
+            // non-blocking
+          }
           if (PRIVILEGED_ROLES.has(sess.user.role as UserRole)) {
             try {
               const ov = await qabsApi.adminOverview();
@@ -1012,12 +1036,44 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const requestPaymentActivation = (storeId: string, gatewayType: StoreInstance['gatewayType']) => {
-    // Safety rule: no gateway is auto-activated in preview
+  const requestPaymentActivation = (
+    storeId: string,
+    gatewayType: StoreInstance['gatewayType'],
+    sandboxConfig?: {
+      madaEnabled?: boolean;
+      applePayEnabled?: boolean;
+      sadadEnabled?: boolean;
+      stcPayEnabled?: boolean;
+      merchantReference?: string;
+    }
+  ) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.requestStorePayment(storeId, { gatewayType, sandboxConfig });
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم حفظ إعدادات بوابة ${gatewayType} (وضع المعاينة المقيد) وإرسال الطلب للمراجعة ✓`
+              : `${gatewayType} sandbox settings persisted & submitted for review ✓`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ طلب بوابة الدفع', 'Failed to save payment gateway request');
+        }
+      })();
+      return;
+    }
+    // Offline preview fallback (no live charging)
     setStores(prev =>
       prev.map(s =>
         s.id === storeId
-          ? { ...s, gatewayType, paymentConnected: false, paymentApprovalStatus: 'pending_admin_approval' }
+          ? {
+              ...s,
+              gatewayType,
+              paymentConnected: false,
+              paymentApprovalStatus: 'pending_admin_approval',
+              paymentSandbox: sandboxConfig ? { ...sandboxConfig, gatewayType, mode: 'sandbox_pending_review' } : s.paymentSandbox
+            }
           : s
       )
     );
@@ -1028,8 +1084,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const approveStorePayment = (_storeId: string, _approved: boolean) => {
-    // Hard financial safety gate
+  const approveStorePayment = (storeId: string, approved: boolean) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.adminReviewStorePayment(storeId, approved ? 'sandbox_verified' : 'unconfigured');
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? 'تم تسجيل مراجعة جاهزية البوابة (يبقى التحصيل الحي معطلاً في المعاينة).'
+              : 'Gateway readiness review recorded (live card charging stays gated).'
+          );
+        } catch (err) {
+          handleApiFailure(err, 'يتطلب هذا الإجراء صلاحية إدارية', 'Admin role required for payment review');
+        }
+      })();
+      return;
+    }
     showToast(
       language === 'ar'
         ? 'تفعيل بوابات الدفع الحقيقية وجمع البطاقات معطل أماناً في بيئة المعاينة.'
@@ -1681,7 +1752,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const completeServiceCheckout = (paymentMethod: 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => {
+  const completeServiceCheckout = (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => {
     if (!pendingServiceOrder) return;
     const ord = pendingServiceOrder;
     const d = ord.details || {};
@@ -1717,6 +1788,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (d.storeName || planId) {
         const name = d.storeName?.trim() || `${user.companyName || user.name} Store`;
         const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14) || `store${Math.floor(100 + Math.random() * 899)}`;
+        const resolvedGateway: StoreInstance['gatewayType'] =
+          paymentMethod === 'Tap' || paymentMethod === 'Moyasar' || paymentMethod === 'PayPal'
+            ? paymentMethod
+            : 'Tap';
         addStore({
           name,
           ownerName: user.name,
@@ -1733,7 +1808,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           approvalStatus: 'draft',
           paymentConnected: false,
           paymentApprovalStatus: 'unconfigured',
-          gatewayType: paymentMethod === 'PayPal' ? 'PayPal' : 'Stripe'
+          gatewayType: resolvedGateway
         });
       }
       setCheckoutModalOpen(false);
@@ -1991,15 +2066,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- OTHER HELPERS ---
-  const syncShopifyStore = (storeId: string, domain: string, accessToken: string, webhooksConnected: boolean) => {
-    // Notice: preview never invokes real external Shopify mutation
+  const syncShopifyStore = (storeId: string, domain: string, _accessToken: string, webhooksConnected: boolean) => {
+    const cleanDomain = domain.trim();
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          // Persist non-secret Shopify domain & webhook preference cleanly (never store raw secret tokens on client/DB)
+          await qabsApi.updateStore(storeId, {
+            settings: {
+              shopifyDomain: cleanDomain,
+              shopifyWebhooksConnected: webhooksConnected
+            }
+          });
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? 'تم حفظ نطاق Shopify وحالة Webhooks في المسودة (التزامن الحي مقيد في المعاينة) ✓'
+              : 'Shopify domain & webhook config persisted safely in draft ✓'
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ إعدادات Shopify', 'Failed to save Shopify config');
+        }
+      })();
+      return;
+    }
     setStores(prev =>
       prev.map(s =>
         s.id === storeId
           ? {
               ...s,
-              shopifyDomain: domain.trim(),
-              shopifyAccessToken: accessToken.trim(),
+              shopifyDomain: cleanDomain,
               shopifyWebhooksConnected: webhooksConnected
             }
           : s
@@ -2214,6 +2310,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importWorkspaceBackupJson,
         resetWorkspaceData,
         adminOverview,
+        integrationsStatus,
         adminCreateStaffUser,
         adminUpdateStaffUser,
         adminUpdateServiceCatalog,

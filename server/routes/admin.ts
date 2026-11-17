@@ -243,6 +243,58 @@ export function registerAdminRoutes(
     res.json({ store: db.prepare('SELECT * FROM store_instances WHERE id = ?').get(storeId) });
   });
 
+  // Review Store Payment Gateway Readiness (keeps live payment_connected = 0 in preview)
+  router.patch('/api/admin/stores/:storeId/payment-approval', requirePrivileged, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (!canVerifyFinancials(actor.role)) {
+      res.status(403).json({
+        error: 'Only admin or super_admin can verify store payment readiness.',
+        code: 'FORBIDDEN_FINANCIAL_ACTION'
+      });
+      return;
+    }
+    const storeId = sanitizeId(req.params.storeId);
+    const decision = sanitizeText(req.body?.decision, 32);
+    if (!['pending_admin_approval', 'unconfigured', 'sandbox_verified'].includes(decision)) {
+      res.status(400).json({ error: 'Invalid payment review decision.', code: 'INVALID_DECISION' });
+      return;
+    }
+    const store = db.prepare('SELECT * FROM store_instances WHERE id = ?').get(storeId) as Record<string, unknown> | undefined;
+    if (!store) {
+      res.status(404).json({ error: 'Store not found.', code: 'STORE_NOT_FOUND' });
+      return;
+    }
+
+    const currentSettings = JSON.parse(String(store.settings_json || '{}'));
+    const nextSettings = {
+      ...currentSettings,
+      paymentSandbox: {
+        ...(currentSettings.paymentSandbox || {}),
+        adminReviewStatus: decision,
+        reviewedBy: actor.name,
+        reviewedAt: new Date().toISOString()
+      }
+    };
+
+    const nextApproval = decision === 'unconfigured' ? 'unconfigured' : 'pending_admin_approval';
+    db.prepare(
+      `UPDATE store_instances
+       SET payment_connected = 0, payment_approval_status = ?, settings_json = ?
+       WHERE id = ?`
+    ).run(nextApproval, JSON.stringify(nextSettings), storeId);
+
+    logAudit(
+      db,
+      String(store.tenant_id),
+      actor.userId,
+      actor.name,
+      `مراجعة جاهزية بوابة الدفع لمتجر ${store.name} (${decision})`,
+      `Reviewed store payment sandbox readiness (${decision})`,
+      storeId
+    );
+    res.json({ store: db.prepare('SELECT * FROM store_instances WHERE id = ?').get(storeId) });
+  });
+
   // Verify Offline / Manual Invoice with Proof Reference (Never live card charging!)
   router.patch('/api/admin/invoices/:invoiceId/verify', requirePrivileged, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;

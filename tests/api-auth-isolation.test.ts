@@ -417,5 +417,51 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     });
     assert.equal(superCreate.status, 201);
     assert.equal(superCreate.json.user.role, 'admin');
+
+    // Integration readiness endpoint is auth-gated, reports Tap/Moyasar GCC priority, and keeps paymentsEnabled=false
+    const unauthInteg = await new TestClient(baseUrl).req('GET', '/api/integrations/status');
+    assert.equal(unauthInteg.status, 401);
+
+    const integ = await customer.req('GET', '/api/integrations/status');
+    assert.equal(integ.status, 200);
+    assert.equal(integ.json.paymentsEnabled, false);
+    assert.equal(integ.json.integrations.tap.region, 'GCC');
+    assert.equal(integ.json.integrations.moyasar.region, 'SA / GCC');
+
+    // Merchant requests Tap/Moyasar GCC sandbox config; client secret keys are strictly rejected & payment_connected stays 0
+    const custStore = await customer.req('POST', '/api/stores', { name: 'Riyadh Luxury Atelier', currency: 'SAR' });
+    assert.equal(custStore.status, 201);
+    const storeId = custStore.json.store.id;
+
+    const rejectSecret = await customer.req('POST', `/api/stores/${storeId}/payment-request`, {
+      gatewayType: 'Moyasar',
+      secretKey: 'sk_test_should_never_be_sent'
+    });
+    assert.equal(rejectSecret.status, 400);
+    assert.equal(rejectSecret.json.code, 'CLIENT_SECRET_NOT_ALLOWED');
+
+    const tapReq = await customer.req('POST', `/api/stores/${storeId}/payment-request`, {
+      gatewayType: 'Tap',
+      sandboxConfig: { madaEnabled: true, applePayEnabled: true, merchantReference: 'gcc-merch-01' }
+    });
+    assert.equal(tapReq.status, 200);
+    assert.equal(tapReq.json.store.gateway_type, 'Tap');
+    assert.equal(tapReq.json.store.payment_connected, 0);
+    assert.equal(tapReq.json.store.payment_approval_status, 'pending_admin_approval');
+
+    const moyasarReq = await customer.req('POST', `/api/stores/${storeId}/payment-request`, {
+      gatewayType: 'Moyasar',
+      sandboxConfig: { madaEnabled: true, sadadEnabled: true, stcPayEnabled: true }
+    });
+    assert.equal(moyasarReq.status, 200);
+    assert.equal(moyasarReq.json.store.gateway_type, 'Moyasar');
+    assert.equal(moyasarReq.json.store.payment_connected, 0);
+
+    // Admin reviews sandbox readiness while keeping live payment_connected strictly 0
+    const adminReview = await admin.req('PATCH', `/api/admin/stores/${storeId}/payment-approval`, {
+      decision: 'sandbox_verified'
+    });
+    assert.equal(adminReview.status, 200);
+    assert.equal(adminReview.json.store.payment_connected, 0);
   });
 });

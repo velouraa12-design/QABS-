@@ -472,6 +472,17 @@ export interface StoreInstance {
   paymentConnected: boolean;
   paymentApprovalStatus?: 'unconfigured' | 'pending_admin_approval' | 'approved_active';
   gatewayType: 'Stripe' | 'Tap' | 'Moyasar' | 'PayPal';
+  paymentSandbox?: {
+    gatewayType?: string;
+    mode?: string;
+    region?: string;
+    madaEnabled?: boolean;
+    applePayEnabled?: boolean;
+    sadadEnabled?: boolean;
+    stcPayEnabled?: boolean;
+    merchantReference?: string;
+    adminReviewStatus?: string;
+  };
   taxRate?: number;
   sections?: StoreSectionBlock[];
   designVersions?: StoreDesignSnapshot[];

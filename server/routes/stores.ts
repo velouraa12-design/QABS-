@@ -162,9 +162,15 @@ export function registerStoreRoutes(
         ? 'pending_verification'
         : String(check.store.domain_status);
     const currentSettings = JSON.parse(String(check.store.settings_json || '{}'));
-    const nextSettings = req.body?.settings && typeof req.body.settings === 'object'
-      ? JSON.stringify({ ...currentSettings, ...req.body.settings })
-      : String(check.store.settings_json || '{}');
+    const incomingSettings =
+      req.body?.settings && typeof req.body.settings === 'object' ? { ...(req.body.settings as Record<string, unknown>) } : {};
+    delete incomingSettings.shopifyAccessToken;
+    delete incomingSettings.secretKey;
+    delete incomingSettings.apiKey;
+    const nextSettings =
+      req.body?.settings && typeof req.body.settings === 'object'
+        ? JSON.stringify({ ...currentSettings, ...incomingSettings })
+        : String(check.store.settings_json || '{}');
 
     db.prepare(
       `UPDATE store_instances
@@ -174,6 +180,78 @@ export function registerStoreRoutes(
 
     const updated = db.prepare('SELECT * FROM store_instances WHERE id = ?').get(storeId);
     res.json({ store: updated });
+  });
+
+  // Request GCC / Global Payment Gateway Sandbox Configuration (keeps payment_connected = 0)
+  router.post('/api/stores/:storeId/payment-request', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+
+    const gatewayType = sanitizeText(req.body?.gatewayType, 32);
+    const allowedGateways = new Set(['Tap', 'Moyasar', 'Stripe', 'PayPal']);
+    if (!allowedGateways.has(gatewayType)) {
+      res.status(400).json({ error: 'Unsupported payment gateway type.', code: 'INVALID_GATEWAY' });
+      return;
+    }
+
+    if (req.body?.secretKey || req.body?.apiKey) {
+      res.status(400).json({
+        error: 'Client-submitted secret keys are not permitted. Configure gateway secrets strictly on the server.',
+        code: 'CLIENT_SECRET_NOT_ALLOWED'
+      });
+      return;
+    }
+
+    const currentSettings = JSON.parse(String(check.store.settings_json || '{}'));
+    const sandboxCfg = req.body?.sandboxConfig && typeof req.body.sandboxConfig === 'object' ? req.body.sandboxConfig : {};
+    const nextSettings = {
+      ...currentSettings,
+      paymentSandbox: {
+        gatewayType,
+        mode: 'sandbox_pending_review',
+        region: gatewayType === 'Tap' || gatewayType === 'Moyasar' ? 'GCC' : 'Global',
+        madaEnabled: Boolean(sandboxCfg.madaEnabled ?? (gatewayType === 'Tap' || gatewayType === 'Moyasar')),
+        applePayEnabled: Boolean(sandboxCfg.applePayEnabled ?? true),
+        sadadEnabled: Boolean(sandboxCfg.sadadEnabled ?? gatewayType === 'Moyasar'),
+        stcPayEnabled: Boolean(sandboxCfg.stcPayEnabled ?? gatewayType === 'Moyasar'),
+        merchantReference: sanitizeText(sandboxCfg.merchantReference || '', 80),
+        updatedAt: new Date().toISOString()
+      }
+    };
+
+    // Strict financial gate: never enable live card charging automatically
+    db.prepare(
+      `UPDATE store_instances
+       SET gateway_type = ?, payment_connected = 0, payment_approval_status = 'pending_admin_approval', settings_json = ?
+       WHERE id = ?`
+    ).run(gatewayType, JSON.stringify(nextSettings), storeId);
+
+    createNotification(
+      db,
+      String(check.store.tenant_id),
+      `تم تسجيل طلب تفعيل بوابة ${gatewayType}`,
+      `${gatewayType} Gateway Activation Requested`,
+      `بانتظار المراجعة الإدارية لمتجر "${check.store.name}" — التحصيل الحي معطّل أماناً في بيئة المعاينة.`,
+      `Pending admin verification for "${check.store.name}". Live charging stays disabled in preview.`,
+      'billing',
+      '/payment-gateways'
+    );
+    logAudit(
+      db,
+      String(check.store.tenant_id),
+      actor.userId,
+      actor.name,
+      `طلب إعداد بوابة الدفع ${gatewayType} لمتجر ${check.store.name}`,
+      `Requested ${gatewayType} sandbox setup for store ${check.store.name}`,
+      storeId
+    );
+
+    res.json({ store: db.prepare('SELECT * FROM store_instances WHERE id = ?').get(storeId) });
   });
 
   // Submit store for admin review

@@ -186,6 +186,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     logout,
     showToast,
     backendStatus,
+    integrationsStatus,
     notifications,
     unreadNotificationsCount,
     markNotificationRead,
@@ -382,6 +383,13 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   const [shopifyTokenInput, setShopifyTokenInput] = useState(currentStore?.shopifyAccessToken || '');
   const [shopifyWebhooksInput, setShopifyWebhooksInput] = useState(!!currentStore?.shopifyWebhooksConnected);
   const [showShopifyToken, setShowShopifyToken] = useState(false);
+
+  // GCC Payment Gateway Sandbox Preferences
+  const [gccMerchantRef, setGccMerchantRef] = useState(currentStore?.paymentSandbox?.merchantReference || '');
+  const [gccMadaEnabled, setGccMadaEnabled] = useState(currentStore?.paymentSandbox?.madaEnabled ?? true);
+  const [gccApplePayEnabled, setGccApplePayEnabled] = useState(currentStore?.paymentSandbox?.applePayEnabled ?? true);
+  const [gccSadadEnabled, setGccSadadEnabled] = useState(currentStore?.paymentSandbox?.sadadEnabled ?? true);
+  const [gccStcPayEnabled, setGccStcPayEnabled] = useState(currentStore?.paymentSandbox?.stcPayEnabled ?? true);
 
   // QABS AI Command state
   const [aiPromptInput, setAiPromptInput] = useState('');
@@ -2850,22 +2858,22 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
             </div>
           )}
 
-          {/* SECTION 11: PAYMENTS (الدفع — قاعدة عدم تفعيل بوابة دفع تلقائياً) */}
+          {/* SECTION 11: PAYMENTS (الدفع — الأولوية لبوابات الخليج Tap & Moyasar مع تقييد التحصيل الحي) */}
           {activeTab === 'payments' && (
-            <div className="bg-white dark:bg-[#071D2B] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-5">
-              <div className="flex items-start justify-between gap-4">
+            <div className="bg-white dark:bg-[#071D2B] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                 <div>
                   <h2 className="text-lg font-black text-[#004457] dark:text-white">
-                    {isAr ? 'إعداد وربط بوابات الدفع الإلكترونية' : 'Payment Gateways Setup'}
+                    {isAr ? 'إعداد بوابات الدفع الخليجية والدولية (Tap & Moyasar)' : 'GCC & Global Payment Gateways Setup'}
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 mt-1">
                     {isAr
-                      ? 'وفق سياسة الأمان في متاجر قبس: لا يتم تفعيل أي بوابة دفع تلقائياً، بل يتم التحقق منها واعتمادها من لوحة قبس المركزية'
-                      : 'Per QABS governance: Payment gateways are never auto-activated; they require manual QABS Central Admin verification'}
+                      ? 'الأولوية التشغيلية في منطقة الخليج: Tap Payments و Moyasar. وفق سياسة الأمان لا يتم تفعيل أي تحصيل مالي حي تلقائياً في وضع المعاينة.'
+                      : 'GCC priority sandbox: Tap Payments & Moyasar. Per QABS security gates, live card charging remains disabled in preview mode.'}
                   </p>
                 </div>
                 <span
-                  className={`px-3 py-1 rounded-full text-xs font-black ${
+                  className={`px-3 py-1 rounded-full text-xs font-black self-start shrink-0 ${
                     currentStore.paymentApprovalStatus === 'approved_active'
                       ? 'bg-emerald-100 text-emerald-800'
                       : currentStore.paymentApprovalStatus === 'pending_admin_approval'
@@ -2879,48 +2887,130 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       : 'Approved & Active'
                     : currentStore.paymentApprovalStatus === 'pending_admin_approval'
                     ? isAr
-                      ? 'قيد مراجعة إدارة قبس'
-                      : 'Pending QABS Verification'
+                      ? 'قيد مراجعة إدارة قبس (معاينة)'
+                      : 'Pending QABS Verification (Sandbox)'
                     : isAr
                     ? 'غير مفعلة'
                     : 'Unconfigured'}
                 </span>
               </div>
 
+              {/* GCC Sandbox Capabilities & Server Readiness */}
+              <div className="p-4 rounded-2xl bg-[#FBFAF6] dark:bg-slate-900 border border-[#EAE6DC] dark:border-slate-800 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-black text-[#14243E] dark:text-white">
+                    {isAr ? 'خيارات وسائل الدفع الخليجية (وضع المعاينة المقيد)' : 'GCC Payment Rail Preferences (Sandbox Mode)'}
+                  </span>
+                  <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300">
+                    {isAr ? 'التحصيل الحي: معطّل أماناً' : 'Live Charging: Safely Gated Off'}
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-3 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={gccMadaEnabled} onChange={e => setGccMadaEnabled(e.target.checked)} className="rounded" />
+                    <span className="font-bold">mada (مدى)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={gccApplePayEnabled} onChange={e => setGccApplePayEnabled(e.target.checked)} className="rounded" />
+                    <span className="font-bold">Apple Pay</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={gccSadadEnabled} onChange={e => setGccSadadEnabled(e.target.checked)} className="rounded" />
+                    <span className="font-bold">SADAD (سداد — ميسر)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={gccStcPayEnabled} onChange={e => setGccStcPayEnabled(e.target.checked)} className="rounded" />
+                    <span className="font-bold">STC Pay</span>
+                  </label>
+                </div>
+                <div className="max-w-md">
+                  <input
+                    type="text"
+                    value={gccMerchantRef}
+                    onChange={e => setGccMerchantRef(e.target.value)}
+                    placeholder={isAr ? 'معرّف التاجر المرجعي غير السري (مثال: merchant_sa_sandbox)' : 'Non-secret Merchant Reference ID (optional)'}
+                    className="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-xs"
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {(['Tap', 'Moyasar', 'Stripe'] as const).map(gw => (
-                  <div
-                    key={gw}
-                    className={`p-5 rounded-2xl border-2 flex flex-col justify-between space-y-4 ${
-                      currentStore.gatewayType === gw
-                        ? 'border-[#00A896] bg-teal-50/30 dark:bg-teal-950/20'
-                        : 'border-slate-200 dark:border-slate-800'
-                    }`}
-                  >
-                    <div>
-                      <div className="text-base font-black text-[#004457] dark:text-white">{gw} Payments</div>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {gw === 'Tap'
-                          ? isAr
-                            ? 'مدى، فيزا، ماستركارد، أبل باي لدول الخليج'
-                            : 'Mada, Visa, Apple Pay for GCC'
-                          : gw === 'Moyasar'
-                          ? isAr
-                            ? 'بوابة ميسر المعتمدة في السعودية (مدى وسداد)'
-                            : 'Saudi Arabia Mada, SADAD & Apple Pay'
-                          : isAr
-                          ? 'المدفوعات الدولية بالعملات المتعددة'
-                          : 'Global multi-currency card processing'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => requestPaymentActivation(currentStore.id, gw)}
-                      className="w-full py-2.5 rounded-xl bg-[#004457] hover:bg-[#003342] text-white text-xs font-black cursor-pointer"
+                {(['Tap', 'Moyasar', 'Stripe'] as const).map(gw => {
+                  const envInfo =
+                    gw === 'Tap'
+                      ? integrationsStatus?.integrations.tap
+                      : gw === 'Moyasar'
+                      ? integrationsStatus?.integrations.moyasar
+                      : integrationsStatus?.integrations.stripe;
+                  const isEnvReady = Boolean(envInfo?.configured && envInfo?.secretConfigured);
+                  return (
+                    <div
+                      key={gw}
+                      className={`p-5 rounded-2xl border-2 flex flex-col justify-between space-y-4 ${
+                        currentStore.gatewayType === gw
+                          ? 'border-[#00A896] bg-teal-50/30 dark:bg-teal-950/20'
+                          : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     >
-                      {isAr ? `طلب تفعيل ${gw} من إدارة قبس` : `Request ${gw} Activation`}
-                    </button>
-                  </div>
-                ))}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="text-base font-black text-[#004457] dark:text-white">{gw} Payments</div>
+                          {(gw === 'Tap' || gw === 'Moyasar') && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#D5B46B]/20 text-[#92743A]">
+                              {isAr ? 'أولوية الخليج' : 'GCC Priority'}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          {gw === 'Tap'
+                            ? isAr
+                              ? 'مدى، فيزا، ماستركارد، أبل باي لدول الخليج'
+                              : 'mada, Visa, Apple Pay for GCC'
+                            : gw === 'Moyasar'
+                            ? isAr
+                              ? 'بوابة ميسر المعتمدة في السعودية (مدى وسداد وSTC Pay)'
+                              : 'Saudi Arabia mada, SADAD, STC Pay & Apple Pay'
+                            : isAr
+                            ? 'المدفوعات الدولية بالعملات المتعددة (Stripe Connect)'
+                            : 'Global multi-currency card processing (Stripe Connect)'}
+                        </p>
+                        <div className="text-[11px] font-bold flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${isEnvReady ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <span className="text-slate-600 dark:text-slate-300">
+                            {isEnvReady
+                              ? isAr
+                                ? 'مفاتيح الخادم مهيأة (Sandbox)'
+                                : 'Server keys configured (Sandbox)'
+                              : isAr
+                              ? 'بانتظار مفاتيح البيئة في الخادم'
+                              : 'Awaiting server env keys'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          requestPaymentActivation(currentStore.id, gw, {
+                            madaEnabled: gccMadaEnabled,
+                            applePayEnabled: gccApplePayEnabled,
+                            sadadEnabled: gccSadadEnabled,
+                            stcPayEnabled: gccStcPayEnabled,
+                            merchantReference: gccMerchantRef.trim() || undefined
+                          })
+                        }
+                        className="w-full py-2.5 rounded-xl bg-[#004457] hover:bg-[#003342] text-white text-xs font-black cursor-pointer"
+                      >
+                        {currentStore.gatewayType === gw && currentStore.paymentApprovalStatus === 'pending_admin_approval'
+                          ? isAr
+                            ? `تحديث طلب ${gw} (مُرسل للمراجعة)`
+                            : `Update ${gw} Sandbox Request`
+                          : isAr
+                          ? `حفظ وإرسال طلب تفعيل ${gw}`
+                          : `Save & Request ${gw} Sandbox`}
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

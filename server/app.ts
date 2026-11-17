@@ -1,3 +1,4 @@
+import { GoogleGenAI } from '@google/genai';
 import express, { type Request, type Response, type NextFunction, type Express } from 'express';
 import os from 'node:os';
 import path from 'node:path';
@@ -1175,11 +1176,61 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ invoice: inv });
   });
 
-  // Execute QABS AI Command (atomic credit deduction via immutable ledger)
-  app.post('/api/ai/execute', requireAuth, (req: AuthedRequest, res: Response) => {
+  // Safe server-side integration status overview (zero secrets exposed)
+  app.get('/api/integrations/status', requireAuth, (_req: AuthedRequest, res: Response) => {
+    res.json({
+      paymentsEnabled: false,
+      environment: process.env.NODE_ENV === 'production' ? 'production_gated' : 'preview',
+      integrations: {
+        tap: {
+          configured: Boolean(process.env.TAP_PUBLIC_KEY),
+          secretConfigured: Boolean(process.env.TAP_SECRET_KEY),
+          region: 'GCC',
+          methods: ['mada', 'Visa/Mastercard', 'Apple Pay'],
+          mode: 'sandbox_gated'
+        },
+        moyasar: {
+          configured: Boolean(process.env.MOYASAR_PUBLISHABLE_KEY),
+          secretConfigured: Boolean(process.env.MOYASAR_SECRET_KEY),
+          region: 'SA / GCC',
+          methods: ['mada', 'SADAD', 'STC Pay', 'Apple Pay'],
+          mode: 'sandbox_gated'
+        },
+        stripe: {
+          configured: Boolean(process.env.STRIPE_CONNECT_CLIENT_ID),
+          secretConfigured: Boolean(process.env.STRIPE_SECRET_KEY),
+          region: 'Global',
+          methods: ['Cards', 'Apple Pay', 'Connect'],
+          mode: 'sandbox_gated'
+        },
+        shopify: {
+          configured: Boolean(process.env.SHOPIFY_STOREFRONT_TOKEN),
+          mode: 'draft_sync'
+        },
+        gemini: {
+          configured: Boolean(process.env.GEMINI_API_KEY),
+          model: 'gemini-4-hydrogen'
+        },
+        cloudflare: {
+          configured: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_ZONE_ID),
+          dnsLocked: true
+        },
+        database: {
+          engine: 'sqlite',
+          connected: true
+        }
+      }
+    });
+  });
+
+  // Execute QABS AI Command (atomic credit deduction via immutable ledger + server-side Gemini when configured)
+  app.post('/api/ai/execute', requireAuth, async (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
-    const prompt = sanitizeText(req.body?.prompt, 500);
+    const prompt = sanitizeText(req.body?.prompt, 1200);
     const storeId = sanitizeId(req.body?.storeId);
+    const aiMode = req.body?.mode === 'chat' ? 'chat' : 'workspace_command';
+    const lang = req.body?.language === 'en' ? 'en' : 'ar';
+
     if (!prompt) {
       res.status(400).json({ error: 'Prompt is required.', code: 'EMPTY_PROMPT' });
       return;
@@ -1201,32 +1252,90 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       return;
     }
 
-    const nextBal = currentCredits - 1;
     const prodAgg = storeId
       ? (db.prepare('SELECT COUNT(*) AS cnt, COALESCE(SUM(stock_quantity), 0) AS stk FROM store_products WHERE store_id = ?').get(storeId) as { cnt: number; stk: number })
       : { cnt: 0, stk: 0 };
+    const ordAgg = storeId
+      ? (db.prepare("SELECT COUNT(*) AS ordCnt, COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total_amount ELSE 0 END), 0) AS ordTotal FROM store_orders WHERE store_id = ?").get(storeId) as { ordCnt: number; ordTotal: number })
+      : { ordCnt: 0, ordTotal: 0 };
+    const compAgg = db
+      .prepare('SELECT COUNT(*) AS compCnt FROM company_formations WHERE tenant_id = ?')
+      .get(actor.tenantId) as { compCnt: number };
 
+    const storeLabel = storeRow ? String(storeRow.name) : 'QABS Workspace';
+    const geminiApiKey = process.env.GEMINI_API_KEY?.trim();
+
+    let responseAr = '';
+    let responseEn = '';
+    let provider: 'gemini-4-hydrogen' | 'qabs_sqlite_engine' = 'qabs_sqlite_engine';
+
+    if (geminiApiKey) {
+      try {
+        const ai = new GoogleGenAI({
+          apiKey: geminiApiKey,
+          httpOptions: {
+            headers: {
+              'User-Agent': 'aistudio-build'
+            }
+          }
+        });
+        const systemInstruction =
+          lang === 'ar'
+            ? `أنت مستشار قبس الذكي (QABS AI Studio) لمنصة قبس لتأسيس الشركات الأمريكية والبريطانية والمتاجر الإلكترونية وبوابات الدفع الخليجية (Tap Payments وMoyasar) والدولية (Stripe). السياق الحالي للعميل: المتجر="${storeLabel}" (${prodAgg.cnt} منتج، ${prodAgg.stk} قطعة مخزون، ${ordAgg.ordCnt} طلب، ${compAgg.compCnt} شركة مسجلة). أجب باللغة العربية باحترافية وإيجاز عملي دون اختلاق بيانات مالية.`
+            : `You are QABS AI Studio advisor for US/UK company formation, multi-store commerce, and GCC/global payment gateways (Tap Payments, Moyasar, Stripe). Tenant context: Store="${storeLabel}" (${prodAgg.cnt} products, ${prodAgg.stk} stock units, ${ordAgg.ordCnt} orders, ${compAgg.compCnt} companies). Respond concisely and professionally in English without inventing financial figures.`;
+
+        const aiResult = await ai.models.generateContent({
+          model: 'gemini-4-hydrogen',
+          contents: prompt,
+          config: { systemInstruction }
+        });
+        const generated = (aiResult.text || '').trim();
+        if (!generated) {
+          res.status(502).json({ error: 'Empty response from Gemini AI.', code: 'AI_EMPTY_RESPONSE' });
+          return;
+        }
+        provider = 'gemini-4-hydrogen';
+        responseAr = generated;
+        responseEn = generated;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Upstream Gemini AI request failed.';
+        res.status(502).json({ error: msg, code: 'AI_UPSTREAM_ERROR' });
+        return;
+      }
+    } else {
+      responseAr =
+        aiMode === 'chat'
+          ? `تحليل مساحة العمل "${storeLabel}" (من قاعدة البيانات الفعلية — وضع المعاينة بدون GEMINI_API_KEY):\n• المنتجات النشطة: ${prodAgg.cnt} (${prodAgg.stk} قطعة مخزون)\n• الطلبات المسجلة: ${ordAgg.ordCnt} (إجمالي ${ordAgg.ordTotal})\n• الشركات المربوطة: ${compAgg.compCnt}\n• الطلب: ${prompt}\n\nالتوصية التشغيلية: راجع جاهزية بوابات الخليج (Tap / Moyasar) من تبويب الدفع، ثم أضف GEMINI_API_KEY في أسرار الخادم لتفعيل التوليد الحر لنماذج Gemini 4.`
+          : `تم تحليل "${storeLabel}" (${prodAgg.cnt} منتج / ${prodAgg.stk} قطعة مخزون / ${ordAgg.ordCnt} طلب) وخصم وحدة رصيد واحدة عبر السجل المالي الموثق.`;
+      responseEn =
+        aiMode === 'chat'
+          ? `Live SQLite Workspace Analysis for "${storeLabel}" (Preview Engine — set GEMINI_API_KEY on server for Gemini 4 generative drafting):\n• Products: ${prodAgg.cnt} (${prodAgg.stk} units)\n• Store Orders: ${ordAgg.ordCnt} (Total ${ordAgg.ordTotal})\n• Registered Companies: ${compAgg.compCnt}\n• Prompt: ${prompt}\n\nNext Step: Configure Tap Payments or Moyasar sandbox in Payment Gateways, or add GEMINI_API_KEY in server secrets for full generative AI.`
+          : `Analyzed "${storeLabel}" (${prodAgg.cnt} products / ${prodAgg.stk} units / ${ordAgg.ordCnt} orders) and debited 1 credit in the ledger.`;
+    }
+
+    const nextBal = currentCredits - 1;
     db.exec('BEGIN IMMEDIATE');
     try {
       db.prepare('UPDATE tenants SET credits_balance = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(nextBal, actor.tenantId);
       db.prepare(
         `INSERT INTO credit_ledger (id, tenant_id, actor_user_id, delta, balance_after, reason, reference_id)
          VALUES (?, ?, ?, -1, ?, ?, ?)`
-      ).run(`led_${generateToken(6)}`, actor.tenantId, actor.userId, nextBal, `AI Execution: ${prompt.slice(0, 60)}`, storeId || 'workspace');
+      ).run(`led_${generateToken(6)}`, actor.tenantId, actor.userId, nextBal, `AI Execution (${provider}): ${prompt.slice(0, 60)}`, storeId || 'workspace');
       db.exec('COMMIT');
     } catch (err) {
       db.exec('ROLLBACK');
       throw err;
     }
 
-    const storeLabel = storeRow ? String(storeRow.name) : 'Workspace';
     res.json({
       creditsBalance: nextBal,
+      provider,
       result: {
         id: `ai_${generateToken(6)}`,
         prompt,
-        responseAr: `تم تحليل "${storeLabel}" (${prodAgg.cnt} منتج / ${prodAgg.stk} قطعة مخزون) وخصم وحدة رصيد واحدة عبر السجل المالي الموثق.`,
-        responseEn: `Analyzed "${storeLabel}" (${prodAgg.cnt} products / ${prodAgg.stk} units) and debited 1 credit in the ledger.`,
+        provider,
+        responseAr,
+        responseEn,
         timestamp: new Date().toISOString()
       }
     });

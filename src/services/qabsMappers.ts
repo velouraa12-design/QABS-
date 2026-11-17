@@ -113,7 +113,10 @@ export function mapDbStore(
     adminFeedback: row.admin_feedback ? String(row.admin_feedback) : undefined,
     paymentConnected: Boolean(row.payment_connected),
     paymentApprovalStatus: (String(row.payment_approval_status || 'unconfigured') as StoreInstance['paymentApprovalStatus']),
-    gatewayType: (String(row.gateway_type || 'Stripe') as StoreInstance['gatewayType']),
+    gatewayType: (String(row.gateway_type || 'Tap') as StoreInstance['gatewayType']),
+    paymentSandbox: (settings.paymentSandbox as StoreInstance['paymentSandbox']) || undefined,
+    shopifyDomain: typeof settings.shopifyDomain === 'string' ? settings.shopifyDomain : undefined,
+    shopifyWebhooksConnected: Boolean(settings.shopifyWebhooksConnected),
     taxRate: Number(settings.taxRate ?? 15),
     sections: DEFAULT_STORE_SECTIONS.map(s => ({ ...s })),
     createdAt: String(row.created_at || '').slice(0, 10)

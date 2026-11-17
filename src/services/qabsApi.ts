@@ -123,6 +123,20 @@ export interface AdminOverviewResponse {
   platformSettings: Record<string, unknown>;
 }
 
+export interface IntegrationsStatusResponse {
+  paymentsEnabled: boolean;
+  environment: string;
+  integrations: {
+    tap: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
+    moyasar: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
+    stripe: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
+    shopify: { configured: boolean; mode: string };
+    gemini: { configured: boolean; model: string };
+    cloudflare: { configured: boolean; dnsLocked: boolean };
+    database: { engine: string; connected: boolean };
+  };
+}
+
 export const qabsApi = {
   health: () =>
     apiRequest<{
@@ -132,6 +146,7 @@ export const qabsApi = {
       paymentsEnabled?: boolean;
       environment?: string;
     }>('/api/health'),
+  getIntegrationsStatus: () => apiRequest<IntegrationsStatusResponse>('/api/integrations/status'),
 
   // Auth & Recovery
   session: async (): Promise<AuthSessionResponse> => {
@@ -274,6 +289,27 @@ export const qabsApi = {
     apiRequest<{ store: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/submit-review`, {
       method: 'POST'
     }),
+  requestStorePayment: (
+    storeId: string,
+    input: {
+      gatewayType: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal';
+      sandboxConfig?: {
+        madaEnabled?: boolean;
+        applePayEnabled?: boolean;
+        sadadEnabled?: boolean;
+        stcPayEnabled?: boolean;
+        merchantReference?: string;
+      };
+    }
+  ) =>
+    apiRequest<{ store: Record<string, unknown> }>(
+      `/api/stores/${encodeURIComponent(storeId)}/payment-request`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      }
+    ),
   listCategories: (storeId: string) =>
     apiRequest<{ categories: Record<string, unknown>[] }>(`/api/stores/${encodeURIComponent(storeId)}/categories`),
   createCategory: (storeId: string, input: { nameAr: string; nameEn?: string; slug?: string }) =>
@@ -360,14 +396,15 @@ export const qabsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amountUsd })
     }),
-  executeAI: (prompt: string, storeId?: string) =>
+  executeAI: (prompt: string, storeId?: string, mode: 'chat' | 'workspace_command' = 'workspace_command', language: 'ar' | 'en' = 'ar') =>
     apiRequest<{
       creditsBalance: number;
-      result: { id: string; prompt: string; responseAr: string; responseEn: string; timestamp: string };
+      provider?: string;
+      result: { id: string; prompt: string; provider?: string; responseAr: string; responseEn: string; timestamp: string };
     }>('/api/ai/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, storeId })
+      body: JSON.stringify({ prompt, storeId, mode, language })
     }),
 
   // Notifications & Support Tickets
@@ -424,6 +461,12 @@ export const qabsApi = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ verified })
+    }),
+  adminReviewStorePayment: (storeId: string, decision: 'pending_admin_approval' | 'unconfigured' | 'sandbox_verified') =>
+    apiRequest<{ store: Record<string, unknown> }>(`/api/admin/stores/${encodeURIComponent(storeId)}/payment-approval`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision })
     }),
   adminVerifyInvoice: (invoiceId: string, paymentProofRef: string) =>
     apiRequest<{ invoice: Record<string, unknown> }>(`/api/admin/invoices/${encodeURIComponent(invoiceId)}/verify`, {
