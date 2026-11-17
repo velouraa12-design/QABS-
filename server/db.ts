@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { hashPassword, PlatformRole } from './security.ts';
+import { generateToken, hashPassword, type PlatformRole } from './security.ts';
 
 export function createDatabase(dbPath: string): DatabaseSync {
   if (dbPath !== ':memory:') {
@@ -352,7 +352,9 @@ function seedInitialPreviewData(db: DatabaseSync): void {
   const userCountRow = db.prepare('SELECT COUNT(*) AS cnt FROM users').get() as { cnt: number };
   if (userCountRow.cnt > 0) return;
 
-  const seedPass = process.env.QABS_PREVIEW_SEED_PASSWORD || 'QabsPreview!2026';
+  const seedPass =
+    process.env.QABS_PREVIEW_SEED_PASSWORD ||
+    (process.env.NODE_ENV === 'production' ? generateToken(24) : 'QabsPreview!2026');
   const defaultHash = hashPassword(seedPass);
 
   const insertTenant = db.prepare(

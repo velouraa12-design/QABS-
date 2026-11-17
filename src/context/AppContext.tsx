@@ -306,9 +306,9 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
     lowCreditAlertThreshold: 25
   },
   crypto: {
-    usdtTrc20Address: 'TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE',
-    usdtErc20Address: '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-    btcAddress: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    usdtTrc20Address: 'CONFIGURE_TRC20_ADDRESS_IN_ADMIN',
+    usdtErc20Address: 'CONFIGURE_ERC20_ADDRESS_IN_ADMIN',
+    btcAddress: 'CONFIGURE_BTC_ADDRESS_IN_ADMIN',
     enabledNetworks: ['TRC20', 'ERC20', 'BTC'],
     minTransferUsd: 50
   },

@@ -9,11 +9,11 @@ import {
   isStrongPassword,
   isValidEmail,
   normalizeRole,
-  PlatformRole,
+  type PlatformRole,
   sanitizeId,
   sanitizeText
 } from '../security.ts';
-import { AuthedRequest, createNotification, logAudit } from './stores.ts';
+import { type AuthedRequest, createNotification, logAudit } from './stores.ts';
 
 export function registerAdminRoutes(
   router: Router,

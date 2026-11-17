@@ -6,17 +6,23 @@ import { createQabsApp } from './server/app.ts';
 
 async function startServer() {
   const port = Number(process.env.PORT || 3000);
-  const isProd = process.env.NODE_ENV === 'production';
   const { app } = createQabsApp();
 
-  if (!isProd) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa'
-    });
-    app.use(vite.middlewares);
-  } else {
+  let useViteDev = process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE;
+  if (useViteDev) {
+    try {
+      const { createServer: createViteServer } = await import('vite');
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: 'spa'
+      });
+      app.use(vite.middlewares);
+    } catch {
+      useViteDev = false;
+    }
+  }
+
+  if (!useViteDev) {
     const distDir = path.resolve(process.cwd(), 'dist');
     app.use(express.static(distDir));
     app.get('*', (_req, res) => {

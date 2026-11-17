@@ -3,7 +3,7 @@ import type { DatabaseSync } from 'node:sqlite';
 import {
   generateToken,
   isPrivilegedRole,
-  PlatformRole,
+  type PlatformRole,
   sanitizeId,
   sanitizeText
 } from '../security.ts';

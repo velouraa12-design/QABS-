@@ -102,13 +102,11 @@ export const AuthModal: React.FC = () => {
 
   const fillTestClientCreds = () => {
     setEmail('client@qabs1.store');
-    setPassword('QabsPreview!2026');
     setAuthError(null);
   };
 
   const fillTestOwnerCreds = () => {
     setEmail(OWNER_USER_PROFILE.email);
-    setPassword('QabsPreview!2026');
     setAuthError(null);
   };
 
@@ -262,7 +260,7 @@ export const AuthModal: React.FC = () => {
                     onClick={fillTestOwnerCreds}
                     className="px-2.5 py-1 rounded-lg bg-[#D5B46B]/15 hover:bg-[#D5B46B]/25 text-[#D5B46B] text-[10px] font-bold cursor-pointer"
                   >
-                    {isAr ? 'تعبئة اختبار' : 'Fill Preview'}
+                    {isAr ? 'تعبئة البريد' : 'Fill Email'}
                   </button>
                 )}
               </div>
@@ -380,14 +378,14 @@ export const AuthModal: React.FC = () => {
                   {backendStatus === 'connected' && (
                     <div className="p-3 rounded-xl bg-[#051724] border border-cyan-950/60 text-[11px] flex items-center justify-between gap-2">
                       <span className="text-slate-400">
-                        {isAr ? 'حساب عميل المعاينة (كلمة مرور فعلية):' : 'Preview client test credentials:'}
+                        {isAr ? 'بريد عميل المعاينة التجريبي:' : 'Preview client email hint:'}
                       </span>
                       <button
                         type="button"
                         onClick={fillTestClientCreds}
                         className="px-2.5 py-1 bg-[#00A389]/20 hover:bg-[#00A389]/30 border border-[#00A389]/40 text-[#2DD4BF] font-bold rounded-lg text-[10px] cursor-pointer"
                       >
-                        {isAr ? 'تعبئة الحقول' : 'Fill Fields'}
+                        {isAr ? 'تعبئة البريد' : 'Fill Email'}
                       </button>
                     </div>
                   )}

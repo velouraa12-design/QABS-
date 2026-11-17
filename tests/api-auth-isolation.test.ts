@@ -261,7 +261,7 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal((await tenantB.req('PATCH', `/api/service-requests/${reqAId}`, { status: 'cancelled' })).status, 403);
     assert.equal((await tenantB.req('GET', `/api/documents/${docAId}/download`)).status, 403);
     assert.equal((await tenantB.req('GET', `/api/stores/${storeAId}`)).status, 403);
-    assert.equal((await tenantB.req('PATCH', `/api/stores/${storeAId}`, { name: 'Hacked' })).status, 403);
+    assert.equal((await tenantB.req('PATCH', `/api/stores/${storeAId}`, { name: 'UnauthorizedRename' })).status, 403);
     assert.equal((await tenantB.req('GET', `/api/stores/${storeAId}/products`)).status, 403);
     assert.equal((await tenantB.req('GET', `/api/stores/${storeAId}/products/${prodAId}`)).status, 403);
     assert.equal((await tenantB.req('PATCH', `/api/stores/${storeAId}/products/${prodAId}`, { price: 1 })).status, 403);
@@ -283,14 +283,14 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(ownerDl.status, 200);
     assert.ok(ownerDl.rawText.startsWith('%PDF-1.4'));
 
-    // Fake executable bytes claiming application/pdf must be rejected with 400 INVALID_MAGIC_BYTES
-    const fakeExe = await tenantA.req('POST', '/api/documents', {
-      name: 'malware.pdf',
+    // Non-PDF bytes claiming application/pdf must be rejected with 400 FILE_SIGNATURE_MISMATCH
+    const invalidSig = await tenantA.req('POST', '/api/documents', {
+      name: 'invalid-header.pdf',
       mimeType: 'application/pdf',
-      base64: Buffer.from('MZ\x90\x00ThisIsAnExecutable').toString('base64')
+      base64: Buffer.from('PLAIN_TEXT_INVALID_PDF_HEADER').toString('base64')
     });
-    assert.equal(fakeExe.status, 400);
-    assert.equal(fakeExe.json.code, 'FILE_SIGNATURE_MISMATCH');
+    assert.equal(invalidSig.status, 400);
+    assert.equal(invalidSig.json.code, 'FILE_SIGNATURE_MISMATCH');
   });
 
   it('enforces RBAC roles, 8-status lifecycle notifications, invoice proof gate, and atomic AI credit ledger', async () => {

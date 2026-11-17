@@ -1,6 +1,7 @@
-import express, { Request, Response, NextFunction, Express } from 'express';
+import express, { type Request, type Response, type NextFunction, type Express } from 'express';
+import os from 'node:os';
 import path from 'node:path';
-import { DatabaseSync } from 'node:sqlite';
+import type { DatabaseSync } from 'node:sqlite';
 import { createDatabase } from './db.ts';
 import {
   canManageTickets,
@@ -12,7 +13,7 @@ import {
   isValidEmail,
   normalizeRole,
   ORDER_STATUSES,
-  OrderStatus,
+  type OrderStatus,
   ORDER_STATUS_LABELS,
   parseCookies,
   sanitizeId,
@@ -21,7 +22,7 @@ import {
   validateUploadedDocument,
   verifyPassword
 } from './security.ts';
-import { AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
+import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
 
 export interface CreateServerOptions {
@@ -37,9 +38,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app: Express;
   db: DatabaseSync;
 } {
-  const dbPath = options.dbPath || path.join(process.cwd(), '.data', 'qabs_preview.sqlite');
+  const dbPath =
+    options.dbPath || process.env.QABS_DB_PATH || path.join(os.tmpdir(), 'qabs_preview.sqlite');
   const exposePreviewTokens =
-    options.exposePreviewTokens ?? process.env.NODE_ENV !== 'production';
+    options.exposePreviewTokens ?? (process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE);
   const rateLimitMax = options.rateLimitMax ?? 40;
 
   const db = createDatabase(dbPath);
