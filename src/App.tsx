@@ -258,10 +258,14 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F7F2] dark:bg-[#03131D] text-[#14243E] dark:text-slate-100 flex flex-col font-sans transition-colors selection:bg-[#D5B46B]/30 selection:text-[#14243E] dark:selection:text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#F8F7F2] dark:bg-[#03131D] text-[#14243E] dark:text-slate-100 flex flex-col font-sans transition-colors selection:bg-[#D5B46B]/30 selection:text-[#14243E] dark:selection:text-white">
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed top-20 right-6 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#082030] border-2 border-[#D5B46B] text-[#14243E] dark:text-white text-xs font-bold shadow-2xl animate-fade-in">
+        <div
+          className={`fixed bottom-5 ${
+            isAr ? 'left-5' : 'right-5'
+          } max-w-sm z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl bg-white dark:bg-[#082030] border-2 border-[#D5B46B] text-[#14243E] dark:text-white text-xs font-bold shadow-2xl animate-fade-in`}
+        >
           <CheckCircle className="w-4 h-4 text-[#92743A] shrink-0" />
           <span>{toastMessage}</span>
         </div>

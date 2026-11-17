@@ -98,6 +98,16 @@ export interface GeneralPageData {
   seoDescriptionEn: string;
 }
 
+export type ServiceOrderStatus =
+  | 'draft'
+  | 'new'
+  | 'under_review'
+  | 'needs_info'
+  | 'in_progress'
+  | 'completed'
+  | 'rejected'
+  | 'cancelled';
+
 export interface SubmittedServiceOrder {
   id: string;
   referenceCode: string;
@@ -115,6 +125,10 @@ export interface SubmittedServiceOrder {
   companyOrStoreName?: string;
   customFields: Record<string, string>;
   notes?: string;
-  status: 'received' | 'in_review' | 'awaiting_payment';
+  adminNotes?: string;
+  assignedStaffId?: string;
+  attachedDocumentId?: string;
+  attachedDocumentName?: string;
+  status: ServiceOrderStatus;
   createdAt: string;
 }

@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { SUBSCRIPTION_PLANS } from '../data/mockData.ts';
 import { CompanyFormation, Invoice, StoreOrder, StoreProduct } from '../types/index.ts';
+import { ServiceOrderStatus } from '../types/pages.ts';
+import { qabsApi } from '../services/qabsApi.ts';
 import {
   LayoutDashboard,
   Store,
@@ -182,7 +184,22 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     resetWorkspaceData,
     isOwner,
     logout,
-    showToast
+    showToast,
+    backendStatus,
+    notifications,
+    unreadNotificationsCount,
+    markNotificationRead,
+    markAllNotificationsRead,
+    submittedServiceOrders,
+    updateServiceOrderStatus,
+    requestDocuments,
+    uploadRequestDocument,
+    storeCategories,
+    addStoreCategory,
+    storeTeamMembers,
+    addStoreTeamMember,
+    previewVerifyToken,
+    confirmEmailVerification
   } = useApp();
 
   const isAr = language === 'ar';
@@ -257,8 +274,15 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
         setViewingDoc(null);
       }
     };
+    const handleResize = () => {
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+    };
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   useEffect(() => {
@@ -282,13 +306,37 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   }, []);
 
   // Strictly isolated data for the active store (`storeId === activeStoreId`)
-  const currentStore = stores.find(s => s.id === activeStoreId) || stores[0];
-  const storeProducts = products.filter(p => p.storeId === currentStore?.id);
-  const storeOrders = orders.filter(o => o.storeId === currentStore?.id);
-  const storeCustomers = customers.filter(c => c.storeId === currentStore?.id);
-  const storeDiscounts = discounts.filter(d => d.storeId === currentStore?.id);
-  const storeShipping = shippingZones.filter(z => z.storeId === currentStore?.id);
-  const currentStorePages = storePages.filter(p => p.storeId === currentStore?.id);
+  const fallbackStore = {
+    id: '',
+    name: isAr ? 'مساحة العمل الشخصية (بدون متجر بعد)' : 'Personal Workspace (No store yet)',
+    ownerName: user.name,
+    ownerEmail: user.email,
+    activityAr: 'بانتظار إنشاء متجرك الأول',
+    activityEn: 'Ready to launch your first store',
+    country: 'SA',
+    defaultLanguage: 'both' as const,
+    subdomain: 'new.qabs1.store',
+    currency: 'SAR',
+    status: 'draft' as const,
+    approvalStatus: 'draft' as const,
+    paymentConnected: false,
+    paymentApprovalStatus: 'unconfigured' as const,
+    gatewayType: 'Tap' as const,
+    productsCount: 0,
+    ordersCount: 0,
+    totalRevenue: 0,
+    createdAt: ''
+  };
+  const currentStore = stores.find(s => s.id === activeStoreId) || stores[0] || fallbackStore;
+  const hasRealStore = Boolean(stores.length && currentStore.id);
+  const storeProducts = products.filter(p => p.storeId === currentStore.id);
+  const storeOrders = orders.filter(o => o.storeId === currentStore.id);
+  const storeCustomers = customers.filter(c => c.storeId === currentStore.id);
+  const storeDiscounts = discounts.filter(d => d.storeId === currentStore.id);
+  const storeShipping = shippingZones.filter(z => z.storeId === currentStore.id);
+  const currentStorePages = storePages.filter(p => p.storeId === currentStore.id);
+  const currentStoreCategories = storeCategories.filter(c => c.storeId === currentStore.id);
+  const currentStoreTeam = storeTeamMembers.filter(m => m.storeId === currentStore.id);
 
   // Local state for Section 3: Inline Create Store form
   const [newStoreName, setNewStoreName] = useState('');
@@ -470,6 +518,15 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   const [companyFilter, setCompanyFilter] = useState<'all' | 'approved' | 'in_progress'>('all');
   const [viewingDoc, setViewingDoc] = useState<{ docName: string; companyName: string; type: string; date: string; jurisdiction?: string; ein?: string; fileNumber?: string } | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+  const [verifyTokenInput, setVerifyTokenInput] = useState('');
+  const [newCategoryNameAr, setNewCategoryNameAr] = useState('');
+  const [teamMemberName, setTeamMemberName] = useState('');
+  const [teamMemberEmail, setTeamMemberEmail] = useState('');
+  const [teamMemberRole, setTeamMemberRole] = useState<'admin' | 'staff' | 'support'>('staff');
+  const [vaultDocTitle, setVaultDocTitle] = useState('');
+  const [vaultDocRequestId, setVaultDocRequestId] = useState('');
+  const [vaultUploadError, setVaultUploadError] = useState<string | null>(null);
+  const [vaultUploading, setVaultUploading] = useState(false);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard?.writeText(text);
@@ -735,7 +792,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     setNewOrderModalOpen(false);
   };
 
-  if (!currentStore) return null;
+  if (!user) return null;
 
   const totalCostValue = storeProducts.reduce((acc, p) => acc + (p.costPrice || p.cost || p.price * 0.5) * p.salesCount, 0);
   const totalSalesRevenue = storeOrders
@@ -1148,7 +1205,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 overflow-x-hidden">
       {/* Compact workspace heading inspired by the approved mobile reference. */}
       <section className="qabs-workspace-heading mb-5 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div className="min-w-0">
@@ -1197,19 +1254,11 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
           {isOwner ? (
             <button
               type="button"
-              onClick={toggleProductionMode}
-              className={`inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-black transition-colors cursor-pointer ${
-                isProductionMode
-                  ? 'border-emerald-300 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                  : 'border-[#EAE6DC] bg-[#F5F1E6] text-[#92743A] hover:border-[#D5B46B]'
-              }`}
+              onClick={() => setMode('admin')}
+              className="inline-flex items-center gap-1.5 rounded-md border border-[#D5B46B] bg-[#14243E] px-3 py-2 text-xs font-black text-[#D5B46B] hover:bg-[#1d3559] transition-colors cursor-pointer"
             >
-              {isProductionMode ? <Rocket className="w-3.5 h-3.5 text-emerald-600" /> : <FlaskConical className="w-3.5 h-3.5" />}
-              <span>
-                {isProductionMode
-                  ? isAr ? 'وضع الإنتاج مفعّل ✓' : 'Production Active ✓'
-                  : isAr ? 'تحويل إلى وضع الإنتاج' : 'Switch to Production'}
-              </span>
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>{isAr ? 'لوحة الإدارة المركزية' : 'Central Admin'}</span>
             </button>
           ) : (
             <span className="inline-flex items-center gap-1.5 rounded-md border border-[#D5B46B]/60 bg-[#F5F1E6] px-3 py-2 text-xs font-black text-[#14243E]">
@@ -1217,14 +1266,16 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
             </span>
           )}
 
-          <select
-            aria-label={isAr ? 'اختيار المتجر النشط' : 'Select active store'}
-            value={activeStoreId}
-            onChange={e => setActiveStoreId(e.target.value)}
-            className="min-w-0 max-w-full rounded-md border border-[#EAE6DC] bg-white dark:bg-[#071D2B] dark:text-white px-3 py-2 text-xs font-bold text-[#14243E]"
-          >
-            {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-          </select>
+          {stores.length > 0 && (
+            <select
+              aria-label={isAr ? 'اختيار المتجر النشط' : 'Select active store'}
+              value={activeStoreId}
+              onChange={e => setActiveStoreId(e.target.value)}
+              className="min-w-0 max-w-full rounded-md border border-[#EAE6DC] bg-white dark:bg-[#071D2B] dark:text-white px-3 py-2 text-xs font-bold text-[#14243E]"
+            >
+              {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
           <button onClick={() => setMode('store_builder')} className="rounded-md bg-[#14243E] px-3 py-2 text-xs font-bold text-white cursor-pointer">
             {isAr ? 'استوديو قبس' : 'QABS Studio'}
           </button>
@@ -1384,30 +1435,81 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                   </span>
                 </div>
               )}
+              {backendStatus === 'connected' && user.emailVerified === false && (
+                <div className="rounded-2xl border border-[#D5B46B] bg-[#FBFAF6] dark:bg-[#071D2B] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                  <div>
+                    <div className="font-black text-[#14243E] dark:text-[#D5B46B]">
+                      {isAr ? 'تأكيد البريد الإلكتروني للحساب' : 'Confirm Account Email Verification'}
+                    </div>
+                    <p className="text-slate-600 dark:text-slate-300 mt-0.5">
+                      {isAr
+                        ? 'يرجى تأكيد بريدك الإلكتروني باستخدام رمز التحقق لحماية حسابك وطلباتك.'
+                        : 'Verify your email address with the security token to secure your workspace.'}
+                      {previewVerifyToken && (
+                        <span className="ms-2 font-mono font-bold text-emerald-700 dark:text-emerald-300">
+                          Token: {previewVerifyToken}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      type="text"
+                      value={verifyTokenInput}
+                      onChange={e => setVerifyTokenInput(e.target.value)}
+                      placeholder={previewVerifyToken || (isAr ? 'أدخل رمز التحقق' : 'Verification token')}
+                      className="rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const tok = verifyTokenInput.trim() || previewVerifyToken || '';
+                        if (tok) void confirmEmailVerification(tok);
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg bg-[#14243E] text-white font-black cursor-pointer"
+                    >
+                      {isAr ? 'تأكيد البريد ✓' : 'Verify Email ✓'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {sectionSettings.overview.showPreviewBanner && !activeTab.endsWith('_settings') && (
-                isProductionMode ? (
+                backendStatus === 'connected' ? (
                   <div role="status" className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-950 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-100">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start gap-3">
                         <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-emerald-700 dark:text-emerald-300" />
                         <div className="min-w-0">
                           <div className="text-sm font-black">
-                            {isAr ? 'البوابة الحقيقية مفعّلة (وضع الإنتاج) — موافقة قبس للدفع والشحن سارية' : 'Production Portal Active — QABS Payment & Shipping Approved'}
+                            {isAr
+                              ? `مساحة عمل متصلة بقاعدة البيانات — حساب (${user.role}) معزول تماماً`
+                              : `Live Database Workspace — Isolated (${user.role}) Session`}
                           </div>
                           <p className="mt-1 text-xs leading-5">
                             {isAr
-                              ? 'تم اعتماد بوابة الدفع والشحن ونشر المتجر، ويتم حفظ كافة المنتجات والطلبات والفواتير وإعدادات Shopify محلياً في مساحة العمل.'
-                              : 'Payment & shipping are approved and all products, orders, invoices, and Shopify settings persist locally across reloads.'}
+                              ? 'تُحفظ الطلبات والمستندات والمتاجر والفواتير في قاعدة بيانات قبس مع عزل المستأجرين. نشر المتاجر أو اعتماد الفواتير وبوابات الدفع مقيد بالتحقق الإداري الصريح.'
+                              : 'Orders, documents, stores, and invoices persist on the QABS server with strict tenant isolation. Store publication and payment verification require explicit admin approval.'}
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={toggleProductionMode}
-                        className="px-3.5 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-800 text-xs font-bold hover:bg-emerald-100 cursor-pointer shrink-0 self-start sm:self-center"
-                      >
-                        {isAr ? 'العودة لوضع الاختبار' : 'Switch to Test Mode'}
-                      </button>
+                      {isOwner ? (
+                        <button
+                          type="button"
+                          onClick={() => setMode('admin')}
+                          className="px-3.5 py-2 rounded-xl bg-[#14243E] text-white text-xs font-bold hover:bg-[#1d3559] cursor-pointer shrink-0 self-start sm:self-center"
+                        >
+                          {isAr ? 'مراجعة الطلبات والاعتمادات ←' : 'Open Admin Governance →'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => navigateToTab('requests')}
+                          className="px-3.5 py-2 rounded-xl border border-emerald-300 bg-white text-emerald-900 text-xs font-bold hover:bg-emerald-100 cursor-pointer shrink-0 self-start sm:self-center"
+                        >
+                          {isAr ? `متابعة طلباتي (${submittedServiceOrders.length})` : `My Requests (${submittedServiceOrders.length})`}
+                        </button>
+                      )}
                     </div>
                   </div>
                 ) : (
@@ -1416,22 +1518,14 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       <div className="flex items-start gap-3">
                         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-700 dark:text-amber-300" />
                         <div className="min-w-0">
-                          <div className="text-sm font-black">{isAr ? 'وضع الاختبار التفاعلي — التغييرات محفوظة محلياً' : 'Interactive Test Workspace — Local State Persisted'}</div>
+                          <div className="text-sm font-black">{isAr ? 'وضع المعاينة الثابت (خادم API غير متصل محلياً)' : 'Static Preview Fallback (API Server Offline)'}</div>
                           <p className="mt-1 text-xs leading-5">
                             {isAr
-                              ? 'يمكنك تجربة إضافة المنتجات والطلبات وأوامر قبس AI، أو تفعيل البوابة الحقيقية لاعتماد الدفع والشحن والانتقال لوضع الإنتاج.'
-                              : 'Test adding products, creating orders, and running QABS AI commands, or activate Production Mode to approve payment & shipping.'}
+                              ? 'لا يتم تنفيذ معاملات مالية حقيقية أو نشر تلقائي في وضع المعاينة الثابت.'
+                              : 'No live financial charges or automatic publishing occur in static preview fallback.'}
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => activateProductionMode(currentStore.id)}
-                        className="px-4 py-2 rounded-xl bg-[#14243E] text-white text-xs font-black hover:bg-[#1d3559] cursor-pointer shrink-0 self-start sm:self-center flex items-center gap-1.5 shadow-xs"
-                      >
-                        <Rocket className="w-3.5 h-3.5 text-[#D5B46B]" />
-                        <span>{isAr ? 'تفعيل البوابة الحقيقية (إنتاج)' : 'Activate Production Mode'}</span>
-                      </button>
                     </div>
                   </div>
                 )
@@ -1623,6 +1717,69 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
               </div>
               )}
 
+              {/* Workspace Notifications Center */}
+              <div className="bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 rounded-2xl p-5 space-y-3 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Bell className="w-4 h-4 text-[#92743A]" />
+                    <h3 className="text-sm font-black text-[#14243E] dark:text-white">
+                      {isAr ? 'تنبيهات وإشعارات الحساب' : 'Workspace Notifications'}
+                    </h3>
+                    {unreadNotificationsCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black">
+                        {unreadNotificationsCount}
+                      </span>
+                    )}
+                  </div>
+                  {unreadNotificationsCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => void markAllNotificationsRead()}
+                      className="text-xs font-bold text-[#92743A] hover:underline cursor-pointer"
+                    >
+                      {isAr ? 'تحديد الكل كمقروء' : 'Mark all read'}
+                    </button>
+                  )}
+                </div>
+                {notifications.length === 0 ? (
+                  <p className="text-xs text-slate-400">
+                    {isAr ? 'لا توجد إشعارات جديدة حالياً.' : 'No notifications right now.'}
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {notifications.slice(0, 6).map(n => (
+                      <div
+                        key={n.id}
+                        className={`p-3 rounded-xl border text-xs flex items-start justify-between gap-3 ${
+                          n.isRead
+                            ? 'border-[#EAE6DC]/60 dark:border-slate-800 bg-[#F8F7F2]/50 dark:bg-slate-900/40'
+                            : 'border-[#D5B46B] bg-[#FBFAF6] dark:bg-slate-900'
+                        }`}
+                      >
+                        <div>
+                          <div className="font-black text-[#14243E] dark:text-white">
+                            {isAr ? n.titleAr : n.titleEn}
+                          </div>
+                          <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                            {isAr ? n.bodyAr : n.bodyEn}
+                          </p>
+                          <div className="text-[10px] font-mono text-slate-400 mt-1">{n.createdAt}</div>
+                        </div>
+                        {!n.isRead && (
+                          <button
+                            type="button"
+                            onClick={() => void markNotificationRead(n.id)}
+                            className="px-2.5 py-1 rounded-lg bg-[#14243E] text-white text-[10px] font-bold shrink-0 cursor-pointer"
+                          >
+                            {isAr ? 'تمت القراءة' : 'Mark read'}
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Recent Store Orders & Products Preview */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 rounded-2xl p-5 space-y-3">
@@ -1779,6 +1936,25 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                 </div>
               </div>
 
+              {stores.length === 0 ? (
+                <div className="p-8 rounded-2xl border-2 border-dashed border-[#D5B46B]/60 bg-[#FBFAF6] dark:bg-slate-900/40 text-center space-y-3">
+                  <div className="text-sm font-black text-[#14243E] dark:text-white">
+                    {isAr ? 'لا توجد متاجر منشأة في هذا الحساب بعد' : 'No stores created in this workspace yet'}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    {isAr
+                      ? 'أنشئ متجرك الإلكتروني الأول كمسودة مستقلة وأضف منتجاتك وأقسامك وفريق العمل قبل إرساله للمراجعة والاعتماد.'
+                      : 'Create your first independent draft store, add categories and products, then submit for approval.'}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => navigateToTab('create_store')}
+                    className="px-5 py-2.5 rounded-xl bg-[#14243E] text-white text-xs font-black cursor-pointer"
+                  >
+                    {isAr ? '+ إنشاء متجري الأول الآن' : '+ Create First Store'}
+                  </button>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {stores.map(st => {
                   const stProds = products.filter(p => p.storeId === st.id).length;
@@ -1807,8 +1983,8 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                           >
                             {st.approvalStatus === 'approved_published'
                               ? isAr
-                                ? 'حالة تجريبية: منشور'
-                                : 'Sample: Published'
+                                ? 'معتمد ومنشور'
+                                : 'Approved & Published'
                               : st.approvalStatus === 'pending_review'
                               ? isAr
                                 ? 'بانتظار الاعتماد'
@@ -1864,6 +2040,77 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                   );
                 })}
               </div>
+              )}
+
+              {hasRealStore && (
+                <div className="p-5 rounded-2xl border border-[#EAE6DC] dark:border-slate-800 bg-[#FBFAF6] dark:bg-slate-900/50 space-y-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-black text-[#14243E] dark:text-white">
+                      {isAr ? `فريق عمل المتجر (${currentStore.name})` : `Store Team Members (${currentStore.name})`}
+                    </h3>
+                    <span className="text-[11px] font-bold text-slate-500">
+                      {currentStoreTeam.length} {isAr ? 'عضو' : 'members'}
+                    </span>
+                  </div>
+                  <form
+                    onSubmit={e => {
+                      e.preventDefault();
+                      if (!teamMemberName.trim() || !teamMemberEmail.trim()) return;
+                      void addStoreTeamMember(currentStore.id, {
+                        name: teamMemberName.trim(),
+                        email: teamMemberEmail.trim(),
+                        role: teamMemberRole
+                      });
+                      setTeamMemberName('');
+                      setTeamMemberEmail('');
+                    }}
+                    className="grid grid-cols-1 sm:grid-cols-4 gap-2"
+                  >
+                    <input
+                      type="text"
+                      required
+                      value={teamMemberName}
+                      onChange={e => setTeamMemberName(e.target.value)}
+                      placeholder={isAr ? 'اسم عضو الفريق *' : 'Team member name *'}
+                      className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 text-xs"
+                    />
+                    <input
+                      type="email"
+                      required
+                      value={teamMemberEmail}
+                      onChange={e => setTeamMemberEmail(e.target.value)}
+                      placeholder="member@store.com"
+                      className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 text-xs"
+                    />
+                    <select
+                      value={teamMemberRole}
+                      onChange={e => setTeamMemberRole(e.target.value as 'admin' | 'staff' | 'support')}
+                      className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 text-xs font-bold"
+                    >
+                      <option value="staff">{isAr ? 'موظف تشغيل' : 'Staff'}</option>
+                      <option value="support">{isAr ? 'دعم عملاء' : 'Support'}</option>
+                      <option value="admin">{isAr ? 'مدير متجر' : 'Store Admin'}</option>
+                    </select>
+                    <button
+                      type="submit"
+                      className="rounded-xl bg-[#14243E] text-white text-xs font-black py-2 px-3 cursor-pointer"
+                    >
+                      {isAr ? '+ إضافة عضو للفريق' : '+ Add Team Member'}
+                    </button>
+                  </form>
+                  {currentStoreTeam.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {currentStoreTeam.map(m => (
+                        <div key={m.id} className="px-3 py-1.5 rounded-xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-700 text-xs flex items-center gap-2">
+                          <span className="font-black">{m.name}</span>
+                          <span className="text-slate-400 font-mono text-[10px]">{m.email}</span>
+                          <span className="px-2 py-0.5 rounded bg-[#F5F1E6] text-[#92743A] text-[10px] font-bold">{m.role}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
@@ -2239,6 +2486,42 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     </button>
                   </div>
                 </div>
+                {hasRealStore && (
+                  <div className="pt-3 border-t border-[#EAE6DC] dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                      <span className="font-bold text-slate-500">{isAr ? 'أقسام المتجر:' : 'Categories:'}</span>
+                      {currentStoreCategories.length === 0 ? (
+                        <span className="text-[11px] text-slate-400">{isAr ? 'لا توجد أقسام مخصصة بعد' : 'No categories yet'}</span>
+                      ) : (
+                        currentStoreCategories.map(cat => (
+                          <span key={cat.id} className="px-2.5 py-0.5 rounded-lg bg-[#FBFAF6] border border-[#EAE6DC] text-[#14243E] font-bold text-[11px]">
+                            {isAr ? cat.nameAr : cat.nameEn}
+                          </span>
+                        ))
+                      )}
+                    </div>
+                    <form
+                      onSubmit={e => {
+                        e.preventDefault();
+                        if (!newCategoryNameAr.trim()) return;
+                        void addStoreCategory(currentStore.id, newCategoryNameAr.trim());
+                        setNewCategoryNameAr('');
+                      }}
+                      className="flex items-center gap-2"
+                    >
+                      <input
+                        type="text"
+                        value={newCategoryNameAr}
+                        onChange={e => setNewCategoryNameAr(e.target.value)}
+                        placeholder={isAr ? 'اسم قسم جديد...' : 'New category...'}
+                        className="rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-slate-900 px-2.5 py-1.5 text-xs"
+                      />
+                      <button type="submit" className="px-3 py-1.5 rounded-lg bg-[#14243E] text-white text-xs font-bold cursor-pointer">
+                        {isAr ? '+ قسم' : '+ Add'}
+                      </button>
+                    </form>
+                  </div>
+                )}
               </div>
 
               {/* Isolated Products Table */}
@@ -3258,33 +3541,120 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
           {/* REQUESTS VIEW (/requests) */}
           {activeTab === 'requests' && (
             <div className="space-y-5">
-              <div className="bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-black text-[#14243E] dark:text-white">
-                    {isAr ? 'طلبات خدمات قبس وطلبات المتجر' : 'QABS Service & Store Requests'}
-                  </h2>
-                  <p className="text-xs text-slate-500 mt-1">
+              <div className="bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 rounded-2xl p-6 space-y-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div>
+                    <h2 className="text-lg font-black text-[#14243E] dark:text-white">
+                      {isAr ? 'طلبات خدمات قبس وحالتها الفورية' : 'QABS Service Requests & Live Status'}
+                    </h2>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {isAr
+                        ? 'تتبع كافة طلبات الخدمات والمستندات والملاحظات الإدارية مع دعم المسودات وتقديم الطلب'
+                        : 'Track all submitted & draft service requests, attached files, and admin review notes'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => navigateToTab('orders')}
+                      className="px-4 py-2.5 rounded-xl bg-[#14243E] text-white text-xs font-black cursor-pointer"
+                    >
+                      {isAr ? 'فتح طلبات المتجر ←' : 'Open Store Orders →'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigateToTab('orders_settings')}
+                      className="px-3.5 py-2.5 rounded-xl border border-[#D5B46B] bg-[#FBFAF6] text-[#14243E] text-xs font-black cursor-pointer"
+                    >
+                      {isAr ? '⚙️ إعدادات الطلبات' : '⚙️ Orders Settings'}
+                    </button>
+                  </div>
+                </div>
+
+                {submittedServiceOrders.length === 0 ? (
+                  <div className="p-8 rounded-2xl border border-dashed border-[#EAE6DC] dark:border-slate-700 text-center text-xs text-slate-500">
                     {isAr
-                      ? 'يمكنك إدارة جميع طلبات المتجر، الفواتير، والشحن من صفحة الطلبات المستقلة'
-                      : 'Manage all store orders, fulfillment and invoices from the dedicated Orders page'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => navigateToTab('orders')}
-                    className="px-4 py-2.5 rounded-xl bg-[#14243E] text-white text-xs font-black cursor-pointer"
-                  >
-                    {isAr ? 'فتح صفحة الطلبات الكاملة ←' : 'Open Orders Page →'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigateToTab('orders_settings')}
-                    className="px-3.5 py-2.5 rounded-xl border border-[#D5B46B] bg-[#FBFAF6] text-[#14243E] text-xs font-black cursor-pointer"
-                  >
-                    {isAr ? '⚙️ إعدادات الطلبات' : '⚙️ Orders Settings'}
-                  </button>
-                </div>
+                      ? 'لا توجد طلبات خدمات مسجلة لهذا الحساب بعد. يمكنك طلب أي خدمة من الصفحات المستقلة للخدمات.'
+                      : 'No service requests submitted under this account yet.'}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {submittedServiceOrders.map(req => {
+                      const statusColors: Record<ServiceOrderStatus, string> = {
+                        draft: 'bg-slate-100 text-slate-700',
+                        new: 'bg-blue-100 text-blue-800',
+                        under_review: 'bg-amber-100 text-amber-800',
+                        needs_info: 'bg-orange-100 text-orange-800',
+                        in_progress: 'bg-indigo-100 text-indigo-800',
+                        completed: 'bg-emerald-100 text-emerald-800',
+                        rejected: 'bg-rose-100 text-rose-800',
+                        cancelled: 'bg-slate-200 text-slate-600'
+                      };
+                      return (
+                        <div key={req.id} className="p-4 rounded-2xl border border-[#EAE6DC] dark:border-slate-800 bg-[#FBFAF6] dark:bg-slate-900/50 space-y-2 text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono font-black text-[#14243E] dark:text-[#D5B46B]">{req.referenceCode}</span>
+                              <span className="font-black text-[#14243E] dark:text-white">
+                                {isAr ? req.serviceTitleAr : req.serviceTitleEn}
+                              </span>
+                            </div>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${statusColors[req.status] || 'bg-slate-100 text-slate-700'}`}>
+                              {req.status}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex flex-wrap items-center gap-3">
+                            <span>{req.customerName}</span>
+                            <span>•</span>
+                            <span className="font-mono">{req.createdAt}</span>
+                            {req.priceUsd > 0 && (
+                              <>
+                                <span>•</span>
+                                <span className="font-black text-[#92743A]">${req.priceUsd}</span>
+                              </>
+                            )}
+                            {req.attachedDocumentId && (
+                              <a
+                                href={qabsApi.getDocumentDownloadUrl(req.attachedDocumentId)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-1 text-[#14243E] dark:text-[#D5B46B] font-bold hover:underline"
+                              >
+                                <Download className="w-3 h-3" />
+                                <span>{req.attachedDocumentName || (isAr ? 'تنزيل المرفق' : 'Download attachment')}</span>
+                              </a>
+                            )}
+                          </div>
+                          {req.adminNotes && (
+                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 text-[11px] text-amber-900 dark:text-amber-200">
+                              <span className="font-black">{isAr ? 'ملاحظة المراجع:' : 'Admin Note:'}</span> {req.adminNotes}
+                            </div>
+                          )}
+                          {(req.status === 'draft' || req.status === 'new' || req.status === 'needs_info') && (
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                              {req.status === 'draft' && (
+                                <button
+                                  type="button"
+                                  onClick={() => void updateServiceOrderStatus(req.id, 'new')}
+                                  className="px-3 py-1.5 rounded-lg bg-[#14243E] text-white text-[11px] font-bold cursor-pointer"
+                                >
+                                  {isAr ? 'تقديم المسودة للمراجعة' : 'Submit Draft for Review'}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => void updateServiceOrderStatus(req.id, 'cancelled')}
+                                className="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-[11px] font-bold cursor-pointer"
+                              >
+                                {isAr ? 'إلغاء الطلب' : 'Cancel Request'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
               {renderOrdersWorkspace()}
             </div>
@@ -3344,6 +3714,108 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                   </div>
                   {sectionSettings.documents.stampDataUrl && (
                     <img src={sectionSettings.documents.stampDataUrl} alt="Official Stamp" className="h-10 w-auto rounded-lg object-contain border border-[#D5B46B]/50 bg-white p-1" />
+                  )}
+                </div>
+
+                {/* Private Server-Side Encrypted Document Upload */}
+                <div className="p-4 rounded-2xl border border-[#D5B46B]/50 bg-[#FBFAF6] dark:bg-slate-900/60 space-y-3 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-black text-[#14243E] dark:text-white">
+                        {isAr ? 'رفع ملف خاص مشفّر إلى خزينة المستندات (PDF / PNG / JPG / WEBP — بحد أقصى 5MB)' : 'Private Encrypted Document Vault Upload (Max 5MB)'}
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        {isAr ? 'يتم التحقق من نوع الملف والتوقيع الثنائي ويُمنع الوصول له إلا لمالك الحساب والإدارة المخولة.' : 'Validated by MIME & magic bytes; downloadable only by account owner or authorized admin.'}
+                      </p>
+                    </div>
+                    <span className="font-mono text-[10px] px-2.5 py-1 rounded bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-700 font-bold">
+                      {requestDocuments.length} {isAr ? 'ملفات مرفوعة' : 'Uploaded Files'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      value={vaultDocTitle}
+                      onChange={e => setVaultDocTitle(e.target.value)}
+                      placeholder={isAr ? 'وصف المستند (اختياري)' : 'Document label (optional)'}
+                      className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 text-xs"
+                    />
+                    <select
+                      value={vaultDocRequestId}
+                      onChange={e => setVaultDocRequestId(e.target.value)}
+                      className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 text-xs font-bold"
+                    >
+                      <option value="">{isAr ? 'ربط بطلب خدمة (اختياري)' : 'Link to service request (optional)'}</option>
+                      {submittedServiceOrders.map(r => (
+                        <option key={r.id} value={r.id}>{r.referenceCode} — {isAr ? r.serviceTitleAr : r.serviceTitleEn}</option>
+                      ))}
+                    </select>
+                    <label className="rounded-xl bg-[#14243E] text-white text-xs font-black py-2 px-4 flex items-center justify-center gap-2 cursor-pointer">
+                      <Upload className="w-3.5 h-3.5 text-[#D5B46B]" />
+                      <span>{vaultUploading ? (isAr ? 'جاري الرفع...' : 'Uploading...') : (isAr ? 'اختيار ورفع مستند خاص' : 'Choose & Upload File')}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.png,.jpg,.jpeg,.webp"
+                        className="hidden"
+                        onChange={async e => {
+                          const file = e.target.files?.[0];
+                          e.target.value = '';
+                          if (!file) return;
+                          setVaultUploadError(null);
+                          if (file.size > 5 * 1024 * 1024) {
+                            setVaultUploadError(isAr ? 'الحد الأقصى للملف هو 5 ميجابايت.' : 'Max size 5MB exceeded.');
+                            return;
+                          }
+                          setVaultUploading(true);
+                          try {
+                            const base64 = await new Promise<string>((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => {
+                                const res = String(reader.result || '');
+                                resolve(res.includes(',') ? res.split(',')[1] : res);
+                              };
+                              reader.onerror = () => reject(new Error('READ_FAILED'));
+                              reader.readAsDataURL(file);
+                            });
+                            await uploadRequestDocument({
+                              name: vaultDocTitle.trim() || file.name,
+                              mimeType: file.type || 'application/octet-stream',
+                              base64,
+                              requestId: vaultDocRequestId || undefined
+                            });
+                            setVaultDocTitle('');
+                          } catch {
+                            setVaultUploadError(isAr ? 'تعذر رفع المستند أو صيغته غير مدعومة.' : 'Document upload failed or unsupported format.');
+                          } finally {
+                            setVaultUploading(false);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  {vaultUploadError && <div className="text-rose-600 font-bold text-[11px]">{vaultUploadError}</div>}
+                  {requestDocuments.length > 0 && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-2">
+                      {requestDocuments.map(doc => (
+                        <div key={doc.id} className="p-3 rounded-xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-700 flex items-center justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="font-black text-[#14243E] dark:text-white truncate">{doc.documentName}</div>
+                            <div className="text-[10px] font-mono text-slate-400">
+                              {doc.mimeType} • {Math.max(1, Math.round(doc.sizeBytes / 1024))} KB • {doc.status}
+                            </div>
+                          </div>
+                          <a
+                            href={qabsApi.getDocumentDownloadUrl(doc.id)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="px-2.5 py-1.5 rounded-lg bg-[#14243E] text-white text-[11px] font-bold flex items-center gap-1 shrink-0"
+                          >
+                            <Download className="w-3 h-3 text-[#D5B46B]" />
+                            <span>{isAr ? 'تنزيل خاص' : 'Download'}</span>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
 
@@ -4509,10 +4981,12 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     </div>
                   </div>
                   <div className="p-4 rounded-xl border border-[#EAE6DC] space-y-2">
-                    <div className="font-black text-[#14243E]">{isAr ? 'وضع التشغيل الفعلي' : 'Live Production Status'}</div>
-                    <button type="button" onClick={() => activateProductionMode(currentStore.id)} className="w-full py-2 rounded-lg bg-emerald-700 text-white font-black cursor-pointer">
-                      {isProductionMode ? (isAr ? 'وضع الإنتاج مفعّل ✓' : 'Production Active ✓') : isAr ? 'اعتماد الدفع والشحن الآن' : 'Approve & Go Live'}
-                    </button>
+                    <div className="font-black text-[#14243E]">{isAr ? 'بوابات الدفع والتحقق' : 'Payment Gateways'}</div>
+                    <div className="text-[11px] text-slate-600">
+                      {currentStore.paymentApprovalStatus === 'approved_active'
+                        ? isAr ? 'مفعل ✓' : 'Active ✓'
+                        : isAr ? 'طلب التفعيل يخضع للمراجعة اليدوية ولا يتم تلقائياً' : 'Requires manual review'}
+                    </div>
                   </div>
                 </div>
 

@@ -1,10 +1,20 @@
 import React from 'react';
-import { Activity, ArrowUpRight, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { Activity, ArrowUpRight, Bell, Database, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext.tsx';
 
 export const PreviewStatusBanner: React.FC = () => {
-  const { language, mode, setMode } = useApp();
+  const {
+    language,
+    mode,
+    setMode,
+    backendStatus,
+    isAuthenticated,
+    isOwner,
+    unreadNotificationsCount
+  } = useApp();
   const isAr = language === 'ar';
+
+  const isConnected = backendStatus === 'connected';
 
   return (
     <section
@@ -20,39 +30,98 @@ export const PreviewStatusBanner: React.FC = () => {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2 text-[10px] font-black tracking-[0.16em] uppercase text-[#E8C978]">
                 <span>{isAr ? 'مركز تشغيل قبس' : 'QABS CONTROL CENTER'}</span>
-                <span className="w-1 h-1 rounded-full bg-emerald-300" aria-hidden="true" />
-                <span className="text-emerald-200">{isAr ? 'نسخة معاينة' : 'Preview build'}</span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-400' : 'bg-amber-400'}`}
+                  aria-hidden="true"
+                />
+                <span className={isConnected ? 'text-emerald-200' : 'text-amber-200'}>
+                  {isConnected
+                    ? isAr
+                      ? 'خادم API + SQLite متصل'
+                      : 'API + SQLite Connected'
+                    : backendStatus === 'checking'
+                    ? isAr
+                      ? 'جاري فحص الاتصال'
+                      : 'Checking Backend'
+                    : isAr
+                    ? 'معاينة ثابتة (بدون خادم خلفي)'
+                    : 'Static Preview Fallback'}
+                </span>
               </div>
               <p className="mt-1 text-sm font-bold text-white">
-                {isAr ? 'واجهة موحدة بهوية قبس الكحلية والذهبية' : 'Unified workspace in the QABS navy & gold system'}
+                {isAr
+                  ? 'بيئة معاينة معزولة بهوية قبس الكحلية والذهبية'
+                  : 'Isolated Preview Environment in the QABS Navy & Gold System'}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-300">
-                {isAr
-                  ? 'الحالة المعروضة صادقة: الواجهة تعمل، والبيانات الخلفية والهوية الإنتاجية ما زالت قيد الربط الآمن.'
-                  : 'Status is explicit: the UI is available, while backend persistence and production identity remain safely gated.'}
+                {isConnected
+                  ? isAr
+                    ? 'المصادقة عبر جلسات HttpOnly وCSRF وحسابات العملاء والمتاجر معزولة بالخادم — بوابات الدفع الحية والنشر التلقائي مقيدة أماناً.'
+                    : 'HttpOnly sessions, CSRF protection, and tenant-isolated storage active — live payments and auto-publishing remain safely gated.'
+                  : isAr
+                  ? 'الحالة المعروضة صادقة: لا يتوفر خادم API على هذه الاستضافة الثابتة، وتُحفظ التجربة محلياً دون أي سداد مالي حقيقي.'
+                  : 'Explicit static fallback: no live API server reachable here; preview state runs locally without financial settlement.'}
               </p>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5 text-[11px] font-bold">
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1.5 text-emerald-100">
-              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
-              {isAr ? 'CI ناجح' : 'CI passed'}
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300/25 bg-sky-300/10 px-2.5 py-1.5 text-sky-100">
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 ${
+                isConnected
+                  ? 'border-emerald-300/35 bg-emerald-300/15 text-emerald-100'
+                  : 'border-amber-300/35 bg-amber-300/15 text-amber-100'
+              }`}
+            >
               <Database className="w-3.5 h-3.5" aria-hidden="true" />
-              {isAr ? 'Backend قيد الربط' : 'Backend in progress'}
+              {isConnected
+                ? isAr
+                  ? 'Backend API متصل'
+                  : 'Backend Connected'
+                : isAr
+                ? 'وضع معاينة محلي'
+                : 'Offline Preview'}
             </span>
+
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => setMode(isOwner ? 'admin' : 'portal')}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-sky-300/35 bg-sky-300/15 px-2.5 py-1.5 text-sky-100 cursor-pointer hover:bg-sky-300/25"
+              >
+                <Bell className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>
+                  {isAr ? `الإشعارات (${unreadNotificationsCount})` : `Alerts (${unreadNotificationsCount})`}
+                </span>
+              </button>
+            )}
+
             <span className="inline-flex items-center gap-1.5 rounded-lg border border-[#D5B46B]/35 bg-[#D5B46B]/10 px-2.5 py-1.5 text-[#F2D995]">
               <LockKeyhole className="w-3.5 h-3.5" aria-hidden="true" />
-              {isAr ? 'الدفع محمي' : 'Payments gated'}
+              {isAr ? 'بوابات الدفع مقيدة' : 'Payments gated'}
             </span>
+
+            <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1.5 text-emerald-100">
+              <ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />
+              {isAr ? 'عزل المستأجرين' : 'Tenant Isolated'}
+            </span>
+
             <button
               type="button"
-              onClick={() => setMode(mode === 'portal' ? 'landing' : 'portal')}
-              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#D5B46B] px-3.5 py-2 text-[11px] font-black text-[#14243E] transition-colors hover:bg-[#E8C978] focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#14243E]"
+              onClick={() => setMode(mode === 'portal' || mode === 'admin' ? 'landing' : isOwner ? 'admin' : 'portal')}
+              className="inline-flex min-h-11 items-center gap-1.5 rounded-lg bg-[#D5B46B] px-3.5 py-2 text-[11px] font-black text-[#14243E] transition-colors hover:bg-[#E8C978] focus:outline-none focus-visible:ring-2 focus-visible:ring-white cursor-pointer"
             >
-              {mode === 'portal' ? (isAr ? 'العودة للموقع' : 'Back to showcase') : isAr ? 'فتح لوحة التحكم' : 'Open dashboard'}
+              {mode === 'portal' || mode === 'admin'
+                ? isAr
+                  ? 'العودة للموقع'
+                  : 'Back to showcase'
+                : isOwner
+                ? isAr
+                  ? 'فتح لوحة الإدارة'
+                  : 'Open Admin Center'
+                : isAr
+                ? 'فتح لوحة التحكم'
+                : 'Open Workspace'}
               <ArrowUpRight className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
           </div>

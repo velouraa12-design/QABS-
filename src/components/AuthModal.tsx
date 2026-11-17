@@ -11,12 +11,17 @@ import {
   KeyRound,
   CheckCircle2,
   Crown,
-  ShoppingBag
+  ShoppingBag,
+  AlertCircle
 } from 'lucide-react';
 
 export const AuthModal: React.FC = () => {
   const {
     language,
+    backendStatus,
+    authError,
+    setAuthError,
+    authLoading,
     authModalOpen,
     setAuthModalOpen,
     authMode,
@@ -27,7 +32,9 @@ export const AuthModal: React.FC = () => {
     login,
     loginOwner,
     register,
-    showToast
+    requestPasswordReset,
+    confirmPasswordReset,
+    previewResetToken
   } = useApp();
 
   const isAr = language === 'ar';
@@ -36,41 +43,73 @@ export const AuthModal: React.FC = () => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [companyName, setCompanyName] = useState('');
-  const [resetSent, setResetSent] = useState(false);
+  const [resetTokenInput, setResetTokenInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [recoveryStage, setRecoveryStage] = useState<'request' | 'confirm'>('request');
+  const [resetDone, setResetDone] = useState(false);
 
   if (!authModalOpen) return null;
 
   const isOwnerIntent = authIntent === 'owner';
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (isOwnerIntent) {
-      loginOwner(email.trim() || OWNER_USER_PROFILE.email);
+      await loginOwner(email.trim() || OWNER_USER_PROFILE.email, password);
       return;
     }
-    if (!email.trim()) return;
-    login(email.trim(), 'merchant');
+    if (!email.trim() || !password) return;
+    await login(email.trim(), 'customer', password);
   };
 
-  const handleRegisterSubmit = (e: React.FormEvent) => {
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !name.trim()) return;
-    register(name.trim(), email.trim(), companyName.trim() || 'QABS Client Venture', 'merchant');
+    setAuthError(null);
+    if (!email.trim() || !name.trim() || password.length < 8) {
+      setAuthError(
+        isAr
+          ? 'يرجى إدخال الاسم والبريد وكلمة مرور من 8 أحرف على الأقل.'
+          : 'Name, valid email, and password (8+ chars) are required.'
+      );
+      return;
+    }
+    await register(name.trim(), email.trim(), companyName.trim() || 'QABS Client Venture', 'customer', password);
   };
 
-  const handleRecoverSubmit = (e: React.FormEvent) => {
+  const handleRecoverRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAuthError(null);
     if (!email.trim()) return;
-    setResetSent(true);
-    showToast(
-      isAr
-        ? `تم إرسال رابط استعادة كلمة المرور إلى ${email}`
-        : `Password recovery link dispatched to ${email}`
-    );
-    setTimeout(() => {
-      setResetSent(false);
-      setAuthMode('login');
-    }, 2500);
+    const tok = await requestPasswordReset(email.trim());
+    if (tok) setResetTokenInput(tok);
+    setRecoveryStage('confirm');
+  };
+
+  const handleRecoverConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError(null);
+    const ok = await confirmPasswordReset(resetTokenInput, newPasswordInput);
+    if (ok) {
+      setResetDone(true);
+      setTimeout(() => {
+        setResetDone(false);
+        setRecoveryStage('request');
+        setAuthMode('login');
+      }, 1500);
+    }
+  };
+
+  const fillTestClientCreds = () => {
+    setEmail('client@qabs1.store');
+    setPassword('QabsPreview!2026');
+    setAuthError(null);
+  };
+
+  const fillTestOwnerCreds = () => {
+    setEmail(OWNER_USER_PROFILE.email);
+    setPassword('QabsPreview!2026');
+    setAuthError(null);
   };
 
   return (
@@ -86,28 +125,28 @@ export const AuthModal: React.FC = () => {
               <h2 className="text-sm font-black text-white">
                 {isOwnerIntent
                   ? isAr
-                    ? 'دخول لوحة الإدارة (المالك)'
-                    : 'Owner Admin Portal Sign In'
+                    ? 'دخول لوحة الإدارة والصلاحيات'
+                    : 'Admin & Staff Control Center Sign In'
                   : authMode === 'login'
                   ? isAr
-                    ? 'تسجيل الدخول / حسابي'
-                    : 'Client Sign In / My Account'
+                    ? 'تسجيل الدخول الآمن'
+                    : 'Secure Client Sign In'
                   : authMode === 'register'
                   ? isAr
-                    ? 'إنشاء حساب عميل سريع'
-                    : 'Quick Client Registration'
+                    ? 'إنشاء حساب عميل جديد'
+                    : 'Register Client Account'
                   : isAr
                   ? 'استعادة كلمة المرور'
                   : 'Recover Password'}
               </h2>
               <p className="text-[11px] text-slate-400">
-                {isOwnerIntent
+                {backendStatus === 'connected'
                   ? isAr
-                    ? `حساب المالك الوحيد: ${OWNER_USER_PROFILE.name} (Super Admin)`
-                    : `Sole Owner: ${OWNER_USER_PROFILE.name} (Super Admin)`
+                    ? 'مصادقة فعلية عبر HttpOnly Cookie + CSRF'
+                    : 'Real HttpOnly Session + CSRF Authentication'
                   : isAr
-                  ? 'بوابة عملاء قبس — تأسيس الشركات والمتاجر والطلبات'
-                  : 'QABS Client Portal — Companies, Stores & Orders'}
+                  ? 'وضع المعاينة الثابت'
+                  : 'Static Preview Mode'}
               </p>
             </div>
           </div>
@@ -128,8 +167,8 @@ export const AuthModal: React.FC = () => {
             <div className="space-y-1 text-xs">
               <p className="font-bold text-[#F3E5AB] leading-relaxed">
                 {isAr
-                  ? 'يرجى تسجيل الدخول أو إنشاء حساب سريع لإتمام طلبك وحفظ مستنداتك في مساحة العمل'
-                  : 'Please sign in or create a quick account to complete your order and save your documents in the workspace.'}
+                  ? 'سجّل الدخول أو أنشئ حسابك لربط الطلب بحسابك المعزول'
+                  : 'Sign in or create an account to attach this request to your isolated workspace.'}
               </p>
               <div className="flex items-center justify-between text-[11px] text-slate-300 pt-0.5">
                 <span className="truncate font-semibold">
@@ -143,12 +182,15 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Tab switcher (only for Client auth; Owner has dedicated single login) */}
+        {/* Tab switcher */}
         {!isOwnerIntent && (
           <div className="flex border-b border-cyan-950/40 bg-[#051724] text-xs">
             <button
               type="button"
-              onClick={() => setAuthMode('login')}
+              onClick={() => {
+                setAuthError(null);
+                setAuthMode('login');
+              }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
                 authMode === 'login'
                   ? 'text-[#D5B46B] border-b-2 border-[#D5B46B] font-bold bg-[#082030]'
@@ -159,18 +201,25 @@ export const AuthModal: React.FC = () => {
             </button>
             <button
               type="button"
-              onClick={() => setAuthMode('register')}
+              onClick={() => {
+                setAuthError(null);
+                setAuthMode('register');
+              }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
                 authMode === 'register'
                   ? 'text-[#00A389] border-b-2 border-[#00A389] font-bold bg-[#082030]'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {isAr ? 'حساب سريع جديد' : 'Quick Register'}
+              {isAr ? 'حساب جديد' : 'Register'}
             </button>
             <button
               type="button"
-              onClick={() => setAuthMode('recover')}
+              onClick={() => {
+                setAuthError(null);
+                setRecoveryStage('request');
+                setAuthMode('recover');
+              }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
                 authMode === 'recover'
                   ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold bg-[#082030]'
@@ -182,30 +231,51 @@ export const AuthModal: React.FC = () => {
           </div>
         )}
 
-        {/* Form Body */}
         <div className="p-6 space-y-4">
+          {authError && (
+            <div
+              role="alert"
+              className="p-3 rounded-xl bg-rose-950/70 border border-rose-700 text-rose-200 text-xs flex items-center gap-2 font-bold"
+            >
+              <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>{authError}</span>
+            </div>
+          )}
+
           {isOwnerIntent ? (
             <form onSubmit={handleLoginSubmit} className="space-y-4">
-              <div className="p-3.5 rounded-xl bg-[#051724] border border-[#D5B46B]/40 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#D5B46B]/15 text-[#D5B46B] flex items-center justify-center shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
-                </div>
-                <div className="text-xs">
-                  <div className="font-black text-white">{OWNER_USER_PROFILE.name}</div>
-                  <div className="text-[11px] text-[#D5B46B] font-bold">
-                    {isAr ? 'المالك والمدير العام الوحيد (Super Admin)' : 'Sole Owner & Super Admin'}
+              <div className="p-3.5 rounded-xl bg-[#051724] border border-[#D5B46B]/40 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#D5B46B]/15 text-[#D5B46B] flex items-center justify-center shrink-0">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <div className="text-xs">
+                    <div className="font-black text-white">{OWNER_USER_PROFILE.name}</div>
+                    <div className="text-[11px] text-[#D5B46B] font-bold">
+                      Super Admin / Admin / Staff / Support
+                    </div>
                   </div>
                 </div>
+                {backendStatus === 'connected' && (
+                  <button
+                    type="button"
+                    onClick={fillTestOwnerCreds}
+                    className="px-2.5 py-1 rounded-lg bg-[#D5B46B]/15 hover:bg-[#D5B46B]/25 text-[#D5B46B] text-[10px] font-bold cursor-pointer"
+                  >
+                    {isAr ? 'تعبئة اختبار' : 'Fill Preview'}
+                  </button>
+                )}
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  {isAr ? 'بريد المالك الإلكتروني' : 'Owner Email Address'}
+                  {isAr ? 'البريد الإلكتروني الإداري' : 'Admin / Staff Email'}
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                   <input
                     type="email"
+                    required
                     placeholder={OWNER_USER_PROFILE.email}
                     value={email}
                     onChange={e => setEmail(e.target.value)}
@@ -216,12 +286,13 @@ export const AuthModal: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  {isAr ? 'رمز الدخول الإداري' : 'Admin Password'}
+                  {isAr ? 'كلمة المرور' : 'Password'}
                 </label>
                 <div className="relative">
                   <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                   <input
                     type="password"
+                    required
                     placeholder="••••••••"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
@@ -232,22 +303,28 @@ export const AuthModal: React.FC = () => {
 
               <button
                 type="submit"
-                className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md"
+                disabled={authLoading}
+                className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
               >
-                {isAr
-                  ? `دخول لوحة الإدارة كـ ${OWNER_USER_PROFILE.name}`
-                  : `Sign In as Owner (${OWNER_USER_PROFILE.name})`}
+                {authLoading
+                  ? isAr
+                    ? 'جاري التحقق...'
+                    : 'Verifying...'
+                  : isAr
+                  ? 'دخول لوحة الإدارة المركزية'
+                  : 'Sign In to Admin Portal'}
               </button>
 
               <button
                 type="button"
                 onClick={() => {
+                  setAuthError(null);
                   setAuthIntent('client');
                   setAuthMode('login');
                 }}
                 className="w-full text-center text-[11px] text-slate-400 hover:text-[#D5B46B] cursor-pointer pt-1"
               >
-                {isAr ? 'هل أنت عميل؟ الانتقال لتسجيل دخول العملاء' : 'Are you a client? Switch to Client Sign In'}
+                {isAr ? 'هل أنت عميل؟ الانتقال لدخول العملاء' : 'Switch to Client Sign In'}
               </button>
             </form>
           ) : (
@@ -263,7 +340,7 @@ export const AuthModal: React.FC = () => {
                       <input
                         type="email"
                         required
-                        placeholder="client@company.com"
+                        placeholder="client@qabs1.store"
                         value={email}
                         onChange={e => setEmail(e.target.value)}
                         className="w-full bg-[#051724] border border-cyan-950 rounded-lg pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-[#D5B46B]"
@@ -278,7 +355,10 @@ export const AuthModal: React.FC = () => {
                       </label>
                       <button
                         type="button"
-                        onClick={() => setAuthMode('recover')}
+                        onClick={() => {
+                          setAuthError(null);
+                          setAuthMode('recover');
+                        }}
                         className="text-[11px] text-[#D5B46B] hover:underline cursor-pointer"
                       >
                         {isAr ? 'نسيت كلمة المرور؟' : 'Forgot Password?'}
@@ -297,28 +377,30 @@ export const AuthModal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Quick Client Sign-in */}
-                  <div className="p-3 rounded-xl bg-[#051724] border border-cyan-950/60 text-[11px] flex items-center justify-between gap-2">
-                    <span className="text-slate-400 font-semibold">
-                      {isAr ? 'دخول سريع للعميل:' : 'Quick Client Access:'}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => login('client@qabs1.store', 'merchant')}
-                      className="px-3 py-1.5 bg-[#00A389]/20 hover:bg-[#00A389]/30 border border-[#00A389]/40 text-[#2DD4BF] font-bold rounded-lg text-[11px] cursor-pointer"
-                    >
-                      {isAr ? 'دخول حساب عميل الآن' : 'Instant Client Sign In'}
-                    </button>
-                  </div>
+                  {backendStatus === 'connected' && (
+                    <div className="p-3 rounded-xl bg-[#051724] border border-cyan-950/60 text-[11px] flex items-center justify-between gap-2">
+                      <span className="text-slate-400">
+                        {isAr ? 'حساب عميل المعاينة (كلمة مرور فعلية):' : 'Preview client test credentials:'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={fillTestClientCreds}
+                        className="px-2.5 py-1 bg-[#00A389]/20 hover:bg-[#00A389]/30 border border-[#00A389]/40 text-[#2DD4BF] font-bold rounded-lg text-[10px] cursor-pointer"
+                      >
+                        {isAr ? 'تعبئة الحقول' : 'Fill Fields'}
+                      </button>
+                    </div>
+                  )}
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    {pendingServiceOrder
+                    {authLoading
                       ? isAr
-                        ? 'تسجيل الدخول ومتابعة الدفع'
-                        : 'Sign In & Continue to Checkout'
+                        ? 'جاري تسجيل الدخول...'
+                        : 'Signing In...'
                       : isAr
                       ? 'تسجيل الدخول إلى حسابي'
                       : 'Sign In to My Account'}
@@ -380,13 +462,14 @@ export const AuthModal: React.FC = () => {
 
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      {isAr ? 'كلمة المرور *' : 'Password *'}
+                      {isAr ? 'كلمة المرور (8 أحرف على الأقل) *' : 'Password (8+ characters) *'}
                     </label>
                     <div className="relative">
                       <KeyRound className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
                       <input
                         type="password"
                         required
+                        minLength={8}
                         placeholder="••••••••"
                         value={password}
                         onChange={e => setPassword(e.target.value)}
@@ -397,58 +480,97 @@ export const AuthModal: React.FC = () => {
 
                   <button
                     type="submit"
-                    className="w-full py-2.5 bg-gradient-to-r from-[#00A389] to-[#2DD4BF] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md"
+                    disabled={authLoading}
+                    className="w-full py-2.5 bg-gradient-to-r from-[#00A389] to-[#2DD4BF] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
-                    {pendingServiceOrder
+                    {authLoading
                       ? isAr
-                        ? 'إنشاء الحساب ومتابعة إتمام الطلب'
-                        : 'Create Account & Proceed to Checkout'
+                        ? 'جاري إنشاء المساحة المعزولة...'
+                        : 'Creating Workspace...'
                       : isAr
                       ? 'إنشاء حساب عميل جديد'
-                      : 'Create Client Account'}
+                      : 'Create Isolated Client Account'}
                   </button>
                 </form>
               )}
 
               {authMode === 'recover' && (
-                <form onSubmit={handleRecoverSubmit} className="space-y-4">
-                  <p className="text-xs text-slate-300 leading-relaxed">
-                    {isAr
-                      ? 'أدخل بريدك الإلكتروني المسجل وسنرسل لك رابطاً مشفراً لإعادة تعيين كلمة المرور فوراً.'
-                      : 'Enter your registered email address and we will dispatch a secure password reset token.'}
-                  </p>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
-                      {isAr ? 'البريد الإلكتروني' : 'Email Address'}
-                    </label>
-                    <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                recoveryStage === 'request' ? (
+                  <form onSubmit={handleRecoverRequest} className="space-y-4">
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      {isAr
+                        ? 'أدخل بريدك الإلكتروني لإصدار رمز استعادة مشفر صالح لمرة واحدة.'
+                        : 'Enter your registered email to issue a one-time cryptographic recovery token.'}
+                    </p>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        {isAr ? 'البريد الإلكتروني' : 'Email Address'}
+                      </label>
+                      <div className="relative">
+                        <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-2.5" />
+                        <input
+                          type="email"
+                          required
+                          placeholder="client@qabs1.store"
+                          value={email}
+                          onChange={e => setEmail(e.target.value)}
+                          className="w-full bg-[#051724] border border-cyan-950 rounded-lg pl-9 pr-3 py-2 text-xs text-white"
+                        />
+                      </div>
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                    >
+                      {isAr ? 'إصدار رمز الاستعادة' : 'Request Recovery Token'}
+                    </button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleRecoverConfirm} className="space-y-4">
+                    {previewResetToken && (
+                      <div className="p-2.5 rounded-lg bg-cyan-950/70 border border-cyan-800 text-[11px] font-mono text-cyan-200 break-all">
+                        Preview Token: {previewResetToken}
+                      </div>
+                    )}
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        {isAr ? 'رمز الاستعادة' : 'Reset Token'}
+                      </label>
                       <input
-                        type="email"
+                        type="text"
                         required
-                        placeholder="user@example.com"
-                        value={email}
-                        onChange={e => setEmail(e.target.value)}
-                        className="w-full bg-[#051724] border border-cyan-950 rounded-lg pl-9 pr-3 py-2 text-xs text-white"
+                        value={resetTokenInput}
+                        onChange={e => setResetTokenInput(e.target.value)}
+                        className="w-full bg-[#051724] border border-cyan-950 rounded-lg px-3 py-2 text-xs text-white font-mono"
                       />
                     </div>
-                  </div>
-
-                  {resetSent && (
-                    <div className="p-3 bg-emerald-950/60 border border-emerald-800 text-emerald-300 rounded-lg text-xs flex items-center gap-2">
-                      <CheckCircle2 className="w-4 h-4 shrink-0" />
-                      <span>{isAr ? 'تم إرسال رابط التعيين بنجاح!' : 'Reset link sent successfully!'}</span>
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-300 mb-1">
+                        {isAr ? 'كلمة المرور الجديدة (8+ أحرف)' : 'New Password (8+ chars)'}
+                      </label>
+                      <input
+                        type="password"
+                        required
+                        minLength={8}
+                        value={newPasswordInput}
+                        onChange={e => setNewPasswordInput(e.target.value)}
+                        className="w-full bg-[#051724] border border-cyan-950 rounded-lg px-3 py-2 text-xs text-white"
+                      />
                     </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
-                  >
-                    {isAr ? 'إرسال رابط الاستعادة' : 'Send Recovery Link'}
-                  </button>
-                </form>
+                    {resetDone && (
+                      <div className="p-2.5 bg-emerald-950/60 border border-emerald-800 text-emerald-300 rounded-lg text-xs flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{isAr ? 'تم تحديث كلمة المرور بنجاح!' : 'Password updated!'}</span>
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer"
+                    >
+                      {isAr ? 'تأكيد تغيير كلمة المرور' : 'Confirm Password Reset'}
+                    </button>
+                  </form>
+                )
               )}
             </>
           )}

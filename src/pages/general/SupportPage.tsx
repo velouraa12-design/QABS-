@@ -46,7 +46,7 @@ export const SupportPage: React.FC = () => {
     ? sectionSettings.support.workingHoursAr || 'الأحد – الخميس | 09:00 – 18:00 بتوقيت السعودية'
     : sectionSettings.support.workingHoursEn || 'Sunday – Thursday | 09:00 – 18:00 AST';
 
-  const handleSubmitTicket = (e: React.FormEvent) => {
+  const handleSubmitTicket = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     if (!clientName.trim() || !email.trim() || !subject.trim() || !details.trim()) {
@@ -58,34 +58,41 @@ export const SupportPage: React.FC = () => {
       return;
     }
 
-    addTicket({
-      clientName: clientName.trim(),
-      subject: subject.trim(),
-      subjectAr: subject.trim(),
-      subjectEn: subject.trim(),
-      category,
-      priority,
-      lastMessage: details.trim()
-    });
+    try {
+      addTicket({
+        clientName: clientName.trim(),
+        subject: subject.trim(),
+        subjectAr: subject.trim(),
+        subjectEn: subject.trim(),
+        category,
+        priority,
+        lastMessage: details.trim()
+      });
 
-    const saved = submitServiceOrder({
-      serviceSlug: 'support',
-      servicePath: '/support',
-      serviceTitleAr: `تذكرة دعم فني: ${subject.trim()}`,
-      serviceTitleEn: `Support Ticket: ${subject.trim()}`,
-      priceUsd: 0,
-      customerName: clientName.trim(),
-      customerEmail: email.trim(),
-      customerPhone: '-',
-      customFields: { category, priority },
-      notes: details.trim()
-    });
+      const saved = await submitServiceOrder({
+        serviceSlug: 'support',
+        servicePath: '/support',
+        serviceTitleAr: `تذكرة دعم فني: ${subject.trim()}`,
+        serviceTitleEn: `Support Ticket: ${subject.trim()}`,
+        priceUsd: 0,
+        customerName: clientName.trim(),
+        customerEmail: email.trim(),
+        customerPhone: '-',
+        customFields: { category, priority },
+        notes: details.trim()
+      });
 
-    setSubmittedRef(saved.referenceCode);
-    setClientName('');
-    setEmail('');
-    setSubject('');
-    setDetails('');
+      setSubmittedRef(saved.referenceCode);
+      setClientName('');
+      setEmail('');
+      setSubject('');
+      setDetails('');
+    } catch (err) {
+      setErrorMsg(
+        (err as { message?: string })?.message ||
+          (isAr ? 'تعذر إرسال التذكرة، يرجى المحاولة مجدداً.' : 'Failed to submit support ticket.')
+      );
+    }
   };
 
   const quickGuides = [

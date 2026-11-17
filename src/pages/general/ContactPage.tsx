@@ -26,7 +26,7 @@ export const ContactPage: React.FC = () => {
     ? sectionSettings.support.workingHoursAr || 'الأحد – الخميس | 09:00 – 18:00 بتوقيت السعودية'
     : sectionSettings.support.workingHoursEn || 'Sunday – Thursday | 09:00 – 18:00 AST';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     if (!name.trim() || !email.trim() || !message.trim()) {
@@ -38,24 +38,31 @@ export const ContactPage: React.FC = () => {
       return;
     }
 
-    const saved = submitServiceOrder({
-      serviceSlug: 'consulting',
-      servicePath: '/contact',
-      serviceTitleAr: 'استفسار أو طلب تواصل — صفحة اتصل بنا',
-      serviceTitleEn: 'Direct Contact Inquiry',
-      priceUsd: 0,
-      customerName: name.trim(),
-      customerEmail: email.trim(),
-      customerPhone: phone.trim() || '-',
-      customFields: { topic },
-      notes: message.trim()
-    });
+    try {
+      const saved = await submitServiceOrder({
+        serviceSlug: 'consulting',
+        servicePath: '/contact',
+        serviceTitleAr: 'استفسار أو طلب تواصل — صفحة اتصل بنا',
+        serviceTitleEn: 'Direct Contact Inquiry',
+        priceUsd: 0,
+        customerName: name.trim(),
+        customerEmail: email.trim(),
+        customerPhone: phone.trim() || '-',
+        customFields: { topic },
+        notes: message.trim()
+      });
 
-    setSubmittedRef(saved.referenceCode);
-    setName('');
-    setEmail('');
-    setPhone('');
-    setMessage('');
+      setSubmittedRef(saved.referenceCode);
+      setName('');
+      setEmail('');
+      setPhone('');
+      setMessage('');
+    } catch (err) {
+      setErrorMsg(
+        (err as { message?: string })?.message ||
+          (isAr ? 'تعذر إرسال الرسالة، يرجى المحاولة مجدداً.' : 'Failed to send inquiry.')
+      );
+    }
   };
 
   return (

@@ -150,6 +150,12 @@ export const PAYMENT_SERVICES_DATA: ServicePageData[] = [
         questionEn: 'Does QABS guarantee 100% Stripe approval?',
         answerAr: 'يخضع القبول النهائي دائماً لسياسات Stripe أو PayPal وأهلية النشاط، لكن قبس تضمن لك تجهيز ملف قانوني ومتجر مطابق لكافة المعايير الفنية والمالية المطلوبة.',
         answerEn: 'Final underwriting always rests with Stripe or PayPal based on eligibility, while QABS ensures your entity, banking, and website meet all technical and compliance standards.'
+      },
+      {
+        questionAr: 'ما المستندات المطلوبة لربط Tap أو Moyasar لمتاجر الخليج؟',
+        questionEn: 'What documents are needed for Tap or Moyasar in the GCC?',
+        answerAr: 'يلزم سجل تجاري أو رخصة عمل حر سارية مع حساب بنكي مطابق لاسم الكيان وصفحات سياسات استرجاع وخصوصية واضحة باللغتين.',
+        answerEn: 'An active commercial registration or freelance permit, matching IBAN, and clear Arabic/English refund and privacy pages are required.'
       }
     ],
     formFields: [
@@ -324,6 +330,12 @@ export const PAYMENT_SERVICES_DATA: ServicePageData[] = [
         questionEn: 'Do I need to visit the US to open Mercury or Wise Business?',
         answerAr: 'لا، يتم التقديم إلكترونياً بالكامل عبر الإنترنت باستخدام جواز السفر ومستندات الشركة الأمريكية أو البريطانية.',
         answerEn: 'No, applications are 100% online using your passport and corporate formation documents.'
+      },
+      {
+        questionAr: 'هل تصدر بطاقات فيزا وماستركارد للشركات مع الحساب؟',
+        questionEn: 'Are virtual corporate Visa/Mastercard debit cards included?',
+        answerAr: 'نعم، تتيح منصات مثل Mercury و Relay و Wise Business إصدار بطاقات شركات افتراضية وفعلية بمجرد تفعيل الحساب التجاري.',
+        answerEn: 'Yes, once verified, Mercury, Relay, and Wise Business allow issuing virtual and physical corporate cards linked to your company treasury.'
       }
     ],
     formFields: [
@@ -498,6 +510,12 @@ export const PAYMENT_SERVICES_DATA: ServicePageData[] = [
         questionEn: 'How are secret API keys stored during integration?',
         answerAr: 'يتم عزل كافة المفاتيح السرية في متغيرات البيئة على الخادم (Server-Side Env) ولا تُكشف أبداً في كود المتصفح.',
         answerEn: 'All secret credentials remain strictly in server-side environment variables and are never exposed client-side.'
+      },
+      {
+        questionAr: 'كم يستغرق اختبار وضع Sandbox قبل التحويل إلى الإنتاج؟',
+        questionEn: 'How long does sandbox verification take before production cutover?',
+        answerAr: 'تُختبر معاملات 3DS و Webhooks والاسترجاع خلال 24 ساعة من الربط، ولا يُفعّل التشغيل المباشر إلا بعد تحقق الإدارة ومفاتيح المزود الحية.',
+        answerEn: '3D Secure, webhook signatures, and refund callbacks are tested in sandbox within 24 hours before switching to approved live credentials.'
       }
     ],
     formFields: [

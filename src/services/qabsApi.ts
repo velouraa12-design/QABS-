@@ -1,77 +1,453 @@
 /**
  * QABS unified API client.
  *
- * The workspace currently has a local demo data provider. This client is the
- * single typed boundary for the QABS service API when VITE_QABS_API_BASE_URL
- * is configured. It never initiates payments or activates external gateways.
+ * Uses same-origin HttpOnly session cookies (`credentials: 'include'`) and
+ * `X-CSRF-Token` headers on all authenticated mutating requests. When running on
+ * a static CDN without `/api/health`, callers detect unreachable backend cleanly
+ * and switch to explicit preview-only local fallback.
  */
 export type ApiError = Error & { status?: number; code?: string };
 
 const API_BASE = (import.meta.env.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
-const TOKEN_KEY = 'qabs_session_token';
 
-export const qabsApiConfigured = Boolean(API_BASE);
+let currentCsrfToken: string | null = null;
 
-function headers(extra: HeadersInit = {}): Headers {
+export function setCsrfToken(token: string | null): void {
+  currentCsrfToken = token;
+}
+
+export function getCsrfToken(): string | null {
+  return currentCsrfToken;
+}
+
+function buildHeaders(method: string, extra: HeadersInit = {}): Headers {
   const result = new Headers(extra);
-  result.set('Accept', 'application/json');
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  if (token) result.set('Authorization', `Bearer ${token}`);
+  if (!result.has('Accept')) result.set('Accept', 'application/json');
+  const isMutating = !['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase());
+  if (isMutating && currentCsrfToken && !result.has('X-CSRF-Token')) {
+    result.set('X-CSRF-Token', currentCsrfToken);
+  }
   return result;
 }
 
-export async function apiRequest<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
-  if (!API_BASE) {
-    const error = new Error('QABS_API_NOT_CONFIGURED') as ApiError;
-    error.code = 'QABS_API_NOT_CONFIGURED';
+export async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method || 'GET').toUpperCase();
+  const url = `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      ...init,
+      credentials: 'include',
+      headers: buildHeaders(method, init.headers)
+    });
+  } catch (err) {
+    const error = new Error(err instanceof Error ? err.message : 'NETWORK_UNREACHABLE') as ApiError;
+    error.code = 'NETWORK_UNREACHABLE';
     throw error;
   }
 
-  const response = await fetch(`${API_BASE}${path.startsWith('/') ? path : `/${path}`}`, {
-    ...init,
-    credentials: 'include',
-    headers: headers(init.headers)
-  });
+  const contentType = response.headers.get('content-type') || '';
+  const payload =
+    response.status === 204
+      ? null
+      : contentType.includes('application/json')
+      ? await response.json().catch(() => null)
+      : null;
 
-  const payload = response.status === 204 ? null : await response.json().catch(() => null);
   if (!response.ok) {
     const error = new Error(payload?.error || payload?.message || `HTTP_${response.status}`) as ApiError;
     error.status = response.status;
-    error.code = payload?.code || payload?.error;
+    error.code = payload?.code || payload?.error || `HTTP_${response.status}`;
     throw error;
+  }
+
+  if (payload && typeof payload === 'object' && 'csrfToken' in payload && typeof payload.csrfToken === 'string') {
+    currentCsrfToken = payload.csrfToken;
   }
   return payload as T;
 }
 
-export interface QabsSession {
-  token?: string;
-  user: { id: string; name: string; email: string; role: string };
+export interface ApiUserSnapshot {
+  id: string;
+  tenantId: string;
+  name: string;
+  email: string;
+  role: 'super_admin' | 'admin' | 'staff' | 'support' | 'customer';
+  emailVerified: boolean;
+  companyName?: string;
+  credits: number;
+}
+
+export interface AuthSessionResponse {
+  authenticated: boolean;
+  user: ApiUserSnapshot | null;
+  csrfToken: string | null;
+  previewEmailVerifyToken?: string;
+}
+
+export interface BootstrapResponse {
+  user: ApiUserSnapshot;
+  companies: Record<string, unknown>[];
+  stores: Record<string, unknown>[];
+  categories: Record<string, unknown>[];
+  products: Record<string, unknown>[];
+  orders: Record<string, unknown>[];
+  customers: Record<string, unknown>[];
+  teamMembers: Record<string, unknown>[];
+  serviceRequests: Record<string, unknown>[];
+  documents: Record<string, unknown>[];
+  subscription: Record<string, unknown> | null;
+  subscriptionHistory: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+  creditLedger: Record<string, unknown>[];
+  notifications: Record<string, unknown>[];
+  tickets: Record<string, unknown>[];
+  auditLogs: Record<string, unknown>[];
+}
+
+export interface AdminOverviewResponse {
+  actorRole: string;
+  clients: Record<string, unknown>[];
+  staff: Record<string, unknown>[];
+  servicesCatalog: Record<string, unknown>[];
+  serviceRequests: Record<string, unknown>[];
+  formations: Record<string, unknown>[];
+  documents: Record<string, unknown>[];
+  stores: Record<string, unknown>[];
+  products: Record<string, unknown>[];
+  subscriptions: Record<string, unknown>[];
+  invoices: Record<string, unknown>[];
+  tickets: Record<string, unknown>[];
+  notifications: Record<string, unknown>[];
+  auditLogs: Record<string, unknown>[];
+  platformSettings: Record<string, unknown>;
 }
 
 export const qabsApi = {
-  health: () => apiRequest<{ status: string; service?: string }>('/api/health'),
-  session: () => apiRequest<QabsSession>('/api/auth/session'),
-  login: (email: string, password: string) =>
-    apiRequest<QabsSession>('/api/auth/login', {
+  health: () =>
+    apiRequest<{
+      status: string;
+      service?: string;
+      database?: string;
+      paymentsEnabled?: boolean;
+      environment?: string;
+    }>('/api/health'),
+
+  // Auth & Recovery
+  session: async (): Promise<AuthSessionResponse> => {
+    const res = await apiRequest<AuthSessionResponse>('/api/auth/session');
+    currentCsrfToken = res.csrfToken || null;
+    return res;
+  },
+  login: async (email: string, password: string): Promise<AuthSessionResponse> => {
+    const res = await apiRequest<AuthSessionResponse>('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password })
+    });
+    currentCsrfToken = res.csrfToken || null;
+    return res;
+  },
+  register: async (input: {
+    name: string;
+    email: string;
+    password: string;
+    companyName?: string;
+  }): Promise<AuthSessionResponse> => {
+    const res = await apiRequest<AuthSessionResponse>('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    });
+    currentCsrfToken = res.csrfToken || null;
+    return res;
+  },
+  logout: async () => {
+    const res = await apiRequest<{ ok: boolean }>('/api/auth/logout', { method: 'POST' });
+    currentCsrfToken = null;
+    return res;
+  },
+  forgotPassword: (email: string) =>
+    apiRequest<{ ok: boolean; message: string; previewResetToken?: string }>('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
     }),
-  register: (input: { name: string; email: string; password: string; companyName?: string }) =>
-    apiRequest<QabsSession>('/api/auth/register', {
+  resetPassword: (token: string, newPassword: string) =>
+    apiRequest<{ ok: boolean }>('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, newPassword })
+    }),
+  verifyEmail: (token: string) =>
+    apiRequest<{ ok: boolean; emailVerified: boolean }>('/api/auth/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token })
+    }),
+
+  // Workspace bootstrap
+  bootstrap: () => apiRequest<BootstrapResponse>('/api/workspace/bootstrap'),
+
+  // Service Requests (8-status lifecycle)
+  listServiceRequests: () => apiRequest<{ requests: Record<string, unknown>[] }>('/api/service-requests'),
+  createServiceRequest: (input: {
+    serviceSlug: string;
+    servicePath: string;
+    serviceTitleAr: string;
+    serviceTitleEn: string;
+    packageId?: string;
+    packageNameAr?: string;
+    packageNameEn?: string;
+    priceUsd: number;
+    customerName: string;
+    customerEmail: string;
+    customerPhone: string;
+    companyOrStoreName?: string;
+    customFields: Record<string, string>;
+    notes?: string;
+    status?: 'draft' | 'new';
+    document?: { name: string; mimeType: string; base64: string; type?: string };
+  }) =>
+    apiRequest<{ request: Record<string, unknown> }>('/api/service-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
     }),
-  logout: () => apiRequest<{ success: boolean }>('/api/auth/logout', { method: 'POST' }),
-  profile: () => apiRequest<{ user: QabsSession['user'] }>('/api/auth/profile'),
-  formations: () => apiRequest<{ formations: unknown[] }>('/api/formations'),
-  stores: () => apiRequest<{ stores: unknown[] }>('/api/stores'),
-  subscriptions: () => apiRequest<{ subscriptions: unknown[] }>('/api/subscriptions'),
-  invoices: () => apiRequest<{ invoices: unknown[] }>('/api/invoices'),
-  notifications: () => apiRequest<{ notifications: unknown[] }>('/api/notifications'),
-  supportTickets: () => apiRequest<{ tickets: unknown[] }>('/api/support/tickets')
+  updateServiceRequest: (
+    id: string,
+    input: { status: string; adminNotes?: string; assignedStaffId?: string }
+  ) =>
+    apiRequest<{ request: Record<string, unknown> }>(`/api/service-requests/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+
+  // Documents vault (private authenticated upload/download)
+  listDocuments: () => apiRequest<{ documents: Record<string, unknown>[] }>('/api/documents'),
+  uploadDocument: (input: {
+    name: string;
+    type?: string;
+    mimeType: string;
+    base64: string;
+    requestId?: string;
+    formationId?: string;
+  }) =>
+    apiRequest<{ document: Record<string, unknown> }>('/api/documents', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  getDocumentDownloadUrl: (docId: string) =>
+    `${API_BASE}/api/documents/${encodeURIComponent(docId)}/download`,
+
+  // Formations
+  createFormation: (input: {
+    companyName: string;
+    jurisdiction: string;
+    entityType: string;
+    registeredAgent?: string;
+    registeredAddress?: string;
+    notes?: string;
+  }) =>
+    apiRequest<{ formation: Record<string, unknown> }>('/api/formations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+
+  // Multi-Tenant Stores
+  createStore: (input: Record<string, unknown>) =>
+    apiRequest<{ store: Record<string, unknown> }>('/api/stores', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  updateStore: (storeId: string, input: Record<string, unknown>) =>
+    apiRequest<{ store: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  submitStoreReview: (storeId: string) =>
+    apiRequest<{ store: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/submit-review`, {
+      method: 'POST'
+    }),
+  listCategories: (storeId: string) =>
+    apiRequest<{ categories: Record<string, unknown>[] }>(`/api/stores/${encodeURIComponent(storeId)}/categories`),
+  createCategory: (storeId: string, input: { nameAr: string; nameEn?: string; slug?: string }) =>
+    apiRequest<{ category: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/categories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  createProduct: (storeId: string, input: Record<string, unknown>) =>
+    apiRequest<{ product: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/products`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  updateProduct: (storeId: string, productId: string, input: Record<string, unknown>) =>
+    apiRequest<{ product: Record<string, unknown> }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      }
+    ),
+  deleteProduct: (storeId: string, productId: string) =>
+    apiRequest<{ ok: boolean }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
+      { method: 'DELETE' }
+    ),
+  createOrder: (storeId: string, input: Record<string, unknown>) =>
+    apiRequest<{ order: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  updateOrderStatus: (storeId: string, orderId: string, input: { status: string; trackingNumber?: string }) =>
+    apiRequest<{ order: Record<string, unknown> }>(
+      `/api/stores/${encodeURIComponent(storeId)}/orders/${encodeURIComponent(orderId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(input)
+      }
+    ),
+  listStoreTeam: (storeId: string) =>
+    apiRequest<{ members: Record<string, unknown>[] }>(`/api/stores/${encodeURIComponent(storeId)}/team`),
+  addStoreTeamMember: (
+    storeId: string,
+    input: { name: string; email: string; role: 'admin' | 'staff' | 'support'; permissions?: string[] }
+  ) =>
+    apiRequest<{ member: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/team`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  getStoreReports: (storeId: string) =>
+    apiRequest<{
+      storeId: string;
+      currency: string;
+      totalProducts: number;
+      totalStock: number;
+      totalOrders: number;
+      grossOrderValue: number;
+      totalCustomers: number;
+    }>(`/api/stores/${encodeURIComponent(storeId)}/reports`),
+
+  // Billing, Invoices, Subscriptions & AI Credits
+  billingOverview: () =>
+    apiRequest<{
+      subscription: Record<string, unknown> | null;
+      history: Record<string, unknown>[];
+      invoices: Record<string, unknown>[];
+      creditsBalance: number;
+      creditLedger: Record<string, unknown>[];
+    }>('/api/billing/overview'),
+  requestSubscriptionChange: (planId: 'starter' | 'growth' | 'enterprise', billingCycle: 'monthly' | 'annual') =>
+    apiRequest<{ invoice: Record<string, unknown> }>('/api/billing/subscription-change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId, billingCycle })
+    }),
+  requestCreditTopup: (amountUsd: number) =>
+    apiRequest<{ invoice: Record<string, unknown> }>('/api/billing/credits/request-topup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amountUsd })
+    }),
+  executeAI: (prompt: string, storeId?: string) =>
+    apiRequest<{
+      creditsBalance: number;
+      result: { id: string; prompt: string; responseAr: string; responseEn: string; timestamp: string };
+    }>('/api/ai/execute', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, storeId })
+    }),
+
+  // Notifications & Support Tickets
+  listNotifications: () => apiRequest<{ notifications: Record<string, unknown>[] }>('/api/notifications'),
+  markNotificationRead: (id: string) =>
+    apiRequest<{ ok: boolean }>(`/api/notifications/${encodeURIComponent(id)}/read`, { method: 'PATCH' }),
+  markAllNotificationsRead: () =>
+    apiRequest<{ ok: boolean }>('/api/notifications/read-all', { method: 'POST' }),
+  createTicket: (input: { subject: string; category?: string; priority?: string; lastMessage?: string }) =>
+    apiRequest<{ ticket: Record<string, unknown> }>('/api/tickets', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  resolveTicket: (id: string) =>
+    apiRequest<{ ticket: Record<string, unknown> }>(`/api/tickets/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'resolved' })
+    }),
+
+  // Admin Governance (RBAC protected)
+  adminOverview: () => apiRequest<AdminOverviewResponse>('/api/admin/overview'),
+  adminCreateStaff: (input: { name: string; email: string; password: string; role: string }) =>
+    apiRequest<{ user: Record<string, unknown> }>('/api/admin/staff', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  adminUpdateStaff: (userId: string, input: { role?: string; status?: 'active' | 'suspended' }) =>
+    apiRequest<{ user: Record<string, unknown> }>(`/api/admin/staff/${encodeURIComponent(userId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  adminUpdateService: (slug: string, input: { startingPriceUsd?: number; active?: boolean }) =>
+    apiRequest<{ service: Record<string, unknown> }>(`/api/admin/services/${encodeURIComponent(slug)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  adminReviewStore: (
+    storeId: string,
+    decision: 'approved_published' | 'changes_requested' | 'rejected',
+    feedback?: string
+  ) =>
+    apiRequest<{ store: Record<string, unknown> }>(`/api/admin/stores/${encodeURIComponent(storeId)}/approval`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, feedback })
+    }),
+  adminVerifyStoreDomain: (storeId: string, verified: boolean) =>
+    apiRequest<{ store: Record<string, unknown> }>(`/api/admin/stores/${encodeURIComponent(storeId)}/domain`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ verified })
+    }),
+  adminVerifyInvoice: (invoiceId: string, paymentProofRef: string) =>
+    apiRequest<{ invoice: Record<string, unknown> }>(`/api/admin/invoices/${encodeURIComponent(invoiceId)}/verify`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paymentProofRef })
+    }),
+  adminSendNotification: (input: {
+    tenantId?: string;
+    titleAr: string;
+    titleEn?: string;
+    bodyAr: string;
+    bodyEn?: string;
+    linkPath?: string;
+  }) =>
+    apiRequest<{ sentCount: number }>('/api/admin/notifications', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  adminUpdateSettings: (settings: Record<string, unknown>) =>
+    apiRequest<{ platformSettings: Record<string, unknown> }>('/api/admin/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    })
 };

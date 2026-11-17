@@ -14,9 +14,9 @@ export const QabsLogo: React.FC<QabsLogoProps> = ({
   const [imgError, setImgError] = useState(false);
 
   const heightClasses = {
-    sm: 'h-9',
-    md: 'h-12',
-    lg: 'h-16 sm:h-20',
+    sm: 'h-8 sm:h-9',
+    md: 'h-9 sm:h-12',
+    lg: 'h-14 sm:h-20',
     xl: 'h-20 sm:h-28'
   };
 

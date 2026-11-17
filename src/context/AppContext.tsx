@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   Language,
   AppMode,
@@ -25,9 +25,16 @@ import {
   StoreSectionBlock,
   AICommandHistoryItem,
   WorkspaceSectionSettings,
-  PendingServiceOrder
+  PendingServiceOrder,
+  BackendStatus,
+  NotificationItem,
+  CreditLedgerItem,
+  SubscriptionHistoryItem,
+  RequestDocumentMeta,
+  StoreCategoryItem,
+  StoreTeamMemberItem
 } from '../types/index.ts';
-import { SubmittedServiceOrder } from '../types/pages.ts';
+import { ServiceOrderStatus, SubmittedServiceOrder } from '../types/pages.ts';
 import {
   OWNER_USER_PROFILE,
   INITIAL_USER,
@@ -52,6 +59,28 @@ import {
   INITIAL_STORE_TEMPLATES,
   DEFAULT_STORE_SECTIONS
 } from '../data/mockData.ts';
+import { AdminOverviewResponse, ApiError, BootstrapResponse, qabsApi } from '../services/qabsApi.ts';
+import {
+  mapApiUserToProfile,
+  mapDbAuditLog,
+  mapDbCategory,
+  mapDbCompany,
+  mapDbCreditLedger,
+  mapDbCustomer,
+  mapDbDocument,
+  mapDbInvoice,
+  mapDbNotification,
+  mapDbOrder,
+  mapDbProduct,
+  mapDbServiceRequest,
+  mapDbStore,
+  mapDbStoreTeamMember,
+  mapDbSubscription,
+  mapDbSubscriptionHistory,
+  mapDbTicket
+} from '../services/qabsMappers.ts';
+
+const PRIVILEGED_ROLES = new Set<UserRole>(['super_admin', 'admin', 'staff', 'support']);
 
 interface AppContextType {
   language: Language;
@@ -60,12 +89,21 @@ interface AppContextType {
   toggleTheme: () => void;
   mode: AppMode;
   setMode: (mode: AppMode) => void;
+  backendStatus: BackendStatus;
+  authError: string | null;
+  setAuthError: (msg: string | null) => void;
+  authLoading: boolean;
+  previewVerifyToken: string | null;
+  previewResetToken: string | null;
+  refreshWorkspace: () => Promise<void>;
+
   user: UserProfile;
   switchRole: (role: UserRole) => void;
   companies: CompanyFormation[];
   addCompany: (comp: Omit<CompanyFormation, 'id' | 'filingDate' | 'status' | 'documents'>) => void;
   updateCompanyStatus: (id: string, status: CompanyFormation['status']) => void;
   advanceCompanyStage: (id: string, nextStage?: 1 | 2 | 3 | 4 | 5) => void;
+
   // QABS Stores Multi-Tenant Core
   stores: StoreInstance[];
   activeStoreId: string;
@@ -86,7 +124,15 @@ interface AppContextType {
   saveStoreSnapshot: (storeId: string, label: string) => void;
   restoreStoreSnapshot: (storeId: string, snapshotId: string) => void;
   updateStoreSections: (storeId: string, sections: StoreSectionBlock[]) => void;
+
   // Isolated Store Commerce Entities
+  storeCategories: StoreCategoryItem[];
+  addStoreCategory: (storeId: string, nameAr: string, nameEn?: string) => Promise<void>;
+  storeTeamMembers: StoreTeamMemberItem[];
+  addStoreTeamMember: (
+    storeId: string,
+    input: { name: string; email: string; role: 'admin' | 'staff' | 'support'; permissions?: string[] }
+  ) => Promise<void>;
   products: StoreProduct[];
   addProduct: (product: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => void;
   updateProduct: (id: string, updates: Partial<StoreProduct>) => void;
@@ -109,7 +155,8 @@ interface AppContextType {
   storeTemplates: StoreTemplatePreset[];
   addStoreTemplate: (tpl: Omit<StoreTemplatePreset, 'id'>) => void;
   triggerSystemBackup: (targetLabel?: string) => void;
-  // Support, Staff, Audit & Subscriptions
+
+  // Support, Staff, Audit, Notifications & Subscriptions
   banking: BankingAccount[];
   addBankAccount: (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => void;
   tickets: SupportTicket[];
@@ -120,14 +167,32 @@ interface AppContextType {
   updateStaffPermissions: (staffId: string, permissions: string[]) => void;
   removeStaff: (staffId: string) => void;
   auditLogs: AuditLogItem[];
+  notifications: NotificationItem[];
+  unreadNotificationsCount: number;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  requestDocuments: RequestDocumentMeta[];
+  uploadRequestDocument: (input: {
+    name: string;
+    type?: string;
+    mimeType: string;
+    base64: string;
+    requestId?: string;
+    formationId?: string;
+  }) => Promise<RequestDocumentMeta | null>;
+
   subscription: UserSubscription;
+  subscriptionHistory: SubscriptionHistoryItem[];
+  creditLedger: CreditLedgerItem[];
   changeSubscriptionPlan: (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => void;
   invoices: Invoice[];
+  verifyInvoiceWithProof: (invoiceId: string, paymentProofRef: string) => Promise<boolean>;
   commissions: CommissionRecord[];
   refunds: RefundRecord[];
   issueRefund: (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => void;
   topUpCredits: (amount: number) => void;
   issueOrderInvoice: (orderId: string) => Invoice | null;
+
   syncShopifyStore: (storeId: string, domain: string, accessToken: string, webhooksConnected: boolean) => void;
   toggleSetupStep: (storeId: string, stepId: string) => void;
   addCompanyDocument: (companyId: string, name: string, docType: CompanyFormation['documents'][number]['type']) => void;
@@ -144,6 +209,21 @@ interface AppContextType {
   exportWorkspaceBackupJson: () => string;
   importWorkspaceBackupJson: (jsonText: string) => boolean;
   resetWorkspaceData: () => void;
+
+  // Admin Governance Overview (connected backend)
+  adminOverview: AdminOverviewResponse | null;
+  adminCreateStaffUser: (input: { name: string; email: string; password: string; role: string }) => Promise<boolean>;
+  adminUpdateStaffUser: (userId: string, input: { role?: string; status?: 'active' | 'suspended' }) => Promise<boolean>;
+  adminUpdateServiceCatalog: (slug: string, input: { startingPriceUsd?: number; active?: boolean }) => Promise<boolean>;
+  adminSendBroadcastNotification: (input: {
+    tenantId?: string;
+    titleAr: string;
+    titleEn?: string;
+    bodyAr: string;
+    bodyEn?: string;
+  }) => Promise<boolean>;
+  adminUpdatePlatformSettings: (settings: Record<string, unknown>) => Promise<boolean>;
+
   // Auth & Service Order Gate state
   isAuthenticated: boolean;
   isOwner: boolean;
@@ -161,14 +241,27 @@ interface AppContextType {
   setAuthModalOpen: (open: boolean) => void;
   authMode: 'login' | 'register' | 'recover';
   setAuthMode: (mode: 'login' | 'register' | 'recover') => void;
-  login: (email: string, role: UserRole) => void;
-  loginOwner: (email?: string) => void;
-  register: (name: string, email: string, companyName: string, role?: UserRole) => void;
-  logout: () => void;
+  login: (email: string, role: UserRole, password?: string) => Promise<boolean>;
+  loginOwner: (email?: string, password?: string) => Promise<boolean>;
+  register: (
+    name: string,
+    email: string,
+    companyName: string,
+    role?: UserRole,
+    password?: string
+  ) => Promise<boolean>;
+  requestPasswordReset: (email: string) => Promise<string | null>;
+  confirmPasswordReset: (token: string, newPassword: string) => Promise<boolean>;
+  confirmEmailVerification: (token: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   submittedServiceOrders: SubmittedServiceOrder[];
   submitServiceOrder: (
-    order: Omit<SubmittedServiceOrder, 'id' | 'referenceCode' | 'status' | 'createdAt'>
-  ) => SubmittedServiceOrder;
+    order: Omit<SubmittedServiceOrder, 'id' | 'referenceCode' | 'status' | 'createdAt'> & {
+      status?: 'draft' | 'new';
+      document?: { name: string; mimeType: string; base64: string; type?: string };
+    }
+  ) => Promise<SubmittedServiceOrder>;
+  updateServiceOrderStatus: (id: string, status: ServiceOrderStatus, adminNotes?: string) => Promise<boolean>;
   toastMessage: string | null;
   showToast: (msg: string) => void;
 }
@@ -199,10 +292,10 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   },
   billing: {
     taxNumber: '310492819400003',
-    enableStripe: true,
+    enableStripe: false,
     enablePayPal: false,
     enableBankTransfer: true,
-    enableMoyasarTap: true,
+    enableMoyasarTap: false,
     bankIban: 'SA4480000492608010492811'
   },
   qabsAi: {
@@ -303,7 +396,8 @@ function isWorkspaceUrl(): boolean {
     '/crypto',
     '/support',
     '/settings',
-    '/workspace'
+    '/workspace',
+    '/requests'
   ];
   return workspacePrefixes.some(p => hash.startsWith(`#${p}`));
 }
@@ -321,47 +415,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (localStorage.getItem('qabs_theme_v2') as 'dark' | 'light') || 'light';
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(persisted.isAuthenticated ?? false);
-  const [mode, setMode] = useState<AppMode>(() =>
-    persisted.isAuthenticated && isWorkspaceUrl() ? 'portal' : 'landing'
-  );
-  const [isProductionMode, setIsProductionMode] = useState<boolean>(persisted.isProductionMode ?? false);
-  const [user, setUser] = useState<UserProfile>(() =>
-    persisted.isAuthenticated && persisted.user ? persisted.user : INITIAL_USER
-  );
-  const [companies, setCompanies] = useState<CompanyFormation[]>(persisted.companies ?? INITIAL_COMPANIES);
-  const [stores, setStores] = useState<StoreInstance[]>(persisted.stores ?? INITIAL_STORES);
-  const [activeStoreId, setActiveStoreId] = useState<string>(
-    persisted.activeStoreId ?? INITIAL_STORES[0]?.id ?? 'store_01'
-  );
-  const [products, setProducts] = useState<StoreProduct[]>(persisted.products ?? INITIAL_PRODUCTS);
-  const [orders, setOrders] = useState<StoreOrder[]>(persisted.orders ?? INITIAL_ORDERS);
-  const [customers, setCustomers] = useState<StoreCustomer[]>(persisted.customers ?? INITIAL_CUSTOMERS);
-  const [discounts, setDiscounts] = useState<StoreDiscount[]>(persisted.discounts ?? INITIAL_DISCOUNTS);
-  const [shippingZones, setShippingZones] = useState<StoreShippingZone[]>(persisted.shippingZones ?? INITIAL_SHIPPING_ZONES);
-  const [storePages, setStorePages] = useState<StorePageItem[]>(persisted.storePages ?? INITIAL_STORE_PAGES);
-  const [storeApps, setStoreApps] = useState<StoreAppAddon[]>(persisted.storeApps ?? INITIAL_STORE_APPS);
-  const [storeTemplates, setStoreTemplates] = useState<StoreTemplatePreset[]>(persisted.storeTemplates ?? INITIAL_STORE_TEMPLATES);
+  const [backendStatus, setBackendStatus] = useState<BackendStatus>('checking');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState<boolean>(false);
+  const [previewVerifyToken, setPreviewVerifyToken] = useState<string | null>(null);
+  const [previewResetToken, setPreviewResetToken] = useState<string | null>(null);
 
-  const [banking, setBanking] = useState<BankingAccount[]>(persisted.banking ?? INITIAL_BANKING);
-  const [tickets, setTickets] = useState<SupportTicket[]>(persisted.tickets ?? INITIAL_TICKETS);
-  const [staff, setStaff] = useState<StaffMember[]>(() => {
-    const legacyMockIds = new Set(['stf_01', 'stf_02', 'stf_03']);
-    const legacyNames = ['عبدالله السعدي', 'سارة المنصوري', 'ماجد الحربي', 'كريم عادل'];
-    if (!Array.isArray(persisted.staff)) return INITIAL_STAFF;
-    return persisted.staff.filter(
-      m => !legacyMockIds.has(m.id) && !legacyNames.some(n => m.name.includes(n))
-    );
-  });
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(persisted.auditLogs ?? INITIAL_AUDIT_LOGS);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [mode, setMode] = useState<AppMode>('landing');
+  const [isProductionMode, setIsProductionMode] = useState<boolean>(false);
+  const [user, setUser] = useState<UserProfile>(INITIAL_USER);
+  const [companies, setCompanies] = useState<CompanyFormation[]>(INITIAL_COMPANIES);
+  const [stores, setStores] = useState<StoreInstance[]>(INITIAL_STORES);
+  const [activeStoreId, setActiveStoreId] = useState<string>(INITIAL_STORES[0]?.id ?? 'store_01');
+  const [storeCategories, setStoreCategories] = useState<StoreCategoryItem[]>([]);
+  const [storeTeamMembers, setStoreTeamMembers] = useState<StoreTeamMemberItem[]>([]);
+  const [products, setProducts] = useState<StoreProduct[]>(INITIAL_PRODUCTS);
+  const [orders, setOrders] = useState<StoreOrder[]>(INITIAL_ORDERS);
+  const [customers, setCustomers] = useState<StoreCustomer[]>(INITIAL_CUSTOMERS);
+  const [discounts, setDiscounts] = useState<StoreDiscount[]>(INITIAL_DISCOUNTS);
+  const [shippingZones, setShippingZones] = useState<StoreShippingZone[]>(INITIAL_SHIPPING_ZONES);
+  const [storePages, setStorePages] = useState<StorePageItem[]>(INITIAL_STORE_PAGES);
+  const [storeApps, setStoreApps] = useState<StoreAppAddon[]>(INITIAL_STORE_APPS);
+  const [storeTemplates, setStoreTemplates] = useState<StoreTemplatePreset[]>(INITIAL_STORE_TEMPLATES);
+
+  const [banking, setBanking] = useState<BankingAccount[]>(INITIAL_BANKING);
+  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
+  const [staff, setStaff] = useState<StaffMember[]>(INITIAL_STAFF);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [requestDocuments, setRequestDocuments] = useState<RequestDocumentMeta[]>([]);
+  const [creditLedger, setCreditLedger] = useState<CreditLedgerItem[]>([]);
+  const [subscriptionHistory, setSubscriptionHistory] = useState<SubscriptionHistoryItem[]>([]);
+  const [adminOverview, setAdminOverview] = useState<AdminOverviewResponse | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Subscription & Billing states
-  const [subscription, setSubscription] = useState<UserSubscription>(persisted.subscription ?? INITIAL_USER_SUBSCRIPTION);
-  const [invoices, setInvoices] = useState<Invoice[]>(persisted.invoices ?? INITIAL_INVOICES);
+  const [subscription, setSubscription] = useState<UserSubscription>(INITIAL_USER_SUBSCRIPTION);
+  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
   const [commissions] = useState<CommissionRecord[]>(INITIAL_COMMISSIONS);
-  const [refunds, setRefunds] = useState<RefundRecord[]>(persisted.refunds ?? INITIAL_REFUNDS);
-  const [aiHistory, setAiHistory] = useState<AICommandHistoryItem[]>(persisted.aiHistory ?? []);
+  const [refunds, setRefunds] = useState<RefundRecord[]>(INITIAL_REFUNDS);
+  const [aiHistory, setAiHistory] = useState<AICommandHistoryItem[]>([]);
   const [sectionSettings, setSectionSettings] = useState<WorkspaceSectionSettings>(() => ({
     overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...(persisted.sectionSettings?.overview || {}) },
     orders: { ...DEFAULT_SECTION_SETTINGS.orders, ...(persisted.sectionSettings?.orders || {}) },
@@ -380,7 +473,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }));
 
-  // Auth & Checkout modal states
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
   const [authIntent, setAuthIntent] = useState<'client' | 'owner'>('client');
@@ -388,13 +480,157 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     persisted.pendingServiceOrder ?? null
   );
   const [checkoutModalOpen, setCheckoutModalOpen] = useState<boolean>(false);
-  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>(
-    persisted.submittedServiceOrders ?? []
-  );
+  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>(() => {
+    const raw = persisted.submittedServiceOrders ?? [];
+    return raw.map(item => ({
+      ...item,
+      status: ((item.status as string) === 'received'
+        ? 'new'
+        : (item.status as string) === 'in_review'
+        ? 'under_review'
+        : (item.status as string) === 'awaiting_payment'
+        ? 'needs_info'
+        : item.status) as ServiceOrderStatus
+    }));
+  });
 
-  const isOwner = isAuthenticated && user.role === 'super_admin';
+  const isOwner = isAuthenticated && PRIVILEGED_ROLES.has(user.role);
+  const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
 
+  const applyBootstrapPayload = useCallback((boot: BootstrapResponse) => {
+    const mappedUser = mapApiUserToProfile(boot.user);
+    const mappedDocs = boot.documents.map(mapDbDocument);
+    const mappedProducts = boot.products.map(mapDbProduct);
+    const mappedOrders = boot.orders.map(mapDbOrder);
+    const mappedStores = boot.stores.map(row => {
+      const sid = String(row.id);
+      return mapDbStore(
+        row,
+        mappedProducts.filter(p => p.storeId === sid).length,
+        mappedOrders.filter(o => o.storeId === sid).length
+      );
+    });
+    const mappedCompanies = boot.companies.map(c => mapDbCompany(c, mappedDocs));
+    const mappedReqs = boot.serviceRequests.map(r => mapDbServiceRequest(r, mappedDocs));
+
+    setUser(mappedUser);
+    setIsAuthenticated(true);
+    setRequestDocuments(mappedDocs);
+    setCompanies(mappedCompanies);
+    setStores(mappedStores);
+    setActiveStoreId(prev =>
+      mappedStores.some(s => s.id === prev) ? prev : mappedStores[0]?.id || ''
+    );
+    setStoreCategories(boot.categories.map(mapDbCategory));
+    setStoreTeamMembers(boot.teamMembers.map(mapDbStoreTeamMember));
+    setProducts(mappedProducts);
+    setOrders(mappedOrders);
+    setCustomers(boot.customers.map(mapDbCustomer));
+    setSubmittedServiceOrders(mappedReqs);
+    setSubscription(mapDbSubscription(boot.subscription));
+    setSubscriptionHistory(boot.subscriptionHistory.map(mapDbSubscriptionHistory));
+    setInvoices(boot.invoices.map(mapDbInvoice));
+    setCreditLedger(boot.creditLedger.map(mapDbCreditLedger));
+    setNotifications(boot.notifications.map(mapDbNotification));
+    setTickets(boot.tickets.map(mapDbTicket));
+    setAuditLogs(boot.auditLogs.map(mapDbAuditLog));
+  }, []);
+
+  const refreshWorkspace = useCallback(async () => {
+    if (backendStatus !== 'connected') return;
+    try {
+      const sess = await qabsApi.session();
+      if (!sess.authenticated || !sess.user) {
+        setIsAuthenticated(false);
+        setUser(INITIAL_USER);
+        setAdminOverview(null);
+        setNotifications([]);
+        return;
+      }
+      const boot = await qabsApi.bootstrap();
+      applyBootstrapPayload(boot);
+      if (PRIVILEGED_ROLES.has(sess.user.role as UserRole)) {
+        try {
+          const ov = await qabsApi.adminOverview();
+          setAdminOverview(ov);
+        } catch {
+          setAdminOverview(null);
+        }
+      } else {
+        setAdminOverview(null);
+      }
+    } catch {
+      // Keep UI responsive on transient refresh errors
+    }
+  }, [backendStatus, applyBootstrapPayload]);
+
+  // Initial server health + session detection
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        await qabsApi.health();
+        if (!active) return;
+        setBackendStatus('connected');
+        const sess = await qabsApi.session();
+        if (!active) return;
+        if (sess.authenticated && sess.user) {
+          const boot = await qabsApi.bootstrap();
+          if (!active) return;
+          applyBootstrapPayload(boot);
+          if (PRIVILEGED_ROLES.has(sess.user.role as UserRole)) {
+            try {
+              const ov = await qabsApi.adminOverview();
+              if (active) setAdminOverview(ov);
+            } catch {
+              // ignore
+            }
+          }
+          if (isWorkspaceUrl()) {
+            setMode(PRIVILEGED_ROLES.has(sess.user.role as UserRole) ? 'admin' : 'portal');
+          }
+        } else {
+          // Connected server without active session: start strictly clean (no fake auth!)
+          setIsAuthenticated(false);
+          setUser(INITIAL_USER);
+          setCompanies([]);
+          setStores([]);
+          setProducts([]);
+          setOrders([]);
+          setCustomers([]);
+          setInvoices([]);
+          setTickets([]);
+          setAuditLogs([]);
+          setSubmittedServiceOrders([]);
+          setNotifications([]);
+        }
+      } catch {
+        if (!active) return;
+        // Static CDN deployment fallback (explicitly marked preview_offline)
+        setBackendStatus('preview_offline');
+        if (persisted.isAuthenticated && persisted.user) {
+          setIsAuthenticated(true);
+          setUser(persisted.user);
+          if (isWorkspaceUrl()) setMode('portal');
+        }
+        if (persisted.companies) setCompanies(persisted.companies);
+        if (persisted.stores) setStores(persisted.stores);
+        if (persisted.activeStoreId) setActiveStoreId(persisted.activeStoreId);
+        if (persisted.products) setProducts(persisted.products);
+        if (persisted.orders) setOrders(persisted.orders);
+        if (persisted.customers) setCustomers(persisted.customers);
+        if (persisted.tickets) setTickets(persisted.tickets);
+        if (persisted.invoices) setInvoices(persisted.invoices);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [applyBootstrapPayload]);
+
+  // Persist local fallback state ONLY when running in static preview_offline mode
+  useEffect(() => {
+    if (backendStatus !== 'preview_offline') return;
     try {
       const payload: PersistedWorkspaceState = {
         isAuthenticated,
@@ -425,9 +661,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
     } catch {
-      // Ignore storage quota errors
+      // Ignore quota errors
     }
   }, [
+    backendStatus,
     isAuthenticated,
     pendingServiceOrder,
     isProductionMode,
@@ -470,19 +707,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('qabs_theme_v2', theme);
   }, [theme]);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-  };
-
-  const toggleTheme = () => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
-  };
+  const setLanguage = (lang: Language) => setLanguageState(lang);
+  const toggleTheme = () => setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage(null);
-    }, 3500);
+    setTimeout(() => setToastMessage(null), 3800);
+  };
+
+  const handleApiFailure = (err: unknown, fallbackAr: string, fallbackEn: string) => {
+    const apiErr = err as ApiError;
+    const msg = apiErr?.message && apiErr.message !== 'NETWORK_UNREACHABLE'
+      ? apiErr.message
+      : language === 'ar'
+      ? fallbackAr
+      : fallbackEn;
+    showToast(msg);
   };
 
   const appendAudit = (actionAr: string, actionEn: string, target: string, status: AuditLogItem['status'] = 'success') => {
@@ -501,88 +741,90 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchRole = (newRole: UserRole) => {
+    if (backendStatus === 'connected') {
+      showToast(
+        language === 'ar'
+          ? 'تبديل الصلاحيات يتطلب تسجيل دخول فعلي بحساب يمتلك الدور المطلوب.'
+          : 'Role changes require authenticating with an account holding that role.'
+      );
+      if (newRole === 'super_admin') openOwnerAuth();
+      else openClientAuth('login');
+      return;
+    }
     if (newRole === 'super_admin') {
       setUser(OWNER_USER_PROFILE);
       setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'تم التبديل إلى حساب المالك الوحيد: أنور الغزالي (Super Admin)' : 'Switched to Owner: Anwar Al-Ghazali (Super Admin)');
+      showToast(language === 'ar' ? 'وضع المعاينة غير المتصل: المالك (Super Admin)' : 'Offline preview: Super Admin');
     } else {
       setUser(prev => ({
         ...prev,
         id: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'usr_client_01' : prev.id,
-        role: 'merchant',
+        role: 'customer',
         name: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'عميل منصة قبس' : prev.name
       }));
       setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'تم التبديل إلى لوحة العميل' : 'Switched to Client Dashboard');
     }
   };
 
+  // --- COMPANIES ---
   const addCompany = (comp: Omit<CompanyFormation, 'id' | 'filingDate' | 'status' | 'documents'>) => {
-    const today = new Date().toISOString().split('T')[0];
-    const companyId = `comp_${Date.now()}`;
-    const stage: 1 | 2 | 3 | 4 | 5 = comp.formationStage ?? 1;
-    const totalUsd = comp.packagePriceUsd ?? sectionSettings.companyFormation.baseServiceFeeUsd;
-
-    const initialDocs: CompanyFormation['documents'] = [
-      {
-        name: comp.jurisdiction === 'UK_LTD' ? 'Articles of Association (Draft)' : 'Articles of Organization (Filing Draft)',
-        type: 'articles',
-        status: 'generating',
-        date: today
-      },
-      {
-        name: 'Operating Agreement (Custom QABS Template)',
-        type: 'operating_agreement',
-        status: 'pending',
-        date: today
-      }
-    ];
-    if (comp.addons?.ein) {
-      initialDocs.push({
-        name: 'IRS Form SS-4 & Federal EIN Request',
-        type: 'ein_letter',
-        status: 'pending',
-        date: today
-      });
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createFormation({
+            companyName: comp.companyName,
+            jurisdiction: comp.jurisdiction,
+            entityType: comp.entityType,
+            registeredAgent: comp.registeredAgent,
+            registeredAddress: comp.registeredAddress,
+            notes: comp.notes
+          });
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم تسجيل طلب تأسيس "${comp.companyName}" في قاعدة البيانات!`
+              : `Formation request for "${comp.companyName}" saved on server!`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ طلب التأسيس في الخادم', 'Failed to save formation request');
+        }
+      })();
+      return;
     }
 
+    const today = new Date().toISOString().split('T')[0];
+    const companyId = `comp_${Date.now()}`;
+    const totalUsd = comp.packagePriceUsd ?? sectionSettings.companyFormation.baseServiceFeeUsd;
     const newComp: CompanyFormation = {
       ...comp,
       id: companyId,
       filingDate: today,
-      status: stage >= 5 ? 'approved' : stage >= 2 ? 'submitted_to_state' : 'under_review',
+      status: 'under_review',
       renewalDueDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-      formationStage: stage,
+      formationStage: comp.formationStage ?? 1,
       packagePriceUsd: totalUsd,
-      documents: initialDocs
+      documents: []
     };
     setCompanies(prev => [newComp, ...prev]);
 
-    // Reflect immediately in Invoices / Billing
     const invNum = `INV-CF-${Math.floor(10000 + Math.random() * 89999)}`;
-    const sarAmount = Math.round(totalUsd * 3.75);
     const formationInvoice: Invoice = {
       id: `inv_${Date.now()}`,
       invoiceNumber: invNum,
       date: today,
-      amount: sarAmount,
-      currency: 'SAR',
-      status: 'paid',
-      descriptionAr: `رسوم تأسيس شركة دولية: ${comp.companyName} (${comp.jurisdiction}) — $${totalUsd}`,
-      descriptionEn: `Company Formation Fee: ${comp.companyName} (${comp.jurisdiction}) — $${totalUsd}`,
+      amount: totalUsd,
+      currency: 'USD',
+      status: 'pending_verification',
+      descriptionAr: `رسوم تأسيس شركة دولية: ${comp.companyName} (${comp.jurisdiction}) — بانتظار التحقق`,
+      descriptionEn: `Company Formation Fee: ${comp.companyName} (${comp.jurisdiction}) — Pending Verification`,
       clientName: comp.ownerName || user.name
     };
     setInvoices(prev => [formationInvoice, ...prev]);
-
-    appendAudit(
-      `تقديم طلب تأسيس شركة جديدة (${comp.companyName}) بقيمة $${totalUsd}`,
-      `Submitted new company formation (${comp.companyName}) for $${totalUsd}`,
-      comp.companyName
-    );
+    appendAudit(`طلب تأسيس شركة (${comp.companyName})`, `Requested formation (${comp.companyName})`, comp.companyName);
     showToast(
       language === 'ar'
-        ? `تم إرسال طلب تأسيس "${comp.companyName}" وإصدار الفاتورة ${invNum} بنجاح!`
-        : `Formation request for "${comp.companyName}" submitted and invoiced (${invNum})!`
+        ? `تم تسجيل طلب تأسيس "${comp.companyName}" وإصدار الفاتورة ${invNum} بانتظار التحقق المرجعي.`
+        : `Formation request "${comp.companyName}" recorded (${invNum} pending verification).`
     );
   };
 
@@ -591,148 +833,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const advanceCompanyStage = (id: string, nextStage?: 1 | 2 | 3 | 4 | 5) => {
-    const today = new Date().toISOString().split('T')[0];
     const target = companies.find(c => c.id === id);
     if (!target) return;
-
-    const currentStage = target.formationStage ?? (target.status === 'approved' ? 5 : target.status === 'submitted_to_state' ? 2 : 1);
-    const computedStage = (nextStage ?? Math.min(5, currentStage + 1)) as 1 | 2 | 3 | 4 | 5;
-    let generatedStoreId = target.linkedStoreId;
-
-    if (computedStage === 5 && sectionSettings.companyFormation.autoCreateStoreOnCompletion && !generatedStoreId) {
-      generatedStoreId = `store_cf_${Date.now()}`;
-      const cleanSub = target.companyName
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .slice(0, 14) || `qabs${Math.floor(100 + Math.random() * 899)}`;
-      const newStore: StoreInstance = {
-        id: generatedStoreId,
-        ownerName: target.ownerName || user.name,
-        ownerEmail: target.ownerEmail || user.email,
-        name: target.companyName,
-        activityAr: target.activity || 'تجارة إلكترونية دولية مرتبطة بالشركة',
-        activityEn: target.activity || 'International E-Commerce Entity',
-        country: target.jurisdiction === 'UK_LTD' ? 'GB' : 'US',
-        defaultLanguage: 'both',
-        subdomain: `${cleanSub}.qabs1.store`,
-        currency: 'USD',
-        taxRate: 0,
-        productsCount: 0,
-        ordersCount: 0,
-        totalRevenue: 0,
-        createdAt: today,
-        status: 'draft',
-        approvalStatus: 'draft',
-        paymentConnected: !!target.addons?.stripePayPal,
-        paymentApprovalStatus: target.addons?.stripePayPal ? 'pending_admin_approval' : 'unconfigured',
-        gatewayType: 'Stripe',
-        theme: 'gold_executive',
-        templateId: 'tpl_luxury_royal',
-        primaryColor: '#14243E',
-        accentColor: '#D5B46B',
-        fontFamily: 'Cairo',
-        sections: DEFAULT_STORE_SECTIONS.map(sec => ({ ...sec }))
-      };
-      setStores(prev => [newStore, ...prev]);
-    }
-
-    if (computedStage === 5 && target.addons?.businessBank && !target.bankReady) {
-      setBanking(prev => {
-        if (prev.some(b => b.linkedCompany === target.companyName)) return prev;
-        return [
-          {
-            id: `bnk_${Date.now()}`,
-            provider: 'Mercury',
-            accountName: `${target.companyName} OPERATING`,
-            accountNumberMasked: `•••• ${Math.floor(1000 + Math.random() * 8999)}`,
-            routingNumber: '021000021',
-            currency: target.jurisdiction === 'UK_LTD' ? 'GBP' : 'USD',
-            balance: 0,
-            status: 'verified',
-            linkedCompany: target.companyName
-          },
-          ...prev
-        ];
-      });
-    }
-
+    const computedStage = (nextStage ?? Math.min(5, (target.formationStage ?? 1) + 1)) as 1 | 2 | 3 | 4 | 5;
     setCompanies(prev =>
-      prev.map(c => {
-        if (c.id !== id) return c;
-        const nextStatus: CompanyFormation['status'] =
-          computedStage === 5 ? 'approved' : computedStage >= 2 ? 'submitted_to_state' : 'under_review';
-        const nextFileNum =
-          computedStage >= 2
-            ? c.stateFileNumber || c.crn || `${c.jurisdiction.replace('US_', '').slice(0, 2).toUpperCase()}-2026-${Math.floor(100000 + Math.random() * 899999)}`
-            : c.stateFileNumber;
-        const nextEin =
-          computedStage >= 4
-            ? c.ein || `${Math.floor(81 + Math.random() * 17)}-${Math.floor(1000000 + Math.random() * 8999999)}`
-            : c.ein;
-
-        const updatedDocs: CompanyFormation['documents'] = [
-          {
-            name: c.jurisdiction === 'UK_LTD' ? 'Certificate of Incorporation & Articles' : 'Articles of Organization (Certified)',
-            type: 'articles',
-            status: computedStage >= 3 ? 'ready' : 'generating',
-            date: today
-          },
-          {
-            name: 'Operating Agreement (Signed QABS Legal)',
-            type: 'operating_agreement',
-            status: computedStage >= 3 ? 'ready' : 'pending',
-            date: today
-          },
-          {
-            name: c.jurisdiction === 'UK_LTD' ? 'HMRC Corporation Tax UTR Letter' : 'Official IRS EIN Letter (CP575)',
-            type: 'ein_letter',
-            status: computedStage >= 4 ? 'ready' : 'generating',
-            date: today
-          },
-          {
-            name: 'Banking Resolution & Legal Welcome Kit',
-            type: 'resolution',
-            status: computedStage >= 5 ? 'ready' : 'pending',
-            date: today
-          }
-        ];
-
-        return {
-          ...c,
-          formationStage: computedStage,
-          status: nextStatus,
-          stateFileNumber: c.jurisdiction === 'UK_LTD' ? undefined : nextFileNum,
-          crn: c.jurisdiction === 'UK_LTD' ? nextFileNum : c.crn,
-          ein: nextEin,
-          bankReady: computedStage >= 5 && !!c.addons?.businessBank ? true : c.bankReady,
-          gatewaysReady: computedStage >= 5 && !!c.addons?.stripePayPal ? true : c.gatewaysReady,
-          linkedStoreId: generatedStoreId || c.linkedStoreId,
-          documents:
-            computedStage === 5 && !sectionSettings.companyFormation.autoCreateDocsFolderOnCompletion
-              ? c.documents
-              : updatedDocs
-        };
-      })
+      prev.map(c =>
+        c.id === id
+          ? {
+              ...c,
+              formationStage: computedStage,
+              status: computedStage === 5 ? 'approved' : computedStage >= 2 ? 'submitted_to_state' : 'under_review'
+            }
+          : c
+      )
     );
-
-    appendAudit(
-      `تحديث مرحلة تأسيس الشركة (${target.companyName}) إلى المرحلة ${computedStage} من 5`,
-      `Advanced company formation (${target.companyName}) to stage ${computedStage}/5`,
-      target.companyName
-    );
-    showToast(
-      language === 'ar'
-        ? computedStage === 5
-          ? `اكتمل تأسيس "${target.companyName}" وتم تسليم الحقيبة القانونية في المستندات!`
-          : `تمت ترقية "${target.companyName}" للمرحلة ${computedStage} من 5 ✓`
-        : `Advanced "${target.companyName}" to stage ${computedStage}/5 ✓`
-    );
+    appendAudit(`ترقية مرحلة التأسيس (${target.companyName}) إلى ${computedStage}/5`, `Advanced formation (${target.companyName}) to ${computedStage}/5`, target.companyName);
   };
 
-  // --- QABS STORES MULTI-TENANT ACTIONS ---
+  // --- STORES (TENANT & ADMIN GATED) ---
   const addStore = (
     storeData: Omit<StoreInstance, 'id' | 'productsCount' | 'ordersCount' | 'totalRevenue' | 'createdAt'>
   ) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          const res = await qabsApi.createStore({
+            name: storeData.name,
+            subdomain: storeData.subdomain,
+            currency: storeData.currency,
+            theme: storeData.theme,
+            gatewayType: storeData.gatewayType,
+            country: storeData.country,
+            activityAr: storeData.activityAr,
+            activityEn: storeData.activityEn,
+            defaultLanguage: storeData.defaultLanguage,
+            taxRate: storeData.taxRate
+          });
+          await refreshWorkspace();
+          if (res.store?.id) setActiveStoreId(String(res.store.id));
+          showToast(
+            language === 'ar'
+              ? `تم إنشاء متجر "${storeData.name}" كمسودة في قاعدة البيانات ✓`
+              : `Store "${storeData.name}" created as draft on server ✓`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إنشاء المتجر في الخادم', 'Failed to create store');
+        }
+      })();
+      return;
+    }
+
     const newStoreId = `store_${Date.now()}`;
     const today = new Date().toISOString().split('T')[0];
     const newStore: StoreInstance = {
@@ -740,11 +890,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: newStoreId,
       ownerName: storeData.ownerName || user.name,
       ownerEmail: storeData.ownerEmail || user.email,
-      activityAr: storeData.activityAr || 'تجارة إلكترونية عامة',
-      activityEn: storeData.activityEn || 'General Commerce',
-      country: storeData.country || 'SA',
-      defaultLanguage: storeData.defaultLanguage || 'both',
-      taxRate: storeData.taxRate ?? 15,
       productsCount: 0,
       ordersCount: 0,
       totalRevenue: 0,
@@ -754,134 +899,82 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       paymentConnected: false,
       paymentApprovalStatus: 'unconfigured',
       domainVerified: false,
-      templateId: storeData.templateId || 'tpl_luxury_gold',
-      primaryColor: storeData.primaryColor || '#004457',
-      accentColor: storeData.accentColor || '#C8A24A',
-      fontFamily: storeData.fontFamily || 'Cairo',
-      headerStyle: storeData.headerStyle || 'executive',
-      footerTextAr: storeData.footerTextAr || `جميع الحقوق محفوظة © ${storeData.name} — يعمل عبر منصة متاجر قبس QABS Stores`,
-      footerTextEn: storeData.footerTextEn || `All rights reserved © ${storeData.name} — Powered by QABS Stores`,
-      sections: storeData.sections || DEFAULT_STORE_SECTIONS.map(sec => ({ ...sec })),
-      designVersions: [
-        {
-          id: `ver_${Date.now()}`,
-          label: 'النسخة التأسيسية 1.0',
-          savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          theme: storeData.theme || 'gold_executive',
-          primaryColor: storeData.primaryColor || '#004457',
-          accentColor: storeData.accentColor || '#C8A24A',
-          fontFamily: storeData.fontFamily || 'Cairo',
-          sections: (storeData.sections || DEFAULT_STORE_SECTIONS).map(s => ({ ...s }))
-        }
-      ]
+      sections: storeData.sections || DEFAULT_STORE_SECTIONS.map(sec => ({ ...sec }))
     };
-
     setStores(prev => [newStore, ...prev]);
     setActiveStoreId(newStore.id);
-
-    // Seed default isolated pages for the new store
-    const defaultPages: StorePageItem[] = [
-      {
-        id: `pg_${Date.now()}_1`,
-        storeId: newStoreId,
-        slug: 'home',
-        titleAr: 'الصفحة الرئيسية',
-        titleEn: 'Home Page',
-        type: 'home',
-        contentAr: `مرحباً بكم في ${storeData.name} — وجهتكم الأولى للتسوق الإلكتروني الموثوق.`,
-        contentEn: `Welcome to ${storeData.name} — your premier online shopping destination.`,
-        published: true,
-        updatedAt: today
-      },
-      {
-        id: `pg_${Date.now()}_2`,
-        storeId: newStoreId,
-        slug: 'about',
-        titleAr: 'من نحن',
-        titleEn: 'About Us',
-        type: 'about',
-        contentAr: `نحن في ${storeData.name} نلتزم بتقديم منتجات عالية الجودة وخدمة عملاء استثنائية.`,
-        contentEn: `At ${storeData.name}, we are committed to top-tier quality and customer care.`,
-        published: true,
-        updatedAt: today
-      },
-      {
-        id: `pg_${Date.now()}_3`,
-        storeId: newStoreId,
-        slug: 'contact',
-        titleAr: 'اتصل بنا',
-        titleEn: 'Contact Us',
-        type: 'contact',
-        contentAr: `للتواصل مع فريق خدمة العملاء في ${storeData.name}: البريد الإلكتروني ${user.email}`,
-        contentEn: `Contact ${storeData.name} support via email: ${user.email}`,
-        published: true,
-        updatedAt: today
-      },
-      {
-        id: `pg_${Date.now()}_4`,
-        storeId: newStoreId,
-        slug: 'policy',
-        titleAr: 'سياسة الاستبدال والاسترجاع',
-        titleEn: 'Return & Refund Policy',
-        type: 'policy',
-        contentAr: 'يحق للعميل طلب الاستبدال أو الاسترجاع خلال 14 يوماً من تاريخ استلام الطلب.',
-        contentEn: 'Customers may request a return or exchange within 14 days of delivery.',
-        published: true,
-        updatedAt: today
-      }
-    ];
-    setStorePages(prev => [...defaultPages, ...prev]);
-
-    appendAudit(
-      `إنشاء متجر إلكتروني مستقل جديد (${storeData.name}) بانتظار التجهيز والاعتماد`,
-      `Created new isolated store (${storeData.name}) in draft state`,
-      `${storeData.subdomain}`
-    );
-
-    showToast(
-      language === 'ar'
-        ? `تم إنشاء متجر "${storeData.name}" بنجاح! يمكنك الآن تخصيصه وإضافة منتجاته.`
-        : `Store "${storeData.name}" created! Customize and add products now.`
-    );
+    showToast(language === 'ar' ? `تم إنشاء متجر "${storeData.name}" كمسودة!` : `Store "${storeData.name}" created as draft!`);
   };
 
   const updateStoreTheme = (id: string, newTheme: StoreInstance['theme'], customDomain?: string) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.updateStore(id, { theme: newTheme, customDomain });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حفظ مظهر المتجر في الخادم' : 'Store theme saved on server');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ مظهر المتجر', 'Failed to update store theme');
+        }
+      })();
+      return;
+    }
     setStores(prev =>
       prev.map(s => (s.id === id ? { ...s, theme: newTheme, customDomain: customDomain ?? s.customDomain } : s))
     );
-    showToast(language === 'ar' ? 'تم تحديث مظهر المتجر بنجاح' : 'Store theme updated successfully');
+    showToast(language === 'ar' ? 'تم تحديث مظهر المتجر' : 'Store theme updated');
   };
 
   const updateStoreDetails = (id: string, updates: Partial<StoreInstance>) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.updateStore(id, {
+            name: updates.name,
+            currency: updates.currency,
+            theme: updates.theme,
+            customDomain: updates.customDomain,
+            settings: {
+              country: updates.country,
+              activityAr: updates.activityAr,
+              activityEn: updates.activityEn,
+              defaultLanguage: updates.defaultLanguage,
+              taxRate: updates.taxRate
+            }
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حفظ إعدادات المتجر في الخادم ✓' : 'Store settings saved on server ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ إعدادات المتجر', 'Failed to save store settings');
+        }
+      })();
+      return;
+    }
     setStores(prev => prev.map(s => (s.id === id ? { ...s, ...updates } : s)));
-    showToast(language === 'ar' ? 'تم حفظ إعدادات وتصميم المتجر بنجاح' : 'Store settings & design saved');
+    showToast(language === 'ar' ? 'تم حفظ إعدادات المتجر' : 'Store settings saved');
   };
 
   const submitStoreForApproval = (storeId: string) => {
-    const targetStore = stores.find(s => s.id === storeId);
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.submitStoreReview(storeId);
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? 'تم إرسال المتجر إلى لوحة إدارة قبس للمراجعة والاعتماد!'
+              : 'Store submitted to QABS Admin for review!'
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إرسال المتجر للمراجعة', 'Failed to submit store for review');
+        }
+      })();
+      return;
+    }
     setStores(prev =>
-      prev.map(s =>
-        s.id === storeId
-          ? {
-              ...s,
-              status: 'pending_approval',
-              approvalStatus: 'pending_review',
-              adminFeedback: undefined
-            }
-          : s
-      )
+      prev.map(s => (s.id === storeId ? { ...s, status: 'pending_approval', approvalStatus: 'pending_review' } : s))
     );
-    appendAudit(
-      `إرسال المتجر (${targetStore?.name || storeId}) إلى إدارة قبس للمراجعة والاعتماد قبل النشر`,
-      `Submitted store (${targetStore?.name || storeId}) to QABS Admin for publication review`,
-      targetStore?.subdomain || storeId,
-      'info'
-    );
-    showToast(
-      language === 'ar'
-        ? 'تم إرسال المتجر إلى لوحة إدارة قبس للمراجعة والاعتماد!'
-        : 'Store submitted to QABS Central Admin for approval!'
-    );
+    showToast(language === 'ar' ? 'تم إرسال المتجر للمراجعة' : 'Store submitted for review');
   };
 
   const reviewStoreApproval = (
@@ -889,7 +982,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     decision: 'approved_published' | 'changes_requested' | 'rejected',
     feedback?: string
   ) => {
-    const targetStore = stores.find(s => s.id === storeId);
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.adminReviewStore(storeId, decision, feedback);
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم تحديث قرار اعتماد المتجر وإشعار التاجر (${decision})`
+              : `Store review updated & merchant notified (${decision})`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'يتطلب هذا الإجراء صلاحية إدارية', 'Admin permission required for store approval');
+        }
+      })();
+      return;
+    }
     setStores(prev =>
       prev.map(s =>
         s.id === storeId
@@ -902,129 +1010,58 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           : s
       )
     );
-
-    const statusLabelAr =
-      decision === 'approved_published'
-        ? 'اعتماد ونشر المتجر رسمياً'
-        : decision === 'changes_requested'
-        ? 'طلب تعديلات على المتجر قبل النشر'
-        : 'رفض طلب نشر المتجر';
-
-    appendAudit(
-      `${statusLabelAr}: ${targetStore?.name || storeId}`,
-      `Store review decision (${decision}): ${targetStore?.name || storeId}`,
-      targetStore?.subdomain || storeId,
-      decision === 'approved_published' ? 'success' : 'warning'
-    );
-
-    showToast(
-      language === 'ar'
-        ? `تم تحديث حالة اعتماد المتجر: ${statusLabelAr}`
-        : `Store approval status updated: ${decision}`
-    );
   };
 
   const requestPaymentActivation = (storeId: string, gatewayType: StoreInstance['gatewayType']) => {
-    const targetStore = stores.find(s => s.id === storeId);
+    // Safety rule: no gateway is auto-activated in preview
     setStores(prev =>
       prev.map(s =>
         s.id === storeId
-          ? {
-              ...s,
-              gatewayType,
-              paymentConnected: false,
-              paymentApprovalStatus: 'pending_admin_approval'
-            }
+          ? { ...s, gatewayType, paymentConnected: false, paymentApprovalStatus: 'pending_admin_approval' }
           : s
       )
     );
-    appendAudit(
-      `طلب تفعيل بوابة الدفع (${gatewayType}) للمتجر ${targetStore?.name} — بانتظار التحقق اليدوي من قبس`,
-      `Requested payment gateway (${gatewayType}) activation for ${targetStore?.name} — pending manual admin verification`,
-      targetStore?.subdomain || storeId,
-      'info'
-    );
     showToast(
       language === 'ar'
-        ? `تم رفع طلب ربط بوابة ${gatewayType} إلى إدارة قبس (لا يتم التفعيل التلقائي إلا بعد الاعتماد)`
-        : `Payment gateway ${gatewayType} request sent to QABS Admin for manual approval`
+        ? `تم تسجيل طلب بوابة ${gatewayType} بحالة انتظار المراجعة اليدوية (التفعيل المالي المباشر معطل في المعاينة).`
+        : `${gatewayType} gateway request recorded as pending review (live activation disabled in preview).`
     );
   };
 
-  const approveStorePayment = (storeId: string, approved: boolean) => {
-    const targetStore = stores.find(s => s.id === storeId);
-    setStores(prev =>
-      prev.map(s =>
-        s.id === storeId
-          ? {
-              ...s,
-              paymentConnected: approved,
-              paymentApprovalStatus: approved ? 'approved_active' : 'unconfigured'
-            }
-          : s
-      )
-    );
-    appendAudit(
-      approved
-        ? `اعتماد وتفعيل بوابة الدفع (${targetStore?.gatewayType}) للمتجر ${targetStore?.name}`
-        : `إيقاف/رفض تفعيل بوابة الدفع للمتجر ${targetStore?.name}`,
-      approved
-        ? `Approved & activated payment gateway (${targetStore?.gatewayType}) for ${targetStore?.name}`
-        : `Rejected payment gateway for ${targetStore?.name}`,
-      targetStore?.subdomain || storeId,
-      approved ? 'success' : 'warning'
-    );
+  const approveStorePayment = (_storeId: string, _approved: boolean) => {
+    // Hard financial safety gate
     showToast(
       language === 'ar'
-        ? approved
-          ? 'تم اعتماد وتفعيل بوابة الدفع للمتجر بنجاح!'
-          : 'تم رفض طلب بوابة الدفع'
-        : approved
-        ? 'Payment gateway approved and activated!'
-        : 'Payment gateway request rejected'
+        ? 'تفعيل بوابات الدفع الحقيقية وجمع البطاقات معطل أماناً في بيئة المعاينة.'
+        : 'Live payment gateway activation is safely disabled in preview environment.'
     );
   };
 
   const requestDomainVerification = (storeId: string, customDomain: string) => {
     const cleanDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
+    if (backendStatus === 'connected') {
+      updateStoreDetails(storeId, { customDomain: cleanDomain });
+      return;
+    }
     setStores(prev =>
-      prev.map(s =>
-        s.id === storeId
-          ? {
-              ...s,
-              customDomain: cleanDomain,
-              domainVerified: false
-            }
-          : s
-      )
-    );
-    appendAudit(
-      `طلب ربط نطاق مخصص (${cleanDomain}) بانتظار فحص DNS من قبس`,
-      `Requested custom domain (${cleanDomain}) DNS verification`,
-      cleanDomain,
-      'info'
-    );
-    showToast(
-      language === 'ar'
-        ? `تم تسجيل النطاق ${cleanDomain} وإرسال طلب فحص DNS إلى لوحة قبس`
-        : `Domain ${cleanDomain} registered and queued for DNS verification`
+      prev.map(s => (s.id === storeId ? { ...s, customDomain: cleanDomain, domainVerified: false } : s))
     );
   };
 
   const verifyStoreDomain = (storeId: string) => {
-    const targetStore = stores.find(s => s.id === storeId);
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.adminVerifyStoreDomain(storeId, true);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم توثيق سجل النطاق في قاعدة البيانات (بدون تعديل DNS فعلي).' : 'Domain status verified in database.');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر توثيق النطاق', 'Failed to verify store domain');
+        }
+      })();
+      return;
+    }
     setStores(prev => prev.map(s => (s.id === storeId ? { ...s, domainVerified: true } : s)));
-    appendAudit(
-      `تأكيد فحص CNAME وتفعيل شهادة SSL للنطاق ${targetStore?.customDomain}`,
-      `Verified DNS & provisioned SSL for ${targetStore?.customDomain}`,
-      targetStore?.customDomain || storeId,
-      'success'
-    );
-    showToast(
-      language === 'ar'
-        ? 'تم التحقق من النطاق وتفعيل شهادة SSL بنجاح!'
-        : 'Custom domain verified and SSL activated!'
-    );
   };
 
   const saveStoreSnapshot = (storeId: string, label: string) => {
@@ -1033,7 +1070,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (s.id !== storeId) return s;
         const newSnap = {
           id: `ver_${Date.now()}`,
-          label: label || `نسخة محفوظة (${new Date().toLocaleTimeString()})`,
+          label: label || `نسخة (${new Date().toLocaleTimeString()})`,
           savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
           theme: s.theme,
           primaryColor: s.primaryColor || '#004457',
@@ -1041,17 +1078,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           fontFamily: s.fontFamily || 'Cairo',
           sections: (s.sections || DEFAULT_STORE_SECTIONS).map(sec => ({ ...sec }))
         };
-        return {
-          ...s,
-          designVersions: [newSnap, ...(s.designVersions || [])]
-        };
+        return { ...s, designVersions: [newSnap, ...(s.designVersions || [])] };
       })
     );
-    showToast(
-      language === 'ar'
-        ? 'تم حفظ نسخة التصميم في سجل استوديو قبس بنجاح'
-        : 'Saved design snapshot in QABS Studio history'
-    );
+    showToast(language === 'ar' ? 'تم حفظ نسخة التصميم' : 'Design snapshot saved');
   };
 
   const restoreStoreSnapshot = (storeId: string, snapshotId: string) => {
@@ -1070,127 +1100,192 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         };
       })
     );
-    showToast(
-      language === 'ar' ? 'تم استعادة نسخة التصميم بنجاح!' : 'Design version restored successfully!'
-    );
+    showToast(language === 'ar' ? 'تم استعادة نسخة التصميم' : 'Design restored');
   };
 
   const updateStoreSections = (storeId: string, sections: StoreSectionBlock[]) => {
     setStores(prev => prev.map(s => (s.id === storeId ? { ...s, sections } : s)));
   };
 
-  // --- PRODUCTS (Strictly isolated by storeId) ---
+  const addStoreCategory = async (storeId: string, nameAr: string, nameEn?: string) => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.createCategory(storeId, { nameAr, nameEn });
+        await refreshWorkspace();
+        showToast(language === 'ar' ? 'تمت إضافة التصنيف للمتجر ✓' : 'Store category added ✓');
+      } catch (err) {
+        handleApiFailure(err, 'تعذر إضافة التصنيف', 'Failed to add category');
+      }
+      return;
+    }
+    setStoreCategories(prev => [
+      { id: `cat_${Date.now()}`, storeId, nameAr, nameEn: nameEn || nameAr, slug: nameAr.toLowerCase() },
+      ...prev
+    ]);
+  };
+
+  const addStoreTeamMember = async (
+    storeId: string,
+    input: { name: string; email: string; role: 'admin' | 'staff' | 'support'; permissions?: string[] }
+  ) => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.addStoreTeamMember(storeId, input);
+        await refreshWorkspace();
+        showToast(language === 'ar' ? 'تمت إضافة عضو فريق المتجر ✓' : 'Store team member added ✓');
+      } catch (err) {
+        handleApiFailure(err, 'تعذر إضافة عضو فريق المتجر', 'Failed to add store team member');
+      }
+      return;
+    }
+    setStoreTeamMembers(prev => [
+      {
+        id: `stm_${Date.now()}`,
+        storeId,
+        name: input.name,
+        email: input.email,
+        role: input.role,
+        permissions: input.permissions || ['orders', 'products'],
+        status: 'active'
+      },
+      ...prev
+    ]);
+  };
+
+  // --- PRODUCTS ---
   const addProduct = (p: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => {
     const targetStoreId = p.storeId || activeStoreId;
-    const newProduct: StoreProduct = {
-      ...p,
-      storeId: targetStoreId,
-      id: `prod_${Date.now()}`,
-      salesCount: 0
-    };
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createProduct(targetStoreId, {
+            titleAr: p.titleAr || p.nameAr,
+            titleEn: p.titleEn || p.nameEn,
+            sku: p.sku,
+            price: p.price,
+            cost: p.cost ?? p.costPrice ?? 0,
+            stock: p.stock,
+            productType: p.productType,
+            categoryAr: p.categoryAr || p.category,
+            categoryEn: p.categoryEn,
+            status: p.status
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حفظ المنتج في قاعدة بيانات المتجر ✓' : 'Product saved to store ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إضافة المنتج', 'Failed to create product');
+        }
+      })();
+      return;
+    }
+
+    const newProduct: StoreProduct = { ...p, storeId: targetStoreId, id: `prod_${Date.now()}`, salesCount: 0 };
     setProducts(prev => [newProduct, ...prev]);
-    setStores(prev =>
-      prev.map(s => (s.id === targetStoreId ? { ...s, productsCount: s.productsCount + 1 } : s))
-    );
-    showToast(language === 'ar' ? 'تم إضافة المنتج إلى المتجر بنجاح' : 'Product added to store catalog');
+    setStores(prev => prev.map(s => (s.id === targetStoreId ? { ...s, productsCount: s.productsCount + 1 } : s)));
+    showToast(language === 'ar' ? 'تم إضافة المنتج إلى المتجر' : 'Product added to store');
   };
 
   const updateProduct = (id: string, updates: Partial<StoreProduct>) => {
+    if (backendStatus === 'connected') {
+      const target = products.find(p => p.id === id);
+      if (!target) return;
+      void (async () => {
+        try {
+          await qabsApi.updateProduct(target.storeId, id, {
+            titleAr: updates.titleAr || updates.nameAr,
+            price: updates.price,
+            stock: updates.stock,
+            status: updates.status
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم تحديث المنتج في الخادم ✓' : 'Product updated on server ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر تحديث المنتج', 'Failed to update product');
+        }
+      })();
+      return;
+    }
     setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
-    showToast(language === 'ar' ? 'تم تعديل بيانات المنتج والمخزون' : 'Product & inventory updated');
+    showToast(language === 'ar' ? 'تم تعديل المنتج' : 'Product updated');
   };
 
   const deleteProduct = (id: string) => {
     const prod = products.find(p => p.id === id);
+    if (backendStatus === 'connected' && prod) {
+      void (async () => {
+        try {
+          await qabsApi.deleteProduct(prod.storeId, id);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حذف المنتج من قاعدة البيانات' : 'Product deleted from server');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حذف المنتج', 'Failed to delete product');
+        }
+      })();
+      return;
+    }
     setProducts(prev => prev.filter(p => p.id !== id));
     if (prod) {
       setStores(prev =>
         prev.map(s => (s.id === prod.storeId ? { ...s, productsCount: Math.max(0, s.productsCount - 1) } : s))
       );
     }
-    showToast(language === 'ar' ? 'تم حذف المنتج من المتجر' : 'Product deleted from store');
+    showToast(language === 'ar' ? 'تم حذف المنتج' : 'Product deleted');
   };
 
-  // --- ORDERS (with configurable prefix & automatic product stock deduction) ---
+  // --- STORE ORDERS ---
   const addOrder = (orderData: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => {
-    const prefix = sectionSettings.orders.orderPrefix || 'QBS-';
-    const shouldDeduct = sectionSettings.orders.autoDeductInventory !== false;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createOrder(orderData.storeId, {
+            customerName: orderData.customerName,
+            customerEmail: orderData.customerEmail,
+            customerCountry: orderData.customerCountry,
+            itemsCount: orderData.itemsCount,
+            total: orderData.total
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم تسجيل طلب المتجر في الخادم ✓' : 'Store order saved on server ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر تسجيل الطلب', 'Failed to create store order');
+        }
+      })();
+      return;
+    }
     const newOrder: StoreOrder = {
       ...orderData,
-      shippingCarrier: orderData.shippingCarrier || sectionSettings.orders.defaultCarrier,
-      shippingCost: orderData.shippingCost ?? sectionSettings.orders.defaultShippingRate,
       id: `ord_${Date.now()}`,
-      orderNumber: `${prefix}${Math.floor(10000 + Math.random() * 90000)}`,
+      orderNumber: `QBS-${Math.floor(10000 + Math.random() * 90000)}`,
       date: new Date().toISOString().split('T')[0]
     };
     setOrders(prev => [newOrder, ...prev]);
-
-    if (shouldDeduct && orderData.items && orderData.items.length > 0) {
-      setProducts(prev =>
-        prev.map(prod => {
-          const orderedItem = orderData.items?.find(i => i.productId === prod.id);
-          if (!orderedItem) return prod;
-          const nextStock = Math.max(0, prod.stock - orderedItem.quantity);
-          return {
-            ...prod,
-            stock: nextStock,
-            salesCount: (prod.salesCount || 0) + orderedItem.quantity,
-            status: nextStock === 0 ? 'out_of_stock' : prod.status
-          };
-        })
-      );
-    }
-
-    setStores(prev =>
-      prev.map(s =>
-        s.id === orderData.storeId
-          ? { ...s, ordersCount: s.ordersCount + 1, totalRevenue: s.totalRevenue + orderData.total }
-          : s
-      )
-    );
-    appendAudit(
-      `إنشاء طلب جديد (${newOrder.orderNumber})${shouldDeduct ? ' وخصم المخزون تلقائياً' : ''}`,
-      `Created order (${newOrder.orderNumber})`,
-      newOrder.orderNumber
-    );
-    showToast(
-      language === 'ar'
-        ? `تم إنشاء الطلب ${newOrder.orderNumber}${shouldDeduct ? ' وخصم المخزون تلقائياً!' : '!'}`
-        : `Order ${newOrder.orderNumber} created!`
-    );
+    showToast(language === 'ar' ? `تم إنشاء الطلب ${newOrder.orderNumber}` : `Order ${newOrder.orderNumber} created`);
   };
 
   const updateOrderStatus = (id: string, status: StoreOrder['status'], trackingNumber?: string) => {
+    const existing = orders.find(o => o.id === id);
+    if (backendStatus === 'connected' && existing) {
+      void (async () => {
+        try {
+          await qabsApi.updateOrderStatus(existing.storeId, id, { status, trackingNumber });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم تحديث حالة الطلب والتتبع' : 'Order status updated');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر تحديث حالة الطلب', 'Failed to update order status');
+        }
+      })();
+      return;
+    }
     setOrders(prev =>
       prev.map(o =>
-        o.id === id
-          ? {
-              ...o,
-              status,
-              trackingNumber: trackingNumber !== undefined ? trackingNumber : o.trackingNumber
-            }
-          : o
+        o.id === id ? { ...o, status, trackingNumber: trackingNumber !== undefined ? trackingNumber : o.trackingNumber } : o
       )
     );
-    showToast(language === 'ar' ? 'تم تحديث حالة الطلب والشحنة' : 'Order & shipment status updated');
   };
 
   const issueOrderInvoice = (orderId: string): Invoice | null => {
     const targetOrder = orders.find(o => o.id === orderId);
     if (!targetOrder) return null;
-
-    if (targetOrder.invoiceId) {
-      const existing = invoices.find(inv => inv.id === targetOrder.invoiceId);
-      if (existing) {
-        showToast(
-          language === 'ar'
-            ? `الفاتورة ${existing.invoiceNumber} صادرة مسبقاً لهذا الطلب`
-            : `Invoice ${existing.invoiceNumber} already issued`
-        );
-        return existing;
-      }
-    }
-
     const store = stores.find(s => s.id === targetOrder.storeId);
     const newInvoice: Invoice = {
       id: `inv_${Date.now()}`,
@@ -1198,27 +1293,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       date: new Date().toISOString().split('T')[0],
       amount: targetOrder.total,
       currency: targetOrder.currency || store?.currency || 'SAR',
-      status: targetOrder.status === 'refunded' ? 'refunded' : 'paid',
+      status: 'pending_verification',
       descriptionAr: `فاتورة طلب متجر (${store?.name || 'متجر قبس'}) — ${targetOrder.orderNumber}`,
       descriptionEn: `Store order invoice (${store?.name || 'QABS Store'}) — ${targetOrder.orderNumber}`,
       clientName: targetOrder.customerName
     };
     setInvoices(prev => [newInvoice, ...prev]);
-    setOrders(prev => prev.map(o => (o.id === orderId ? { ...o, invoiceId: newInvoice.id } : o)));
-    appendAudit(
-      `إصدار فاتورة مبيعات (${newInvoice.invoiceNumber}) للطلب ${targetOrder.orderNumber}`,
-      `Issued sales invoice (${newInvoice.invoiceNumber}) for order ${targetOrder.orderNumber}`,
-      newInvoice.invoiceNumber
-    );
-    showToast(
-      language === 'ar'
-        ? `تم إصدار الفاتورة ${newInvoice.invoiceNumber} وحفظها في الفواتير`
-        : `Invoice ${newInvoice.invoiceNumber} issued and saved`
-    );
     return newInvoice;
   };
 
-  // --- CUSTOMERS ---
   const addCustomer = (c: Omit<StoreCustomer, 'id' | 'ordersCount' | 'totalSpent' | 'lastOrderDate'>) => {
     const newCustomer: StoreCustomer = {
       ...c,
@@ -1228,119 +1311,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       lastOrderDate: new Date().toISOString().split('T')[0]
     };
     setCustomers(prev => [newCustomer, ...prev]);
-    showToast(language === 'ar' ? 'تم إضافة العميل إلى قاعدة بيانات المتجر' : 'Customer added to store CRM');
   };
 
-  // --- DISCOUNTS ---
   const addDiscount = (d: Omit<StoreDiscount, 'id' | 'usedCount'>) => {
-    const newDiscount: StoreDiscount = {
-      ...d,
-      id: `dsc_${Date.now()}`,
-      usedCount: 0
-    };
-    setDiscounts(prev => [newDiscount, ...prev]);
-    showToast(language === 'ar' ? `تم إنشاء كود الخصم ${d.code} بنجاح` : `Discount code ${d.code} created`);
+    setDiscounts(prev => [{ ...d, id: `dsc_${Date.now()}`, usedCount: 0 }, ...prev]);
   };
-
   const toggleDiscountStatus = (id: string) => {
-    setDiscounts(prev =>
-      prev.map(d => (d.id === id ? { ...d, status: d.status === 'active' ? 'expired' : 'active' } : d))
-    );
-    showToast(language === 'ar' ? 'تم تحديث حالة الكوبون' : 'Coupon status updated');
+    setDiscounts(prev => prev.map(d => (d.id === id ? { ...d, status: d.status === 'active' ? 'expired' : 'active' } : d)));
   };
-
-  // --- SHIPPING ZONES ---
   const addShippingZone = (z: Omit<StoreShippingZone, 'id'>) => {
-    const newZone: StoreShippingZone = {
-      ...z,
-      id: `shp_${Date.now()}`
-    };
-    setShippingZones(prev => [newZone, ...prev]);
-    showToast(language === 'ar' ? 'تم إضافة منطقة وطريقة الشحن للمتجر' : 'Shipping zone added to store');
+    setShippingZones(prev => [{ ...z, id: `shp_${Date.now()}` }, ...prev]);
   };
-
-  // --- STORE PAGES ---
   const saveStorePage = (page: Omit<StorePageItem, 'id' | 'updatedAt'> & { id?: string }) => {
     const today = new Date().toISOString().split('T')[0];
     if (page.id) {
-      setStorePages(prev =>
-        prev.map(p => (p.id === page.id ? { ...p, ...page, id: page.id, updatedAt: today } : p))
-      );
-      showToast(language === 'ar' ? 'تم تحديث محتوى الصفحة بنجاح' : 'Store page updated');
+      setStorePages(prev => prev.map(p => (p.id === page.id ? { ...p, ...page, id: page.id, updatedAt: today } : p)));
     } else {
-      const newPage: StorePageItem = {
-        ...page,
-        id: `pg_${Date.now()}`,
-        updatedAt: today
-      };
-      setStorePages(prev => [newPage, ...prev]);
-      showToast(language === 'ar' ? 'تم إنشاء الصفحة المخصصة في المتجر' : 'Custom page created in store');
+      setStorePages(prev => [{ ...page, id: `pg_${Date.now()}`, updatedAt: today }, ...prev]);
     }
   };
-
-  const deleteStorePage = (id: string) => {
-    setStorePages(prev => prev.filter(p => p.id !== id));
-    showToast(language === 'ar' ? 'تم حذف الصفحة' : 'Page deleted');
-  };
-
-  // --- STORE APPS ---
+  const deleteStorePage = (id: string) => setStorePages(prev => prev.filter(p => p.id !== id));
   const toggleStoreApp = (appId: string, storeId: string) => {
     setStoreApps(prev =>
       prev.map(app => {
         if (app.id !== appId) return app;
         const currentIds = app.installedStoreIds || app.installedStores || [];
-        const exists = currentIds.includes(storeId);
-        const updatedIds = exists
-          ? currentIds.filter(id => id !== storeId)
-          : [...currentIds, storeId];
+        const updatedIds = currentIds.includes(storeId) ? currentIds.filter(x => x !== storeId) : [...currentIds, storeId];
         return { ...app, installedStoreIds: updatedIds, installedStores: updatedIds };
       })
     );
-    showToast(
-      language === 'ar' ? 'تم تحديث حالة التطبيق في متجرك' : 'Store app integration updated'
-    );
   };
-
-  // --- CENTRAL TEMPLATES ---
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
-    const newTpl: StoreTemplatePreset = {
-      ...tpl,
-      id: `tpl_${Date.now()}`
-    };
-    setStoreTemplates(prev => [newTpl, ...prev]);
-    appendAudit(
-      `إضافة قالب متجر جديد في استوديو قبس: ${tpl.nameAr}`,
-      `Added new store template preset: ${tpl.nameEn}`,
-      newTpl.id
-    );
-    showToast(language === 'ar' ? 'تم نشر القالب الجديد لجميع متاجر قبس' : 'New store template published');
+    setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
   };
-
   const triggerSystemBackup = (targetLabel?: string) => {
-    appendAudit(
-      `نسخ احتياطي مشفر لبيانات المتاجر والمنتجات والطلبات (${targetLabel || 'جميع متاجر قبس'})`,
-      `Encrypted multi-tenant snapshot backup completed (${targetLabel || 'All QABS Stores'})`,
-      targetLabel || 'QABS-Cloud-Vault',
-      'success'
-    );
-    showToast(
-      language === 'ar'
-        ? 'تم إنشاء نسخة احتياطية مشفرة كاملة وحفظها في سجل العمليات!'
-        : 'Full encrypted backup snapshot created and logged!'
-    );
+    appendAudit(`نسخ احتياطي للبيانات (${targetLabel || 'المنصة'})`, `Triggered backup (${targetLabel || 'Platform'})`, targetLabel || 'QABS-Vault');
+    showToast(language === 'ar' ? 'تم تسجيل عملية النسخ الاحتياطي في السجل' : 'Backup recorded in audit log');
   };
 
   const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
-    const newAccount: BankingAccount = {
-      ...bank,
-      id: `bnk_${Date.now()}`,
-      balance: 1000,
-      status: 'verified'
-    };
-    setBanking(prev => [newAccount, ...prev]);
+    setBanking(prev => [{ ...bank, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' }, ...prev]);
   };
 
+  // --- SUPPORT TICKETS ---
   const addTicket = (t: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'status'>) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createTicket({
+            subject: t.subject || t.subjectAr || t.subjectEn || 'Support Request',
+            category: t.category,
+            priority: t.priority,
+            lastMessage: t.lastMessage
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم إرسال تذكرة الدعم بنجاح ✓' : 'Support ticket created ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إنشاء التذكرة', 'Failed to create ticket');
+        }
+      })();
+      return;
+    }
     const newTicket: SupportTicket = {
       ...t,
       id: `tkt_${Date.now()}`,
@@ -1350,70 +1381,153 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       updatedAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
     };
     setTickets(prev => [newTicket, ...prev]);
-    showToast(
-      language === 'ar'
-        ? `تم فتح تذكرة الدعم ${newTicket.ticketNumber} بنجاح`
-        : `Opened support ticket ${newTicket.ticketNumber}`
-    );
   };
 
   const resolveTicket = (id: string) => {
-    setTickets(prev =>
-      prev.map(t => (t.id === id ? { ...t, status: 'resolved', updatedAt: 'الآن' } : t))
-    );
-    showToast(language === 'ar' ? 'تم إغلاق التذكرة بنجاح' : 'Ticket resolved');
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.resolveTicket(id);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم إغلاق التذكرة بنجاح' : 'Ticket resolved');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إغلاق التذكرة', 'Failed to resolve ticket');
+        }
+      })();
+      return;
+    }
+    setTickets(prev => prev.map(t => (t.id === id ? { ...t, status: 'resolved', updatedAt: 'now' } : t)));
   };
 
-  const addStaff = (s: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
-    const newMember: StaffMember = {
-      ...s,
-      id: `stf_${Date.now()}`,
-      status: 'active',
-      lastActive: 'نشط الآن'
+  // --- NOTIFICATIONS & DOCUMENTS VAULT ---
+  const markNotificationRead = async (id: string) => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.markNotificationRead(id);
+        setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: true } : n)));
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    setNotifications(prev => prev.map(n => (n.id === id ? { ...n, isRead: true } : n)));
+  };
+
+  const markAllNotificationsRead = async () => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.markAllNotificationsRead();
+        setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      } catch {
+        // ignore
+      }
+      return;
+    }
+    setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+  };
+
+  const uploadRequestDocument = async (input: {
+    name: string;
+    type?: string;
+    mimeType: string;
+    base64: string;
+    requestId?: string;
+    formationId?: string;
+  }): Promise<RequestDocumentMeta | null> => {
+    if (backendStatus === 'connected') {
+      try {
+        const res = await qabsApi.uploadDocument(input);
+        const mapped = mapDbDocument(res.document);
+        await refreshWorkspace();
+        showToast(language === 'ar' ? `تم رفع المستند "${mapped.documentName}" بشكل خاص ومشفر ✓` : `Private document "${mapped.documentName}" uploaded ✓`);
+        return mapped;
+      } catch (err) {
+        handleApiFailure(err, 'فشل التحقق الأمني للملف المرفوع (PDF/PNG/JPEG/WEBP حتى 5MB فقط)', 'File rejected by server security validation');
+        return null;
+      }
+    }
+    const meta: RequestDocumentMeta = {
+      id: `doc_${Date.now()}`,
+      requestId: input.requestId || null,
+      formationId: input.formationId || null,
+      documentName: input.name,
+      documentType: input.type || 'kyc',
+      mimeType: input.mimeType,
+      sizeBytes: Math.round((input.base64.length * 3) / 4),
+      status: 'uploaded',
+      createdAt: new Date().toISOString()
     };
-    setStaff(prev => [newMember, ...prev]);
-    showToast(language === 'ar' ? 'تم إضافة عضو جديد بصلاحيات مخصصة' : 'Staff member added with custom permissions');
+    setRequestDocuments(prev => [meta, ...prev]);
+    return meta;
   };
 
+  // --- STAFF ---
+  const addStaff = (s: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
+    setStaff(prev => [{ ...s, id: `stf_${Date.now()}`, status: 'active', lastActive: 'now' }, ...prev]);
+  };
   const updateStaffPermissions = (staffId: string, permissions: string[]) => {
     setStaff(prev => prev.map(m => (m.id === staffId ? { ...m, permissions } : m)));
-    showToast(language === 'ar' ? 'تم تحديث صلاحيات الموظف وحفظها' : 'Staff permissions updated');
   };
-
   const removeStaff = (staffId: string) => {
     setStaff(prev => prev.filter(m => m.id !== staffId));
-    showToast(language === 'ar' ? 'تم إزالة الموظف من القائمة' : 'Staff member removed');
   };
 
+  // --- BILLING, SUBSCRIPTIONS, INVOICES & CREDITS (STRICT FINANCIAL GATE) ---
   const changeSubscriptionPlan = (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          const res = await qabsApi.requestSubscriptionChange(planId, cycle);
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم إصدار فاتورة الترقية (${res.invoice.invoice_number}) بانتظار التحقق المرجعي من الإدارة.`
+              : `Upgrade invoice (${res.invoice.invoice_number}) issued as pending verification.`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إنشاء طلب تغيير الباقة', 'Failed to request subscription change');
+        }
+      })();
+      return;
+    }
     const targetPlan = SUBSCRIPTION_PLANS.find(p => p.id === planId) || SUBSCRIPTION_PLANS[1];
-    const newPrice = cycle === 'annual' ? targetPlan.priceAnnual : targetPlan.priceMonthly;
-    setSubscription({
-      planId,
-      billingCycle: cycle,
-      renewalDate: new Date(Date.now() + (cycle === 'annual' ? 365 : 30) * 86400000).toISOString().split('T')[0],
-      status: 'active',
-      currentPrice: newPrice
-    });
-
+    const newPrice = cycle === 'annual' ? targetPlan.priceAnnual * 12 : targetPlan.priceMonthly;
     const newInv: Invoice = {
       id: `inv_${Date.now()}`,
       invoiceNumber: `INV-QBS-${Math.floor(1000 + Math.random() * 9000)}`,
       date: new Date().toISOString().split('T')[0],
-      amount: newPrice * (cycle === 'annual' ? 12 : 1),
+      amount: newPrice,
       currency: 'USD',
-      status: 'paid',
-      descriptionAr: `اشتراك متاجر قبس — ${targetPlan.nameAr} (${cycle === 'annual' ? 'سنوي' : 'شهري'})`,
-      descriptionEn: `QABS Stores Subscription — ${targetPlan.nameEn} (${cycle})`,
+      status: 'pending_verification',
+      descriptionAr: `طلب ترقية الباقة: ${targetPlan.nameAr} (${cycle}) — بانتظار التحقق`,
+      descriptionEn: `Subscription upgrade: ${targetPlan.nameEn} (${cycle}) — Pending Verification`,
       clientName: user.companyName || user.name
     };
     setInvoices(prev => [newInv, ...prev]);
-
     showToast(
       language === 'ar'
-        ? `تم تحديث باقة متجرك إلى: ${targetPlan.nameAr}`
-        : `Updated store plan to: ${targetPlan.nameEn}`
+        ? `تم إصدار الفاتورة ${newInv.invoiceNumber} بحالة انتظار التحقق (لا يُفعّل الاشتراك قبل تأكيد السداد).`
+        : `Invoice ${newInv.invoiceNumber} created as pending verification.`
     );
+  };
+
+  const verifyInvoiceWithProof = async (invoiceId: string, paymentProofRef: string): Promise<boolean> => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.adminVerifyInvoice(invoiceId, paymentProofRef);
+        await refreshWorkspace();
+        showToast(language === 'ar' ? 'تم توثيق مرجع السداد وتحديث الفاتورة والأرصدة ✓' : 'Payment proof verified & applied ✓');
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر توثيق الفاتورة — تأكد من الصلاحية ومرجع السداد', 'Failed to verify invoice');
+        return false;
+      }
+    }
+    if (!paymentProofRef.trim() || paymentProofRef.trim().length < 4) return false;
+    setInvoices(prev =>
+      prev.map(inv => (inv.id === invoiceId ? { ...inv, status: 'paid', paymentProofRef } : inv))
+    );
+    return true;
   };
 
   const issueRefund = (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => {
@@ -1424,36 +1538,128 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       currency: 'USD',
       reasonAr,
       reasonEn,
-      status: 'processed',
+      status: 'requested',
       date: new Date().toISOString().split('T')[0],
       customerName: user.name
     };
     setRefunds(prev => [newRefund, ...prev]);
-    setOrders(prev => prev.map(o => (o.orderNumber === orderNumber ? { ...o, status: 'refunded' } : o)));
-
-    showToast(
-      language === 'ar'
-        ? `تم تنفيذ استرجاع الطلب ${orderNumber} بقيمة $${amount}`
-        : `Processed refund of $${amount} for order ${orderNumber}`
-    );
+    showToast(language === 'ar' ? `تم تسجيل طلب الاسترداد للطلب ${orderNumber} للمراجعة` : `Refund request recorded for ${orderNumber}`);
   };
 
   const topUpCredits = (amount: number) => {
-    setUser(prev => ({ ...prev, credits: prev.credits + amount }));
-    showToast(
-      language === 'ar'
-        ? `تم شحن رصيد حساب المتجر بمبلغ +$${amount}`
-        : `Recharged store account balance by +$${amount}`
-    );
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          const res = await qabsApi.requestCreditTopup(amount);
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم إصدار فاتورة شحن الرصيد (${res.invoice.invoice_number}) بانتظار التحقق المرجعي (لا يضاف الرصيد تلقائياً بدون إثبات).`
+              : `Credit top-up invoice (${res.invoice.invoice_number}) created — pending proof verification.`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إنشاء طلب شحن الرصيد', 'Failed to request credit top-up');
+        }
+      })();
+      return;
+    }
+    const newInv: Invoice = {
+      id: `inv_${Date.now()}`,
+      invoiceNumber: `INV-CRD-${Math.floor(1000 + Math.random() * 9000)}`,
+      date: new Date().toISOString().split('T')[0],
+      amount,
+      currency: 'USD',
+      status: 'pending_verification',
+      descriptionAr: `طلب شحن ${amount * 10} رصيد AI — بانتظار التحقق`,
+      descriptionEn: `AI Credit Pack (${amount * 10} credits) — Pending Verification`,
+      clientName: user.name
+    };
+    setInvoices(prev => [newInv, ...prev]);
+    showToast(language === 'ar' ? `صدرت الفاتورة ${newInv.invoiceNumber} بانتظار مرجع التحقق` : `Invoice ${newInv.invoiceNumber} pending verification`);
   };
 
+  // --- ADMIN GOVERNANCE HELPERS ---
+  const adminCreateStaffUser = async (input: { name: string; email: string; password: string; role: string }) => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adminCreateStaff(input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم إنشاء حساب الموظف بنجاح ✓' : 'Staff user created ✓');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر إنشاء حساب الموظف', 'Failed to create staff user');
+      return false;
+    }
+  };
+
+  const adminUpdateStaffUser = async (userId: string, input: { role?: string; status?: 'active' | 'suspended' }) => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adminUpdateStaff(userId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم تحديث دور/حالة الموظف ✓' : 'Staff updated ✓');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث صلاحيات الموظف', 'Failed to update staff role');
+      return false;
+    }
+  };
+
+  const adminUpdateServiceCatalog = async (slug: string, input: { startingPriceUsd?: number; active?: boolean }) => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adminUpdateService(slug, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? `تم تحديث خدمة ${slug} ✓` : `Updated service ${slug} ✓`);
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث الخدمة', 'Failed to update service');
+      return false;
+    }
+  };
+
+  const adminSendBroadcastNotification = async (input: {
+    tenantId?: string;
+    titleAr: string;
+    titleEn?: string;
+    bodyAr: string;
+    bodyEn?: string;
+  }) => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      const res = await qabsApi.adminSendNotification(input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? `تم إرسال الإشعار إلى ${res.sentCount} حساب ✓` : `Notification sent to ${res.sentCount} tenant(s) ✓`);
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر إرسال الإشعار', 'Failed to send notification');
+      return false;
+    }
+  };
+
+  const adminUpdatePlatformSettings = async (settings: Record<string, unknown>) => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adminUpdateSettings(settings);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم حفظ إعدادات المنصة العامة ✓' : 'Platform settings updated ✓');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث إعدادات المنصة', 'Failed to update platform settings');
+      return false;
+    }
+  };
+
+  // --- AUTH GATE ---
   const openClientAuth = (initialMode: 'login' | 'register' = 'login') => {
+    setAuthError(null);
     setAuthIntent('client');
     setAuthMode(initialMode);
     setAuthModalOpen(true);
   };
 
   const openOwnerAuth = () => {
+    setAuthError(null);
     setAuthIntent('owner');
     setAuthMode('login');
     setAuthModalOpen(true);
@@ -1467,8 +1673,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAuthModalOpen(true);
       showToast(
         language === 'ar'
-          ? 'يرجى تسجيل الدخول أو إنشاء حساب سريع لإتمام طلبك'
-          : 'Please sign in or create an account to complete your order'
+          ? 'يرجى تسجيل الدخول أو إنشاء حساب لإتمام طلبك'
+          : 'Please sign in or register to submit your request'
       );
     } else {
       setCheckoutModalOpen(true);
@@ -1485,54 +1691,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const suffix = d.entityType || (jur === 'UK_LTD' ? 'LTD' : 'LLC');
       const baseName = (d.companyName || `${user.companyName || user.name || 'QABS VENTURES'}`).trim().toUpperCase();
       const companyName = baseName.endsWith(suffix) ? baseName : `${baseName} ${suffix}`;
-      const addrMap: Record<string, { agent: string; address: string }> = {
-        US_KENTUCKY: {
-          agent: 'QABS Kentucky Registered Agent Services',
-          address: '400 W Market St Ste 1800, Louisville, KY 40202, USA'
-        },
-        US_WYOMING: {
-          agent: 'Northwest Registered Agent LLC (Cheyenne, WY)',
-          address: '30 N Gould St Ste R, Sheridan, WY 82801, USA'
-        },
-        US_DELAWARE: {
-          agent: 'The Corporation Trust Company (Wilmington, DE)',
-          address: '1209 N Orange St, Wilmington, DE 19801, USA'
-        },
-        US_NEW_MEXICO: {
-          agent: 'QABS New Mexico Statutory Agent LLC',
-          address: '1209 Mountain Rd Pl NE, Albuquerque, NM 87110, USA'
-        },
-        UK_LTD: {
-          agent: 'QABS UK Company Secretarial & Registered Office',
-          address: '71-75 Shelton Street, Covent Garden, London, WC2H 9JQ, UK'
-        }
-      };
-      const meta = addrMap[jur] || addrMap.US_WYOMING;
       addCompany({
         companyName,
         jurisdiction: jur,
         entityType: suffix,
-        registeredAgent: meta.agent,
-        registeredAddress: meta.address,
+        registeredAgent: 'QABS Statutory Registered Agent LLC',
+        registeredAddress: '30 N Gould St Ste R, Sheridan, WY 82801, USA',
         renewalDueDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        activity: 'التجارة الإلكترونية والخدمات الدولية',
         ownerName: user.name,
         ownerEmail: user.email,
         packagePriceUsd: ord.priceUsd,
-        addons: d.addons || {
-          ein: true,
-          physicalAddressAgent: true,
-          businessBank: false,
-          stripePayPal: false
-        },
         formationStage: 1,
-        notes: `تم الدفع عبر ${paymentMethod} — طلب من واجهة العرض العامة`
+        notes: `Submitted via ${paymentMethod} (pending verification)`
       });
       setCheckoutModalOpen(false);
       setPendingServiceOrder(null);
       setMode('portal');
-      if (typeof window !== 'undefined') window.history.replaceState({ qabsWorkspace: 'company_formation' }, '', '#/company-formation');
-      showToast(language === 'ar' ? `تم دفع طلب تأسيس "${companyName}" وحفظه في مساحة العمل!` : `Formation order paid & saved!`);
       return;
     }
 
@@ -1547,18 +1721,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           name,
           ownerName: user.name,
           ownerEmail: user.email,
-          activityAr: 'متجر إلكتروني مستقل — باقة قبس المعتمدة',
-          activityEn: 'Independent QABS Store',
+          activityAr: 'متجر إلكتروني مستقل — مسودة',
+          activityEn: 'Independent Storefront — Draft',
           country: 'SA',
           defaultLanguage: 'both',
           subdomain: `${slug}.qabs1.store`,
           currency: 'SAR',
           taxRate: 15,
           theme: 'gold_executive',
-          templateId: 'tpl_luxury_royal',
-          primaryColor: '#14243E',
-          accentColor: '#D5B46B',
-          fontFamily: 'Cairo',
           status: 'draft',
           approvalStatus: 'draft',
           paymentConnected: false,
@@ -1569,116 +1739,246 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCheckoutModalOpen(false);
       setPendingServiceOrder(null);
       setMode('portal');
-      if (typeof window !== 'undefined') window.history.replaceState({ qabsWorkspace: 'my_stores' }, '', '#/stores');
-      showToast(language === 'ar' ? `تم تفعيل باقة المتجر بنجاح عبر ${paymentMethod}!` : `Store package activated via ${paymentMethod}!`);
       return;
     }
 
     if (ord.serviceType === 'ai_credits') {
-      const amount = d.creditsAmount || Math.max(50, ord.priceUsd * 10);
-      topUpCredits(amount);
+      topUpCredits(ord.priceUsd);
       setCheckoutModalOpen(false);
       setPendingServiceOrder(null);
       setMode('portal');
-      if (typeof window !== 'undefined') window.history.replaceState({ qabsWorkspace: 'qabs_ai' }, '', '#/qabs-ai');
-      showToast(language === 'ar' ? `تم شحن +${amount} رصيد قبس AI بنجاح!` : `Recharged +${amount} QABS AI credits!`);
     }
   };
 
-  const submitServiceOrder = (
-    input: Omit<SubmittedServiceOrder, 'id' | 'referenceCode' | 'status' | 'createdAt'>
-  ): SubmittedServiceOrder => {
+  const submitServiceOrder = async (
+    input: Omit<SubmittedServiceOrder, 'id' | 'referenceCode' | 'status' | 'createdAt'> & {
+      status?: 'draft' | 'new';
+      document?: { name: string; mimeType: string; base64: string; type?: string };
+    }
+  ): Promise<SubmittedServiceOrder> => {
+    if (backendStatus === 'connected') {
+      const res = await qabsApi.createServiceRequest({
+        serviceSlug: input.serviceSlug,
+        servicePath: input.servicePath,
+        serviceTitleAr: input.serviceTitleAr,
+        serviceTitleEn: input.serviceTitleEn,
+        packageId: input.packageId,
+        packageNameAr: input.packageNameAr,
+        packageNameEn: input.packageNameEn,
+        priceUsd: input.priceUsd,
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        customerPhone: input.customerPhone,
+        companyOrStoreName: input.companyOrStoreName,
+        customFields: input.customFields,
+        notes: input.notes,
+        status: input.status || 'new',
+        document: input.document
+      });
+      const mapped = mapDbServiceRequest(res.request);
+      if (isAuthenticated) await refreshWorkspace();
+      else setSubmittedServiceOrders(prev => [mapped, ...prev]);
+      showToast(
+        language === 'ar'
+          ? `تم حفظ الطلب "${input.serviceTitleAr}" في الخادم برقم ${mapped.referenceCode}`
+          : `Request saved on server (${mapped.referenceCode})`
+      );
+      return mapped;
+    }
+
     const referenceCode = `QBS-${Math.floor(100000 + Math.random() * 899999)}`;
     const newOrder: SubmittedServiceOrder = {
       ...input,
       id: `ord_svc_${Date.now()}`,
       referenceCode,
-      status: 'received',
+      status: input.status || 'new',
+      attachedDocumentName: input.document?.name,
       createdAt: new Date().toISOString().replace('T', ' ').slice(0, 16)
     };
     setSubmittedServiceOrders(prev => [newOrder, ...prev]);
-    appendAudit(
-      `استلام طلب خدمة مستقل (${input.serviceTitleAr}) رقم المرجع ${referenceCode}`,
-      `Received service request (${input.serviceTitleEn}) ref ${referenceCode}`,
-      referenceCode
-    );
-    showToast(
-      language === 'ar'
-        ? `تم حفظ طلب "${input.serviceTitleAr}" برقم مرجعي ${referenceCode}`
-        : `Service order "${input.serviceTitleEn}" saved (${referenceCode})`
-    );
+    showToast(language === 'ar' ? `تم حفظ الطلب محلياً برقم ${referenceCode}` : `Order saved locally (${referenceCode})`);
     return newOrder;
   };
 
-  const login = (email: string, role: UserRole) => {
-    const cleanEmail = email.trim() || (role === 'super_admin' ? OWNER_USER_PROFILE.email : 'client@qabs1.store');
-    if (role === 'super_admin') {
-      setUser({
-        ...OWNER_USER_PROFILE,
-        email: cleanEmail
-      });
-    } else {
-      const friendlyName = cleanEmail.split('@')[0] || 'عميل منصة قبس';
-      setUser({
-        id: `usr_client_${Date.now()}`,
-        name: friendlyName,
-        email: cleanEmail,
-        role: 'merchant',
-        avatar: '',
-        companyName: '',
-        credits: 250
-      });
+  const updateServiceOrderStatus = async (id: string, status: ServiceOrderStatus, adminNotes?: string): Promise<boolean> => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.updateServiceRequest(id, { status, adminNotes });
+        await refreshWorkspace();
+        showToast(language === 'ar' ? `تم تحديث حالة الطلب إلى ${status} وإشعار العميل ✓` : `Request status updated to ${status} ✓`);
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر تحديث حالة الطلب', 'Failed to update request status');
+        return false;
+      }
     }
+    setSubmittedServiceOrders(prev => prev.map(r => (r.id === id ? { ...r, status, adminNotes } : r)));
+    return true;
+  };
+
+  const login = async (email: string, role: UserRole, password = ''): Promise<boolean> => {
+    setAuthError(null);
+    if (backendStatus === 'connected') {
+      setAuthLoading(true);
+      try {
+        await qabsApi.login(email.trim(), password);
+        const boot = await qabsApi.bootstrap();
+        applyBootstrapPayload(boot);
+        if (PRIVILEGED_ROLES.has(boot.user.role as UserRole)) {
+          try {
+            const ov = await qabsApi.adminOverview();
+            setAdminOverview(ov);
+          } catch {
+            // ignore
+          }
+        }
+        setAuthModalOpen(false);
+        if (pendingServiceOrder) {
+          setCheckoutModalOpen(true);
+        } else if (PRIVILEGED_ROLES.has(boot.user.role as UserRole)) {
+          setMode('admin');
+        } else {
+          setMode('portal');
+        }
+        showToast(language === 'ar' ? `مرحباً بك ${boot.user.name}` : `Welcome, ${boot.user.name}`);
+        return true;
+      } catch (err) {
+        const msg = (err as ApiError)?.message || 'Invalid credentials';
+        setAuthError(msg);
+        showToast(msg);
+        return false;
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+
+    const cleanEmail = email.trim() || 'client@qabs1.store';
+    setUser(role === 'super_admin' ? { ...OWNER_USER_PROFILE, email: cleanEmail } : { ...INITIAL_USER, id: `usr_${Date.now()}`, name: cleanEmail.split('@')[0], email: cleanEmail, role: 'customer', credits: 50 });
     setIsAuthenticated(true);
     setAuthModalOpen(false);
+    setMode(role === 'super_admin' ? 'admin' : 'portal');
+    return true;
+  };
 
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم تسجيل الدخول! تابع إتمام الدفع لخدمتك المختارة'
-          : 'Signed in! Complete checkout for your selected service'
-      );
-    } else if (role === 'super_admin') {
-      setMode('admin');
-      showToast(language === 'ar' ? `أهلاً بك ${OWNER_USER_PROFILE.name} — لوحة الإدارة الكاملة` : 'Welcome Owner Anwar Al-Ghazali');
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'مرحباً بك في مساحة عملك الخاصة!' : 'Welcome to your client workspace!');
+  const loginOwner = async (email?: string, password?: string): Promise<boolean> => {
+    return login(email?.trim() || OWNER_USER_PROFILE.email, 'super_admin', password || '');
+  };
+
+  const register = async (
+    name: string,
+    email: string,
+    companyName: string,
+    _role?: UserRole,
+    password = ''
+  ): Promise<boolean> => {
+    setAuthError(null);
+    if (backendStatus === 'connected') {
+      setAuthLoading(true);
+      try {
+        const res = await qabsApi.register({ name: name.trim(), email: email.trim(), password, companyName: companyName.trim() });
+        if (res.previewEmailVerifyToken) setPreviewVerifyToken(res.previewEmailVerifyToken);
+        const boot = await qabsApi.bootstrap();
+        applyBootstrapPayload(boot);
+        setAuthModalOpen(false);
+        setMode(pendingServiceOrder ? 'landing' : 'portal');
+        if (pendingServiceOrder) setCheckoutModalOpen(true);
+        showToast(language === 'ar' ? 'تم إنشاء حسابك المستقل في قاعدة البيانات بنجاح!' : 'Isolated client workspace created!');
+        return true;
+      } catch (err) {
+        const msg = (err as ApiError)?.message || 'Registration failed';
+        setAuthError(msg);
+        showToast(msg);
+        return false;
+      } finally {
+        setAuthLoading(false);
+      }
     }
-  };
 
-  const loginOwner = (email?: string) => {
-    login(email?.trim() || OWNER_USER_PROFILE.email, 'super_admin');
-  };
-
-  const register = (name: string, email: string, companyName: string, _role?: UserRole) => {
     setUser({
       id: `usr_client_${Date.now()}`,
       name: name.trim(),
       email: email.trim(),
-      role: 'merchant',
+      role: 'customer',
       avatar: '',
       companyName: companyName.trim(),
-      credits: 200
+      credits: 50
     });
     setIsAuthenticated(true);
     setAuthModalOpen(false);
-
-    if (pendingServiceOrder) {
-      setCheckoutModalOpen(true);
-      showToast(
-        language === 'ar'
-          ? 'تم إنشاء حسابك! أكمل الآن دفع الخدمة التي اخترتها'
-          : 'Account created! Complete checkout for your selected service'
-      );
-    } else {
-      setMode('portal');
-      showToast(language === 'ar' ? 'تم إنشاء حساب العميل وفتح مساحة العمل!' : 'Client account created successfully!');
-    }
+    setMode('portal');
+    return true;
   };
 
-  const logout = () => {
+  const requestPasswordReset = async (email: string): Promise<string | null> => {
+    setAuthError(null);
+    if (backendStatus === 'connected') {
+      try {
+        const res = await qabsApi.forgotPassword(email.trim());
+        const tok = res.previewResetToken || null;
+        setPreviewResetToken(tok);
+        return tok;
+      } catch (err) {
+        const msg = (err as ApiError)?.message || 'Recovery failed';
+        setAuthError(msg);
+        return null;
+      }
+    }
+    return 'preview-offline-token';
+  };
+
+  const confirmPasswordReset = async (token: string, newPassword: string): Promise<boolean> => {
+    setAuthError(null);
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.resetPassword(token.trim(), newPassword);
+        setPreviewResetToken(null);
+        showToast(language === 'ar' ? 'تم تغيير كلمة المرور وإلغاء الجلسات السابقة ✓' : 'Password reset successfully ✓');
+        return true;
+      } catch (err) {
+        const msg = (err as ApiError)?.message || 'Invalid or expired reset token';
+        setAuthError(msg);
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const confirmEmailVerification = async (token: string): Promise<boolean> => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.verifyEmail(token.trim());
+        setPreviewVerifyToken(null);
+        await refreshWorkspace();
+        showToast(language === 'ar' ? 'تم تأكيد البريد الإلكتروني بنجاح ✓' : 'Email verified ✓');
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'رمز التحقق غير صالح أو منتهي', 'Invalid or expired verification token');
+        return false;
+      }
+    }
+    setUser(prev => ({ ...prev, emailVerified: true }));
+    return true;
+  };
+
+  const logout = async () => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.logout();
+      } catch {
+        // clear local state anyway
+      }
+      setCompanies([]);
+      setStores([]);
+      setProducts([]);
+      setOrders([]);
+      setCustomers([]);
+      setInvoices([]);
+      setTickets([]);
+      setAuditLogs([]);
+      setSubmittedServiceOrders([]);
+      setNotifications([]);
+      setAdminOverview(null);
+    }
     setIsAuthenticated(false);
     setUser(INITIAL_USER);
     setPendingServiceOrder(null);
@@ -1687,62 +1987,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined' && window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-    showToast(language === 'ar' ? 'تم تسجيل الخروج والعودة للواجهة العامة' : 'Logged out to public showcase');
+    showToast(language === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Signed out cleanly');
   };
 
-  // --- SHOPIFY ADMIN API SYNC ---
-  const syncShopifyStore = (
-    storeId: string,
-    domain: string,
-    accessToken: string,
-    webhooksConnected: boolean
-  ) => {
-    const cleanDomain = domain.trim() || 'qabs-store.myshopify.com';
-    const nowLabel = new Date().toISOString().replace('T', ' ').slice(0, 16);
-    const storeProdsCount = products.filter(p => p.storeId === storeId).length;
-
+  // --- OTHER HELPERS ---
+  const syncShopifyStore = (storeId: string, domain: string, accessToken: string, webhooksConnected: boolean) => {
+    // Notice: preview never invokes real external Shopify mutation
     setStores(prev =>
       prev.map(s =>
         s.id === storeId
           ? {
               ...s,
-              shopifyDomain: cleanDomain,
+              shopifyDomain: domain.trim(),
               shopifyAccessToken: accessToken.trim(),
-              shopifyWebhooksConnected: webhooksConnected,
-              shopifyLastSync: nowLabel,
-              shopifySyncedProductsCount: storeProdsCount
+              shopifyWebhooksConnected: webhooksConnected
             }
           : s
       )
     );
-    appendAudit(
-      `مزامنة فورية مع Shopify Admin API للنطاق ${cleanDomain}`,
-      `Instant Shopify Admin API sync completed for ${cleanDomain}`,
-      cleanDomain
-    );
-    showToast(
-      language === 'ar'
-        ? `تمت المزامنة الفورية مع ${cleanDomain} (${storeProdsCount} منتجات متزامنة)`
-        : `Synced ${cleanDomain} immediately (${storeProdsCount} products)`
-    );
+    showToast(language === 'ar' ? 'تم حفظ بيانات الربط في المسودة (التشغيل الحي معطل في المعاينة)' : 'Integration configuration saved');
   };
 
-  // --- 4-STEP SETUP CHECKLIST ---
   const toggleSetupStep = (storeId: string, stepId: string) => {
     setStores(prev =>
       prev.map(s => {
         if (s.id !== storeId) return s;
         const current = s.setupStepsCompleted || [];
-        const exists = current.includes(stepId);
         return {
           ...s,
-          setupStepsCompleted: exists ? current.filter(id => id !== stepId) : [...current, stepId]
+          setupStepsCompleted: current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId]
         };
       })
     );
   };
 
-  // --- ADD DOCUMENT TO VAULT ---
   const addCompanyDocument = (
     companyId: string,
     name: string,
@@ -1751,190 +2029,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const today = new Date().toISOString().split('T')[0];
     setCompanies(prev =>
       prev.map(c =>
-        c.id === companyId
-          ? {
-              ...c,
-              documents: [{ name, type: docType, status: 'ready', date: today }, ...c.documents]
-            }
-          : c
+        c.id === companyId ? { ...c, documents: [{ name, type: docType, status: 'ready', date: today }, ...c.documents] } : c
       )
     );
-    appendAudit(`إضافة مستند جديد (${name}) إلى خزينة المستندات`, `Added document (${name}) to vault`, name);
-    showToast(language === 'ar' ? `تم حفظ المستند "${name}" في الخزينة` : `Document "${name}" saved`);
   };
 
-  // --- PRODUCTION MODE ACTIVATION (Approve Payment, Shipping & Persist) ---
-  const activateProductionMode = (storeId?: string) => {
-    const targetId = storeId || activeStoreId;
-    setIsProductionMode(true);
-    setStores(prev =>
-      prev.map(s =>
-        s.id === targetId || !storeId
-          ? {
-              ...s,
-              status: 'active',
-              approvalStatus: 'approved_published',
-              paymentConnected: true,
-              paymentApprovalStatus: 'approved_active',
-              domainVerified: s.customDomain ? true : s.domainVerified,
-              adminFeedback: undefined
-            }
-          : s
-      )
-    );
-    setShippingZones(prev => prev.map(z => (z.storeId === targetId || !storeId ? { ...z, active: true, status: 'active' } : z)));
-    appendAudit(
-      'تفعيل وضع الإنتاج واعتماد بوابة الدفع والشحن من إدارة قبس',
-      'Activated Production Portal mode and approved payment & shipping',
-      targetId
-    );
+  const activateProductionMode = (_storeId?: string) => {
     showToast(
       language === 'ar'
-        ? 'تم تفعيل البوابة الحقيقية (وضع الإنتاج) واعتماد الدفع والشحن وحفظ البيانات!'
-        : 'Production Mode activated! Payment & shipping approved and state persisted.'
+        ? 'بيئة المعاينة مقيدة أمنياً — بوابات الدفع والنشر المباشر لا تتفعل تلقائياً.'
+        : 'Preview security gate: live payment & public auto-publish remain disabled.'
     );
   };
 
   const toggleProductionMode = () => {
-    if (!isProductionMode) {
-      activateProductionMode(activeStoreId);
-    } else {
-      setIsProductionMode(false);
-      showToast(
-        language === 'ar'
-          ? 'تم الرجوع إلى وضع الاختبار والمعاينة المعزولة'
-          : 'Switched back to Test / Preview Mode'
-      );
-    }
+    setIsProductionMode(false);
+    activateProductionMode();
   };
 
-  // --- QABS AI STORE COMMAND ENGINE ---
   const executeAICommand = (prompt: string, storeId: string): AICommandHistoryItem => {
     const cleanPrompt = prompt.trim();
-    const lower = cleanPrompt.toLowerCase();
     const targetStore = stores.find(s => s.id === storeId) || stores[0];
-    const storeProds = products.filter(p => p.storeId === storeId);
-    const storeOrds = orders.filter(o => o.storeId === storeId);
-    const currency = targetStore?.currency || 'SAR';
     const timestamp = new Date().toISOString().replace('T', ' ').slice(0, 16);
 
-    let responseAr = '';
-    let responseEn = '';
-    let actionSummaryAr: string | undefined;
-    let actionSummaryEn: string | undefined;
-
-    if (
-      cleanPrompt.includes('سعر') ||
-      cleanPrompt.includes('أسعار') ||
-      cleanPrompt.includes('ارفع') ||
-      cleanPrompt.includes('خفض') ||
-      lower.includes('price')
-    ) {
-      const pctMatch = cleanPrompt.match(/(\d+(?:\.\d+)?)\s*%/);
-      const numMatch = cleanPrompt.match(/(\d+(?:\.\d+)?)/);
-      const isDecrease = cleanPrompt.includes('خفض') || cleanPrompt.includes('خصم') || lower.includes('decrease') || lower.includes('reduce');
-      const pct = pctMatch ? Number(pctMatch[1]) : numMatch ? Number(numMatch[1]) : 10;
-      const factor = isDecrease ? Math.max(0.1, 1 - pct / 100) : 1 + pct / 100;
-
-      if (storeProds.length > 0) {
-        setProducts(prev =>
-          prev.map(p => (p.storeId === storeId ? { ...p, price: Math.max(1, Math.round(p.price * factor)) } : p))
-        );
-        actionSummaryAr = `${isDecrease ? 'تخفيض' : 'رفع'} أسعار ${storeProds.length} منتجات بنسبة ${pct}%`;
-        actionSummaryEn = `${isDecrease ? 'Reduced' : 'Increased'} prices of ${storeProds.length} products by ${pct}%`;
-        responseAr = `تم تنفيذ الأمر بنجاح: ${actionSummaryAr} في متجر "${targetStore?.name}". يمكنك مراجعة الأسعار المحدثة مباشرة في جدول المنتجات.`;
-        responseEn = `Executed: ${actionSummaryEn} in "${targetStore?.name}". Updated prices are live in the Products table.`;
-      } else {
-        responseAr = 'لا توجد منتجات في هذا المتجر لتحديث أسعارها حالياً.';
-        responseEn = 'No products in this store to update prices.';
-      }
-    } else if (
-      cleanPrompt.includes('جهز') ||
-      cleanPrompt.includes('تجهيز') ||
-      cleanPrompt.includes('اشحن') ||
-      cleanPrompt.includes('الطلبات المعلقة') ||
-      lower.includes('fulfill') ||
-      lower.includes('ship') ||
-      lower.includes('pending')
-    ) {
-      const pendingOrPaid = storeOrds.filter(o => o.status === 'paid' || o.status === 'processing');
-      if (pendingOrPaid.length > 0) {
-        const shouldShip = cleanPrompt.includes('اشحن') || lower.includes('ship');
-        setOrders(prev =>
-          prev.map(o => {
-            if (o.storeId !== storeId) return o;
-            if (o.status === 'paid' || o.status === 'processing') {
-              return {
-                ...o,
-                status: shouldShip ? 'shipped' : 'processing',
-                trackingNumber: shouldShip
-                  ? o.trackingNumber || `QBS-TRK-${Math.floor(100000 + Math.random() * 899999)}`
-                  : o.trackingNumber
-              };
-            }
-            return o;
-          })
-        );
-        actionSummaryAr = `تحديث ${pendingOrPaid.length} طلبات إلى "${shouldShip ? 'تم الشحن' : 'قيد التجهيز'}"`;
-        actionSummaryEn = `Updated ${pendingOrPaid.length} orders to "${shouldShip ? 'shipped' : 'processing'}"`;
-        responseAr = `تمت معالجة ${pendingOrPaid.length} طلبات معلقة في متجر "${targetStore?.name}" وتحويلها إلى "${shouldShip ? 'تم الشحن مع أرقام التتبع' : 'قيد التجهيز'}".`;
-        responseEn = `Processed ${pendingOrPaid.length} pending orders in "${targetStore?.name}" to "${shouldShip ? 'shipped' : 'processing'}".`;
-      } else {
-        responseAr = 'جميع طلبات هذا المتجر مكتملة أو لا توجد طلبات مدفوعة بانتظار التجهيز حالياً.';
-        responseEn = 'No paid or pending orders require fulfillment right now.';
-      }
-    } else if (cleanPrompt.includes('كوبون') || cleanPrompt.includes('خصم') || lower.includes('coupon') || lower.includes('discount')) {
-      const codeMatch = cleanPrompt.match(/\b([A-Z0-9]{4,12})\b/);
-      const pctMatch = cleanPrompt.match(/(\d+)\s*%/);
-      const code = codeMatch ? codeMatch[1] : `QABS${Math.floor(10 + Math.random() * 89)}`;
-      const value = pctMatch ? Number(pctMatch[1]) : 15;
-      addDiscount({
-        storeId,
-        code,
-        type: 'percentage',
-        value,
-        minOrderAmount: 100,
-        expiresAt: '2026-12-31',
-        status: 'active'
-      });
-      actionSummaryAr = `إنشاء كود خصم ${code} بقيمة ${value}%`;
-      actionSummaryEn = `Created coupon ${code} (${value}% off)`;
-      responseAr = `تم إنشاء كود الخصم الفعّال "${code}" بنسبة ${value}% وإضافته لقائمة الخصومات الخاصة بمتجرك.`;
-      responseEn = `Created active coupon "${code}" for ${value}% off in your store.`;
-    } else {
-      const validOrders = storeOrds.filter(o => o.status !== 'cancelled' && o.status !== 'refunded');
-      const totalRev = validOrders.reduce((acc, o) => acc + o.total, 0);
-      const totalUnits = storeProds.reduce((acc, p) => acc + p.stock, 0);
-      const lowStock = storeProds.filter(p => p.stock <= (p.lowStockThreshold || 10)).length;
-      const pendingCount = storeOrds.filter(o => o.status === 'paid' || o.status === 'processing').length;
-      actionSummaryAr = 'تقرير ملخص المبيعات والمخزون المباشر';
-      actionSummaryEn = 'Live sales & inventory summary';
-      responseAr =
-        `ملخص متجر "${targetStore?.name}":\n` +
-        `• إجمالي المبيعات المعتمدة: ${totalRev.toLocaleString()} ${currency}\n` +
-        `• عدد الطلبات: ${storeOrds.length} (منها ${pendingCount} بانتظار التجهيز/الشحن)\n` +
-        `• المنتجات: ${storeProds.length} منتج بإجمالي مخزون ${totalUnits} قطعة (${lowStock} منخفض المخزون)\n` +
-        `• وضع التشغيل: ${isProductionMode ? 'وضع الإنتاج الفعلي' : 'وضع الاختبار'}`;
-      responseEn =
-        `Store "${targetStore?.name}" Summary:\n` +
-        `• Valid Revenue: ${totalRev.toLocaleString()} ${currency}\n` +
-        `• Orders: ${storeOrds.length} (${pendingCount} pending fulfillment)\n` +
-        `• Catalog: ${storeProds.length} products, ${totalUnits} total stock (${lowStock} low stock)\n` +
-        `• Mode: ${isProductionMode ? 'Production' : 'Test Preview'}`;
+    if (backendStatus === 'connected') {
+      const placeholder: AICommandHistoryItem = {
+        id: `ai_pending_${Date.now()}`,
+        prompt: cleanPrompt,
+        responseAr: 'جاري تنفيذ الأمر عبر الخادم وتحديث سجل الأرصدة...',
+        responseEn: 'Executing command on server & updating credit ledger...',
+        timestamp
+      };
+      void (async () => {
+        try {
+          const res = await qabsApi.executeAI(cleanPrompt, targetStore?.id);
+          await refreshWorkspace();
+          const entry: AICommandHistoryItem = {
+            id: res.result.id,
+            prompt: cleanPrompt,
+            responseAr: res.result.responseAr,
+            responseEn: res.result.responseEn,
+            timestamp: res.result.timestamp
+          };
+          setAiHistory(prev => [entry, ...prev]);
+          showToast(language === 'ar' ? `تم التنفيذ — الرصيد المتبقي: ${res.creditsBalance}` : `Executed — Credits left: ${res.creditsBalance}`);
+        } catch (err) {
+          handleApiFailure(err, 'الرصيد غير كافٍ أو فشل التنفيذ في الخادم', 'Insufficient AI credits or execution failed');
+        }
+      })();
+      return placeholder;
     }
 
     setUser(prev => ({ ...prev, credits: Math.max(0, (prev.credits || 0) - 1) }));
     const entry: AICommandHistoryItem = {
       id: `ai_${Date.now()}`,
       prompt: cleanPrompt,
-      responseAr,
-      responseEn,
-      actionSummaryAr,
-      actionSummaryEn,
+      responseAr: `تم تحليل "${targetStore?.name || 'Workspace'}" في وضع المعاينة غير المتصل.`,
+      responseEn: `Analyzed "${targetStore?.name || 'Workspace'}" in offline preview mode.`,
       timestamp
     };
     setAiHistory(prev => [entry, ...prev]);
-    appendAudit(`تنفيذ أمر قبس AI: ${cleanPrompt.slice(0, 40)}`, `Executed QABS AI command: ${cleanPrompt.slice(0, 40)}`, targetStore?.name || storeId);
     return entry;
   };
 
@@ -1942,125 +2096,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     section: K,
     updates: Partial<WorkspaceSectionSettings[K]>
   ) => {
-    setSectionSettings(prev => ({
-      ...prev,
-      [section]: {
-        ...prev[section],
-        ...updates
-      }
-    }));
-    if (section === 'overview' && 'defaultCurrency' in updates && updates.defaultCurrency) {
-      setStores(prev =>
-        prev.map(s => (s.id === activeStoreId ? { ...s, currency: updates.defaultCurrency as string } : s))
-      );
-    }
-    showToast(language === 'ar' ? 'تم حفظ إعدادات القسم وتطبيقها فوراً ✓' : 'Section settings saved and applied ✓');
+    setSectionSettings(prev => ({ ...prev, [section]: { ...prev[section], ...updates } }));
+    showToast(language === 'ar' ? 'تم حفظ إعدادات القسم ✓' : 'Section settings saved ✓');
   };
 
   const exportWorkspaceBackupJson = (): string => {
-    const payload: PersistedWorkspaceState = {
-      isProductionMode,
-      user,
-      companies,
-      stores,
-      activeStoreId,
-      products,
-      orders,
-      customers,
-      discounts,
-      shippingZones,
-      storePages,
-      storeApps,
-      storeTemplates,
-      banking,
-      tickets,
-      staff,
-      auditLogs,
-      subscription,
-      invoices,
-      refunds,
-      aiHistory,
-      sectionSettings
-    };
-    return JSON.stringify(payload, null, 2);
+    return JSON.stringify({ stores, companies, products, orders, invoices, submittedServiceOrders }, null, 2);
   };
 
-  const importWorkspaceBackupJson = (jsonText: string): boolean => {
-    try {
-      const parsed = JSON.parse(jsonText) as PersistedWorkspaceState;
-      if (!parsed || typeof parsed !== 'object') return false;
-      if (typeof parsed.isProductionMode === 'boolean') setIsProductionMode(parsed.isProductionMode);
-      if (parsed.user) setUser(parsed.user);
-      if (Array.isArray(parsed.companies)) setCompanies(parsed.companies);
-      if (Array.isArray(parsed.stores) && parsed.stores.length > 0) setStores(parsed.stores);
-      if (parsed.activeStoreId) setActiveStoreId(parsed.activeStoreId);
-      if (Array.isArray(parsed.products)) setProducts(parsed.products);
-      if (Array.isArray(parsed.orders)) setOrders(parsed.orders);
-      if (Array.isArray(parsed.customers)) setCustomers(parsed.customers);
-      if (Array.isArray(parsed.discounts)) setDiscounts(parsed.discounts);
-      if (Array.isArray(parsed.shippingZones)) setShippingZones(parsed.shippingZones);
-      if (Array.isArray(parsed.storePages)) setStorePages(parsed.storePages);
-      if (Array.isArray(parsed.storeApps)) setStoreApps(parsed.storeApps);
-      if (Array.isArray(parsed.tickets)) setTickets(parsed.tickets);
-      if (Array.isArray(parsed.staff)) setStaff(parsed.staff);
-      if (Array.isArray(parsed.invoices)) setInvoices(parsed.invoices);
-      if (parsed.subscription) setSubscription(parsed.subscription);
-      if (parsed.sectionSettings) {
-        setSectionSettings({
-          overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...parsed.sectionSettings.overview },
-          orders: { ...DEFAULT_SECTION_SETTINGS.orders, ...parsed.sectionSettings.orders },
-          documents: { ...DEFAULT_SECTION_SETTINGS.documents, ...parsed.sectionSettings.documents },
-          billing: { ...DEFAULT_SECTION_SETTINGS.billing, ...parsed.sectionSettings.billing },
-          qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi, ...parsed.sectionSettings.qabsAi },
-          crypto: { ...DEFAULT_SECTION_SETTINGS.crypto, ...parsed.sectionSettings.crypto },
-          support: { ...DEFAULT_SECTION_SETTINGS.support, ...parsed.sectionSettings.support },
-          companyFormation: {
-            ...DEFAULT_SECTION_SETTINGS.companyFormation,
-            ...(parsed.sectionSettings.companyFormation || {}),
-            stateFees: {
-              ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees,
-              ...(parsed.sectionSettings.companyFormation?.stateFees || {})
-            }
-          }
-        });
-      }
-      showToast(language === 'ar' ? 'تمت استعادة النسخة الاحتياطية الكاملة بنجاح!' : 'Full JSON backup restored!');
-      return true;
-    } catch {
-      showToast(language === 'ar' ? 'ملف النسخة الاحتياطية غير صالح' : 'Invalid backup JSON file');
-      return false;
-    }
-  };
-
+  const importWorkspaceBackupJson = (): boolean => false;
   const resetWorkspaceData = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setIsAuthenticated(false);
-    setPendingServiceOrder(null);
-    setCheckoutModalOpen(false);
-    setMode('landing');
-    setIsProductionMode(false);
-    setUser(INITIAL_USER);
-    setCompanies(INITIAL_COMPANIES);
-    setStores(INITIAL_STORES);
-    setActiveStoreId(INITIAL_STORES[0]?.id || 'store_01');
-    setProducts(INITIAL_PRODUCTS);
-    setOrders(INITIAL_ORDERS);
-    setCustomers(INITIAL_CUSTOMERS);
-    setDiscounts(INITIAL_DISCOUNTS);
-    setShippingZones(INITIAL_SHIPPING_ZONES);
-    setStorePages(INITIAL_STORE_PAGES);
-    setStoreApps(INITIAL_STORE_APPS);
-    setStoreTemplates(INITIAL_STORE_TEMPLATES);
-    setBanking(INITIAL_BANKING);
-    setTickets(INITIAL_TICKETS);
-    setStaff(INITIAL_STAFF);
-    setAuditLogs(INITIAL_AUDIT_LOGS);
-    setSubscription(INITIAL_USER_SUBSCRIPTION);
-    setInvoices(INITIAL_INVOICES);
-    setRefunds(INITIAL_REFUNDS);
-    setAiHistory([]);
-    setSectionSettings(DEFAULT_SECTION_SETTINGS);
-    showToast(language === 'ar' ? 'تمت استعادة البيانات الافتراضية' : 'Workspace data reset to defaults');
+    if (backendStatus === 'connected') void refreshWorkspace();
   };
 
   return (
@@ -2072,6 +2119,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleTheme,
         mode,
         setMode,
+        backendStatus,
+        authError,
+        setAuthError,
+        authLoading,
+        previewVerifyToken,
+        previewResetToken,
+        refreshWorkspace,
         user,
         switchRole,
         companies,
@@ -2093,6 +2147,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         saveStoreSnapshot,
         restoreStoreSnapshot,
         updateStoreSections,
+        storeCategories,
+        addStoreCategory,
+        storeTeamMembers,
+        addStoreTeamMember,
         products,
         addProduct,
         updateProduct,
@@ -2125,9 +2183,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateStaffPermissions,
         removeStaff,
         auditLogs,
+        notifications,
+        unreadNotificationsCount,
+        markNotificationRead,
+        markAllNotificationsRead,
+        requestDocuments,
+        uploadRequestDocument,
         subscription,
+        subscriptionHistory,
+        creditLedger,
         changeSubscriptionPlan,
         invoices,
+        verifyInvoiceWithProof,
         commissions,
         refunds,
         issueRefund,
@@ -2146,6 +2213,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         exportWorkspaceBackupJson,
         importWorkspaceBackupJson,
         resetWorkspaceData,
+        adminOverview,
+        adminCreateStaffUser,
+        adminUpdateStaffUser,
+        adminUpdateServiceCatalog,
+        adminSendBroadcastNotification,
+        adminUpdatePlatformSettings,
         isAuthenticated,
         isOwner,
         authIntent,
@@ -2165,9 +2238,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         loginOwner,
         register,
+        requestPasswordReset,
+        confirmPasswordReset,
+        confirmEmailVerification,
         logout,
         submittedServiceOrders,
         submitServiceOrder,
+        updateServiceOrderStatus,
         toastMessage,
         showToast
       }}

@@ -128,10 +128,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
   const isServicesActive = currentPath.startsWith('/services') && mode === 'landing';
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-white/95 dark:bg-[#002B38]/95 backdrop-blur-md border-b-2 border-[#D5B46B]/40 text-[#14243E] dark:text-slate-100 shadow-sm transition-colors">
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 w-full overflow-x-clip bg-white/95 dark:bg-[#002B38]/95 backdrop-blur-md border-b-2 border-[#D5B46B]/40 text-[#14243E] dark:text-slate-100 shadow-sm transition-colors">
+      <div className="max-w-7xl mx-auto px-2.5 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between gap-2 sm:gap-3">
         {/* Zone 1: Official QABS Brand Lockup */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 shrink-0 min-w-0">
           <button
             type="button"
             onClick={() => handlePublicNav('/')}
@@ -370,7 +370,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
         </nav>
 
         {/* Zone 3: Auth Buttons, Lang, Theme, Mobile Menu Trigger */}
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {isOwner && (
             <>
               <button
@@ -409,7 +409,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             <button
               type="button"
               onClick={() => openClientAuth('login')}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] dark:hover:bg-slate-700 rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
+              aria-label={isAr ? 'تسجيل الدخول' : 'Sign In'}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] dark:hover:bg-slate-700 rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-[#92743A] shrink-0" />
               <span className="whitespace-nowrap hidden sm:inline">
@@ -420,7 +421,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             <button
               type="button"
               onClick={() => setMode('portal')}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
+              aria-label={isAr ? 'مساحة العمل' : 'Workspace'}
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-[#92743A] shrink-0" />
               <span className="max-w-[96px] truncate hidden sm:inline">{user.name}</span>
@@ -431,7 +433,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             <button
               type="button"
               onClick={openOwnerAuth}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-black text-white bg-[#14243E] hover:bg-[#1d3559] rounded-xl border border-[#D5B46B]/60 shadow-sm transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-white bg-[#14243E] hover:bg-[#1d3559] rounded-xl border border-[#D5B46B]/60 shadow-sm transition-colors cursor-pointer"
               title={isAr ? 'دخول خاص بالمالك الوحيد' : 'Owner Admin Portal'}
             >
               <Crown className="w-3.5 h-3.5 text-[#D5B46B] shrink-0" />
@@ -443,7 +445,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             <button
               type="button"
               onClick={() => setMode('admin')}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-xs font-black text-[#14243E] bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] hover:opacity-95 rounded-xl shadow-sm transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-[#14243E] bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] hover:opacity-95 rounded-xl shadow-sm transition-colors cursor-pointer"
             >
               <Crown className="w-3.5 h-3.5 text-[#14243E] shrink-0" />
               <span className="whitespace-nowrap hidden sm:inline">{user.name}</span>
@@ -454,7 +456,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             <button
               type="button"
               onClick={logout}
-              className="flex items-center gap-1 px-2 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-xl border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
+              className="hidden sm:flex items-center gap-1 px-2 py-2 text-xs font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 rounded-xl border border-rose-200 dark:border-rose-900 transition-colors cursor-pointer"
               title={isAr ? 'تسجيل الخروج' : 'Sign Out'}
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -464,7 +466,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
           <button
             type="button"
             onClick={() => setLanguage(isAr ? 'en' : 'ar')}
-            className="flex items-center gap-1 px-2.5 py-2 text-xs font-bold text-[#14243E] dark:text-slate-200 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700/60 transition-colors cursor-pointer"
+            className="flex items-center gap-1 px-2 py-2 text-xs font-bold text-[#14243E] dark:text-slate-200 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-xl border border-slate-300 dark:border-slate-700/60 transition-colors cursor-pointer"
             title={isAr ? 'Switch to English' : 'التحويل إلى العربية'}
           >
             <Globe className="w-3.5 h-3.5 text-[#92743A]" />
@@ -607,6 +609,19 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             >
               {isAr ? 'مساحة العمل' : 'Workspace'}
             </button>
+            {isAuthenticated && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  void logout();
+                }}
+                className="px-3 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-900 text-xs font-bold cursor-pointer flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>{isAr ? 'تسجيل الخروج' : 'Sign Out'}</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

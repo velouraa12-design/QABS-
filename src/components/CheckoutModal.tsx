@@ -4,13 +4,13 @@ import {
   X,
   CreditCard,
   ShieldCheck,
-  CheckCircle2,
   Coins,
   Building,
   Sparkles,
   Store,
   Building2,
-  ArrowLeft
+  ArrowLeft,
+  LockKeyhole
 } from 'lucide-react';
 
 type PaymentMethodType = 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer';
@@ -27,7 +27,7 @@ export const CheckoutModal: React.FC = () => {
   } = useApp();
 
   const isAr = language === 'ar';
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('Stripe');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodType>('BankTransfer');
 
   if (!checkoutModalOpen || !pendingServiceOrder) return null;
 
@@ -51,36 +51,36 @@ export const CheckoutModal: React.FC = () => {
     icon: React.ElementType;
   }[] = [
     {
+      id: 'BankTransfer',
+      titleAr: 'طلب تحويل بنكي / فاتورة مرجعية (IBAN)',
+      titleEn: 'Bank Wire / Reference Invoice (Pending Proof)',
+      descAr: 'يصدر فاتورة غير مسددة حتى مراجعة مرجع التحويل',
+      descEn: 'Issues invoice pending proof reference verification',
+      icon: Building
+    },
+    {
       id: 'Stripe',
-      titleAr: 'بطاقة ائتمان / Apple Pay (Stripe)',
-      titleEn: 'Credit Card / Apple Pay (Stripe)',
-      descAr: 'دفع إلكتروني فوري ومؤمّن',
-      descEn: 'Instant encrypted card checkout',
+      titleAr: 'بطاقة ائتمان (Stripe — مقيد في المعاينة)',
+      titleEn: 'Card via Stripe (Gated in Preview)',
+      descAr: 'لا يتم خصم أي بطاقات تلقائياً في بيئة المعاينة',
+      descEn: 'No live card charging executed in preview mode',
       icon: CreditCard
     },
     {
       id: 'PayPal',
-      titleAr: 'باي بال العالمي (PayPal)',
-      titleEn: 'PayPal Global Checkout',
-      descAr: 'ربط حساب PayPal التجاري أو الشخصي',
-      descEn: 'Pay via PayPal balance or linked bank',
+      titleAr: 'باي بال (PayPal — بانتظار المراجعة)',
+      titleEn: 'PayPal Request (Pending Review)',
+      descAr: 'تسجيل طلب ربط وسداد معلق للمراجعة الإدارية',
+      descEn: 'Recorded for manual verification before activation',
       icon: ShieldCheck
     },
     {
       id: 'Crypto',
-      titleAr: 'العملات الرقمية (USDT / BTC)',
-      titleEn: 'Crypto Settlement (USDT / BTC)',
-      descAr: 'تحويل فوري عبر شبكات TRC20 أو ERC20',
-      descEn: 'Fast transfer on TRC20 or ERC20',
+      titleAr: 'تحويل أصول رقمية (USDT — تحقق يدوي)',
+      titleEn: 'Crypto Wire Request (Manual Verification)',
+      descAr: 'يتطلب إثبات مرجع المعاملة (TxHash) من الإدارة',
+      descEn: 'Requires TxHash verification by admin before credit',
       icon: Coins
-    },
-    {
-      id: 'BankTransfer',
-      titleAr: 'تحويل بنكي مباشر (IBAN / Wire)',
-      titleEn: 'Direct Bank Wire / IBAN',
-      descAr: 'موافقة وإصدار فاتورة رسمية فورية',
-      descEn: 'Instant invoice & wire confirmation',
-      icon: Building
     }
   ];
 
@@ -92,7 +92,6 @@ export const CheckoutModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
       <div className="bg-white dark:bg-[#082030] border-2 border-[#D5B46B] rounded-2xl shadow-2xl max-w-lg w-full text-[#14243E] dark:text-slate-100 flex flex-col overflow-hidden">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#EAE6DC] dark:border-cyan-950/60 bg-[#14243E] text-white">
           <div className="flex items-center gap-2.5">
             <div className="p-2 bg-[#D5B46B]/20 text-[#D5B46B] rounded-xl border border-[#D5B46B]/40">
@@ -100,12 +99,12 @@ export const CheckoutModal: React.FC = () => {
             </div>
             <div>
               <h2 className="text-sm font-black">
-                {isAr ? 'إتمام الدفع وتأكيد الطلب' : 'Complete Service Checkout'}
+                {isAr ? 'تسجيل الطلب وإصدار فاتورة التحقق' : 'Submit Service Request & Issue Invoice'}
               </h2>
               <p className="text-[11px] text-[#EAE6DC]">
                 {isAr
-                  ? `مسجل باسم: ${user.name} (${user.email})`
-                  : `Authenticated as: ${user.name} (${user.email})`}
+                  ? `الحساب: ${user.name} (${user.email})`
+                  : `Account: ${user.name} (${user.email})`}
               </p>
             </div>
           </div>
@@ -119,9 +118,7 @@ export const CheckoutModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6 space-y-5 max-h-[82vh] overflow-y-auto">
-          {/* Selected Order Summary */}
           <div className="rounded-2xl bg-[#F8F7F2] dark:bg-[#051724] border border-[#D5B46B]/60 p-4 space-y-2.5">
             <div className="flex items-center justify-between gap-2">
               <span className="px-2.5 py-1 rounded-lg bg-[#14243E] text-[#D5B46B] text-[10px] font-black">
@@ -132,39 +129,18 @@ export const CheckoutModal: React.FC = () => {
                   ${pendingServiceOrder.priceUsd.toLocaleString()}
                 </div>
                 <div className="text-[11px] font-bold text-[#92743A]">
-                  {isAr ? `يعادل ~ ${sarAmount.toLocaleString()} ر.س` : `~ ${sarAmount.toLocaleString()} SAR`}
+                  {isAr ? `~ ${sarAmount.toLocaleString()} ر.س` : `~ ${sarAmount.toLocaleString()} SAR`}
                 </div>
               </div>
             </div>
-
             <div className="font-black text-sm text-[#14243E] dark:text-white">
               {isAr ? pendingServiceOrder.titleAr : pendingServiceOrder.titleEn}
             </div>
-
-            {(pendingServiceOrder.subtitleAr || pendingServiceOrder.subtitleEn) && (
-              <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                {isAr ? pendingServiceOrder.subtitleAr : pendingServiceOrder.subtitleEn}
-              </p>
-            )}
-
-            {pendingServiceOrder.details?.jurisdiction && (
-              <div className="pt-2 border-t border-[#EAE6DC] dark:border-slate-800 flex flex-wrap gap-2 text-[11px] font-bold text-[#14243E] dark:text-slate-200">
-                <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-[#EAE6DC] dark:border-slate-700">
-                  {pendingServiceOrder.details.jurisdiction}
-                </span>
-                {pendingServiceOrder.details.companyName && (
-                  <span className="px-2 py-0.5 rounded bg-white dark:bg-slate-800 border border-[#EAE6DC] dark:border-slate-700">
-                    {pendingServiceOrder.details.companyName}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
-          {/* Payment Method Selection */}
           <div className="space-y-2.5">
             <label className="block text-xs font-black text-[#14243E] dark:text-slate-200">
-              {isAr ? 'اختر وسيلة الدفع المفضلة:' : 'Select Payment Method:'}
+              {isAr ? 'طريقة التسوية المفضلة:' : 'Preferred Settlement Method:'}
             </label>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {paymentOptions.map(opt => {
@@ -200,17 +176,15 @@ export const CheckoutModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Guarantee Strip */}
-          <div className="flex items-center gap-2 text-[11px] text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900 rounded-xl px-3.5 py-2.5 font-bold">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="flex items-start gap-2 text-[11px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900 rounded-xl px-3.5 py-2.5 font-bold">
+            <LockKeyhole className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               {isAr
-                ? 'سيتم حفظ الطلب وإصدار الفاتورة الرسمية ومستنداتك مباشرة داخل مساحة العمل الخاصة بك.'
-                : 'Your order, official invoice, and documents will be saved automatically to your workspace.'}
+                ? 'تنبيه أمني: لا يتم تحصيل بطاقات أو اعتماد الفاتورة كمدفوعة تلقائياً؛ تُسجل الفاتورة بحالة «بانتظار التحقق» لحين مراجعة مرجع السداد من الإدارة.'
+                : 'Security gate: Live card charging is disabled in preview. Your invoice is created as Pending Verification until an administrator verifies your payment proof reference.'}
             </span>
           </div>
 
-          {/* Actions */}
           <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
             <button
               type="button"
@@ -219,8 +193,8 @@ export const CheckoutModal: React.FC = () => {
             >
               <span>
                 {isAr
-                  ? `تأكيد الدفع ($${pendingServiceOrder.priceUsd}) والانتقال لمساحة العمل`
-                  : `Confirm Payment ($${pendingServiceOrder.priceUsd}) & Open Workspace`}
+                  ? `تسجيل الطلب وإصدار الفاتورة ($${pendingServiceOrder.priceUsd})`
+                  : `Submit Request & Issue Invoice ($${pendingServiceOrder.priceUsd})`}
               </span>
               <ArrowLeft className="w-4 h-4 text-[#D5B46B] ltr:rotate-180" />
             </button>

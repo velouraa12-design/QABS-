@@ -2,16 +2,94 @@ export type Language = 'ar' | 'en';
 
 export type AppMode = 'landing' | 'portal' | 'store_builder' | 'billing' | 'admin' | 'template_hub';
 
-export type UserRole = 'super_admin' | 'merchant' | 'support_agent' | 'compliance_officer';
+export type UserRole =
+  | 'super_admin'
+  | 'admin'
+  | 'staff'
+  | 'support'
+  | 'customer'
+  | 'merchant'
+  | 'support_agent'
+  | 'compliance_officer';
+
+export type BackendStatus = 'checking' | 'connected' | 'preview_offline';
 
 export interface UserProfile {
   id: string;
+  tenantId?: string;
   name: string;
   email: string;
   role: UserRole;
   avatar: string;
   companyName?: string;
   credits: number;
+  emailVerified?: boolean;
+}
+
+export interface NotificationItem {
+  id: string;
+  tenantId?: string;
+  titleAr: string;
+  titleEn: string;
+  bodyAr: string;
+  bodyEn: string;
+  category: string;
+  isRead: boolean;
+  linkPath?: string;
+  createdAt: string;
+}
+
+export interface CreditLedgerItem {
+  id: string;
+  delta: number;
+  balanceAfter: number;
+  reason: string;
+  referenceId?: string;
+  createdAt: string;
+}
+
+export interface SubscriptionHistoryItem {
+  id: string;
+  planTier: string;
+  billingCycle: string;
+  price: number;
+  status: string;
+  note?: string;
+  createdAt: string;
+}
+
+export interface RequestDocumentMeta {
+  id: string;
+  tenantId?: string;
+  requestId?: string | null;
+  formationId?: string | null;
+  documentName: string;
+  documentType: string;
+  mimeType: string;
+  sizeBytes: number;
+  sha256Hash?: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface StoreCategoryItem {
+  id: string;
+  storeId: string;
+  nameAr: string;
+  nameEn: string;
+  slug: string;
+  createdAt?: string;
+}
+
+export interface StoreTeamMemberItem {
+  id: string;
+  storeId: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'staff' | 'support';
+  permissions: string[];
+  status: 'active' | 'suspended';
+  createdAt?: string;
 }
 
 export interface PendingServiceOrder {
@@ -61,7 +139,7 @@ export interface UserSubscription {
   planId: 'starter' | 'growth' | 'enterprise';
   billingCycle: 'monthly' | 'annual';
   renewalDate: string;
-  status: 'active' | 'past_due' | 'canceled';
+  status: 'active' | 'past_due' | 'canceled' | 'trial' | 'pending_verification';
   currentPrice: number;
 }
 
@@ -71,10 +149,13 @@ export interface Invoice {
   date: string;
   amount: number;
   currency: string;
-  status: 'paid' | 'pending' | 'refunded';
+  status: 'paid' | 'pending' | 'refunded' | 'unpaid' | 'pending_verification';
   descriptionAr: string;
   descriptionEn: string;
   clientName: string;
+  paymentProofRef?: string;
+  invoiceKind?: string;
+  creditGrantAmount?: number;
 }
 
 export interface CommissionRecord {

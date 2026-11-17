@@ -8,7 +8,10 @@ import {
   ArrowLeft,
   ArrowRight,
   ShieldCheck,
-  CreditCard
+  CreditCard,
+  Upload,
+  FileText,
+  Save
 } from 'lucide-react';
 
 interface ServiceOrderFormProps {
@@ -17,6 +20,9 @@ interface ServiceOrderFormProps {
   onPackageChange?: (pkgId: string) => void;
   variant?: 'inline' | 'dedicated';
 }
+
+const ALLOWED_MIME_TYPES = ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'];
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 
 export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
   service,
@@ -52,27 +58,28 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
   const [customFields, setCustomFields] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
     for (const f of service.formFields) {
-      if (f.type === 'select' && f.options?.length) {
-        init[f.name] = f.options[0].value;
-      } else {
-        init[f.name] = '';
-      }
+      init[f.name] = f.type === 'select' && f.options?.length ? f.options[0].value : '';
     }
     return init;
   });
   const [notes, setNotes] = useState<string>('');
+  const [uploadedDoc, setUploadedDoc] = useState<{
+    name: string;
+    mimeType: string;
+    base64: string;
+  } | null>(null);
+  const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [submittedOrder, setSubmittedOrder] = useState<SubmittedServiceOrder | null>(null);
 
   useEffect(() => {
-    if (selectedPackageId) {
-      setPkgId(selectedPackageId);
-    }
+    if (selectedPackageId) setPkgId(selectedPackageId);
   }, [selectedPackageId]);
 
   useEffect(() => {
     setSubmittedOrder(null);
     setErrorMsg(null);
+    setUploadedDoc(null);
     const nextPkg =
       service.packages.find(p => p.id === selectedPackageId) ||
       service.packages.find(p => p.recommended) ||
@@ -95,8 +102,41 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
     if (onPackageChange) onPackageChange(id);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setErrorMsg(null);
+    const file = e.target.files?.[0];
+    if (!file) {
+      setUploadedDoc(null);
+      return;
+    }
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      setErrorMsg(
+        isAr
+          ? 'نوع الملف غير مسموح. الصيغ المقبولة: PDF, PNG, JPG, WEBP فقط.'
+          : 'Unsupported file type. Allowed: PDF, PNG, JPG, WEBP.'
+      );
+      return;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setErrorMsg(
+        isAr ? 'حجم الملف يتجاوز الحد الأقصى المسموح (5 ميجابايت).' : 'File exceeds 5 MB maximum upload size.'
+      );
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const res = typeof reader.result === 'string' ? reader.result : '';
+      const base64 = res.includes(',') ? res.split(',')[1] : res;
+      setUploadedDoc({
+        name: file.name,
+        mimeType: file.type,
+        base64
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const submitWithStatus = async (status: 'draft' | 'new') => {
     setErrorMsg(null);
 
     if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
@@ -108,43 +148,63 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
       return;
     }
 
-    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim());
-    if (!emailValid) {
-      setErrorMsg(
-        isAr ? 'يرجى إدخال بريد إلكتروني صحيح.' : 'Please enter a valid email address.'
-      );
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail.trim())) {
+      setErrorMsg(isAr ? 'يرجى إدخال بريد إلكتروني صحيح.' : 'Please enter a valid email address.');
       return;
     }
 
-    for (const field of service.formFields) {
-      if (field.required && !(customFields[field.name] || '').trim()) {
-        setErrorMsg(
-          isAr
-            ? `الحقل "${field.labelAr}" مطلوب لإتمام الطلب.`
-            : `"${field.labelEn}" is required to submit your request.`
-        );
-        return;
+    if (status === 'new') {
+      for (const field of service.formFields) {
+        if (field.required && !(customFields[field.name] || '').trim()) {
+          setErrorMsg(
+            isAr
+              ? `الحقل "${field.labelAr}" مطلوب لإتمام الطلب.`
+              : `"${field.labelEn}" is required to submit your request.`
+          );
+          return;
+        }
       }
     }
 
-    const created = submitServiceOrder({
-      serviceSlug: service.slug,
-      servicePath: service.path,
-      serviceTitleAr: service.titleAr,
-      serviceTitleEn: service.titleEn,
-      packageId: activePkg?.id,
-      packageNameAr: activePkg?.nameAr,
-      packageNameEn: activePkg?.nameEn,
-      priceUsd,
-      customerName: customerName.trim(),
-      customerEmail: customerEmail.trim(),
-      customerPhone: customerPhone.trim(),
-      companyOrStoreName: companyOrStoreName.trim() || undefined,
-      customFields,
-      notes: notes.trim() || undefined
-    });
+    setSubmitting(true);
+    try {
+      const created = await submitServiceOrder({
+        serviceSlug: service.slug,
+        servicePath: service.path,
+        serviceTitleAr: service.titleAr,
+        serviceTitleEn: service.titleEn,
+        packageId: activePkg?.id,
+        packageNameAr: activePkg?.nameAr,
+        packageNameEn: activePkg?.nameEn,
+        priceUsd,
+        customerName: customerName.trim(),
+        customerEmail: customerEmail.trim(),
+        customerPhone: customerPhone.trim(),
+        companyOrStoreName: companyOrStoreName.trim() || undefined,
+        customFields,
+        notes: notes.trim() || undefined,
+        status,
+        document: uploadedDoc
+          ? { name: uploadedDoc.name, mimeType: uploadedDoc.mimeType, base64: uploadedDoc.base64, type: 'supporting_doc' }
+          : undefined
+      });
+      setSubmittedOrder(created);
+    } catch (err) {
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : isAr
+          ? 'حدث خطأ أثناء إرسال الطلب للخادم'
+          : 'Failed to submit service request'
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-    setSubmittedOrder(created);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void submitWithStatus('new');
   };
 
   const handleProceedCheckout = () => {
@@ -160,12 +220,8 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
       serviceType: mappedType,
       titleAr: activePkg ? `${service.titleAr} — ${activePkg.nameAr}` : service.titleAr,
       titleEn: activePkg ? `${service.titleEn} — ${activePkg.nameEn}` : service.titleEn,
-      subtitleAr: submittedOrder
-        ? `رقم الطلب المرجعي: ${submittedOrder.referenceCode}`
-        : service.subtitleAr,
-      subtitleEn: submittedOrder
-        ? `Order Ref: ${submittedOrder.referenceCode}`
-        : service.subtitleEn,
+      subtitleAr: submittedOrder ? `رقم الطلب المرجعي: ${submittedOrder.referenceCode}` : service.subtitleAr,
+      subtitleEn: submittedOrder ? `Order Ref: ${submittedOrder.referenceCode}` : service.subtitleEn,
       priceUsd,
       details: {
         companyName: companyOrStoreName.trim() || undefined,
@@ -186,12 +242,12 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
           <CheckCircle2 className="w-7 h-7 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
             <h3 className="text-lg font-black text-[#14243E] dark:text-white">
-              {isAr ? 'تم استلام وحفظ طلب الخدمة بنجاح' : 'Service Request Saved Successfully'}
+              {isAr ? 'تم تسجيل طلب الخدمة في قاعدة البيانات بنجاح' : 'Service Request Recorded Successfully'}
             </h3>
             <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300">
               {isAr
-                ? 'تم تسجيل نوع الخدمة وكافة البيانات المطلوبة في نظام قبس، وسيتابع معك المستشار المختص.'
-                : 'Your service type and submitted details have been recorded in QABS and queued for specialist review.'}
+                ? `حالة الطلب الحالية: ${submittedOrder.status} — يمكنك متابعة التحديثات والإشعارات والمستندات من مساحة العمل.`
+                : `Current order status: ${submittedOrder.status} — Track updates and private documents inside your Workspace.`}
             </p>
           </div>
         </div>
@@ -204,9 +260,9 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
             </span>
           </div>
           <div>
-            <span className="text-slate-500 block">{isAr ? 'الخدمة المختارة' : 'Selected Service'}</span>
-            <span className="font-bold text-[#14243E] dark:text-white">
-              {isAr ? submittedOrder.serviceTitleAr : submittedOrder.serviceTitleEn}
+            <span className="text-slate-500 block">{isAr ? 'الحالة' : 'Status'}</span>
+            <span className="font-mono font-black text-emerald-700 dark:text-emerald-300">
+              {submittedOrder.status}
             </span>
           </div>
           <div>
@@ -216,7 +272,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
             </span>
           </div>
           <div>
-            <span className="text-slate-500 block">{isAr ? 'التكلفة المعتمدة' : 'Approved Fee'}</span>
+            <span className="text-slate-500 block">{isAr ? 'الرسوم التقديرية' : 'Estimated Fee'}</span>
             <span className="font-mono font-black text-[#92743A] dark:text-[#D5B46B] tabular-nums">
               ${submittedOrder.priceUsd.toLocaleString()}
             </span>
@@ -232,8 +288,8 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
             <CreditCard className="w-4 h-4 text-[#D5B46B]" />
             <span>
               {isAr
-                ? `متابعة الدفع وحفظه في مساحة العمل ($${priceUsd})`
-                : `Proceed to Checkout & Save to Workspace ($${priceUsd})`}
+                ? `إصدار فاتورة الطلب في مساحة العمل ($${priceUsd})`
+                : `Create Pending Invoice in Workspace ($${priceUsd})`}
             </span>
           </button>
 
@@ -242,7 +298,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
             onClick={() => setSubmittedOrder(null)}
             className="px-4 py-3 rounded-xl border border-[#EAE6DC] dark:border-slate-700 text-[#14243E] dark:text-slate-200 hover:bg-[#F8F7F2] dark:hover:bg-slate-800 font-bold text-xs cursor-pointer"
           >
-            {isAr ? 'إرسال طلب جديد' : 'Submit Another Request'}
+            {isAr ? 'تقديم طلب جديد' : 'Submit Another Request'}
           </button>
         </div>
       </div>
@@ -261,14 +317,14 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {isAr
-              ? 'يُحفظ نوع الخدمة وبياناتك تلقائياً لبدء التنفيذ الفوري.'
-              : 'Your selected service type and details are saved automatically for immediate execution.'}
+              ? 'يُحفظ الطلب في قاعدة البيانات مع دعم رفع المستندات الخاصة بأمان.'
+              : 'Persisted to backend storage with optional verified supporting document upload.'}
           </p>
         </div>
 
         <div className="px-4 py-2.5 rounded-xl bg-[#14243E] text-white shrink-0">
           <div className="text-[11px] text-[#D5B46B] font-bold">
-            {isAr ? 'التكلفة المعتمدة' : 'Selected Package Fee'}
+            {isAr ? 'الرسوم المحددة' : 'Package Fee'}
           </div>
           <div className="text-lg font-black font-mono tabular-nums">
             ${priceUsd.toLocaleString()}{' '}
@@ -279,7 +335,6 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
         </div>
       </div>
 
-      {/* Package Selector inside form */}
       {service.packages.length > 0 && (
         <div className="space-y-2.5">
           <label className="block text-xs font-black text-[#14243E] dark:text-slate-200">
@@ -317,7 +372,6 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
         </div>
       )}
 
-      {/* Core Applicant Fields */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-xs font-bold text-[#14243E] dark:text-slate-200 mb-1.5">
@@ -376,14 +430,10 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
         </div>
       </div>
 
-      {/* Service-Specific Custom Fields */}
       {service.formFields.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-[#EAE6DC] dark:border-slate-800">
           {service.formFields.map(field => (
-            <div
-              key={field.name}
-              className={field.type === 'textarea' ? 'sm:col-span-2' : ''}
-            >
+            <div key={field.name} className={field.type === 'textarea' ? 'sm:col-span-2' : ''}>
               <label className="block text-xs font-bold text-[#14243E] dark:text-slate-200 mb-1.5">
                 {isAr ? field.labelAr : field.labelEn}
                 {field.required ? ' *' : ''}
@@ -392,9 +442,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
               {field.type === 'select' && field.options ? (
                 <select
                   value={customFields[field.name] || ''}
-                  onChange={e =>
-                    setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))
-                  }
+                  onChange={e => setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))}
                   className="w-full rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-[#051724] px-3.5 py-2.5 text-xs text-[#14243E] dark:text-white focus:outline-none focus:border-[#D5B46B]"
                 >
                   {field.options.map(opt => (
@@ -408,9 +456,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
                   rows={3}
                   required={field.required}
                   value={customFields[field.name] || ''}
-                  onChange={e =>
-                    setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))
-                  }
+                  onChange={e => setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))}
                   placeholder={isAr ? field.placeholderAr : field.placeholderEn}
                   className="w-full rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-[#051724] px-3.5 py-2.5 text-xs text-[#14243E] dark:text-white focus:outline-none focus:border-[#D5B46B]"
                 />
@@ -419,9 +465,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
                   type={field.type}
                   required={field.required}
                   value={customFields[field.name] || ''}
-                  onChange={e =>
-                    setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))
-                  }
+                  onChange={e => setCustomFields(prev => ({ ...prev, [field.name]: e.target.value }))}
                   placeholder={isAr ? field.placeholderAr : field.placeholderEn}
                   className="w-full rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-[#051724] px-3.5 py-2.5 text-xs text-[#14243E] dark:text-white focus:outline-none focus:border-[#D5B46B]"
                 />
@@ -431,19 +475,36 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
         </div>
       )}
 
-      {/* Additional Notes */}
+      {/* Optional Supporting Document Upload (Private Vault) */}
+      <div className="p-4 rounded-xl bg-[#F8F7F2] dark:bg-[#051724] border border-dashed border-[#D5B46B]/60 space-y-2">
+        <label className="flex items-center gap-2 text-xs font-black text-[#14243E] dark:text-white">
+          <Upload className="w-4 h-4 text-[#92743A]" />
+          <span>{isAr ? 'إرفاق مستند داعم (اختياري — PDF أو صورة حتى 5MB)' : 'Attach Supporting Document (Optional — PDF/PNG/JPG/WEBP max 5MB)'}</span>
+        </label>
+        <input
+          type="file"
+          accept=".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp"
+          onChange={handleFileChange}
+          className="block w-full text-xs text-slate-600 dark:text-slate-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-[#14243E] file:text-white cursor-pointer"
+        />
+        {uploadedDoc && (
+          <div className="flex items-center gap-2 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+            <FileText className="w-3.5 h-3.5" />
+            <span>{uploadedDoc.name} ({uploadedDoc.mimeType})</span>
+          </div>
+        )}
+      </div>
+
       <div>
         <label className="block text-xs font-bold text-[#14243E] dark:text-slate-200 mb-1.5">
-          {isAr ? 'ملاحظات إضافية للفريق المختص (اختياري)' : 'Additional Notes (Optional)'}
+          {isAr ? 'ملاحظات إضافية (اختياري)' : 'Additional Notes (Optional)'}
         </label>
         <textarea
           rows={2}
           value={notes}
           onChange={e => setNotes(e.target.value)}
           placeholder={
-            isAr
-              ? 'أي تفاصيل إضافية أو متطلبات خاصة بالجدول الزمني...'
-              : 'Any extra context or timeline requirements...'
+            isAr ? 'أي تفاصيل إضافية...' : 'Any extra context...'
           }
           className="w-full rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-[#051724] px-3.5 py-2.5 text-xs text-[#14243E] dark:text-white focus:outline-none focus:border-[#D5B46B]"
         />
@@ -459,32 +520,45 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
         <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
           <ShieldCheck className="w-4 h-4 text-[#92743A] shrink-0" />
           <span>
-            {isAr
-              ? 'تُحفظ بياناتك بسرية تامة مع رقم مرجعي فوري'
-              : 'Your data is stored securely with an instant tracking reference'}
+            {isAr ? 'يخضع المستند لفحص MIME والبصمة الثنائية ويُحفظ بشكل خاص' : 'Attachments verified by MIME + magic-byte signature and stored privately'}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
           {variant === 'inline' && (
             <AppLink
               to={`/order/${service.slug}${activePkg ? `?pkg=${activePkg.id}` : ''}`}
               className="px-4 py-3 rounded-xl border border-[#D5B46B] text-[#14243E] dark:text-[#D5B46B] hover:bg-[#F8F7F2] dark:hover:bg-slate-800 font-bold text-xs flex items-center gap-1.5 whitespace-nowrap shrink-0"
             >
-              <span>{isAr ? 'فتح صفحة الطلب المستقلة' : 'Open Dedicated Order Page'}</span>
+              <span>{isAr ? 'صفحة الطلب المستقلة' : 'Dedicated Order Page'}</span>
               {isAr ? <ArrowLeft className="w-3.5 h-3.5" /> : <ArrowRight className="w-3.5 h-3.5" />}
             </AppLink>
           )}
 
           <button
+            type="button"
+            disabled={submitting}
+            onClick={() => void submitWithStatus('draft')}
+            className="px-4 py-3 rounded-xl border border-[#EAE6DC] dark:border-slate-700 text-[#14243E] dark:text-slate-200 hover:bg-[#F8F7F2] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{isAr ? 'حفظ كمسودة' : 'Save Draft'}</span>
+          </button>
+
+          <button
             type="submit"
-            className="px-6 py-3 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0"
+            disabled={submitting}
+            className="px-6 py-3 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 disabled:opacity-60"
           >
             <Send className="w-4 h-4 text-[#D5B46B]" />
             <span>
-              {isAr
+              {submitting
+                ? isAr
+                  ? 'جاري الحفظ...'
+                  : 'Submitting...'
+                : isAr
                 ? `إرسال طلب ${service.titleAr.split('(')[0].trim()}`
-                : `Submit Service Request ($${priceUsd})`}
+                : `Submit Request ($${priceUsd})`}
             </span>
           </button>
         </div>
