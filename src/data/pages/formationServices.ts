@@ -425,7 +425,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     categoryLabelAr: 'تأسيس الشركات',
     categoryLabelEn: 'Company Formation',
     titleAr: 'الوكيل المسجل والعنوان القانوني الأمريكي (Registered Agent)',
-    titleEn: 'US Registered Agent & Official Business Address',
+    titleEn: 'US Registered-Agent Application Assistance',
     subtitleAr:
       'مساعدة في مراجعة متطلبات الوكيل المسجل في الولاية والتنسيق مع مزود متاح عند تأكيد الأهلية والتوفر؛ استلام البريد ومسحه وإعادة توجيهه يخضع لشروط المزود.',
     subtitleEn:
@@ -477,13 +477,13 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     ],
     benefitsAr: [
       'استلام الإشعارات في الوقت المناسب قد يساعد على متابعة الالتزامات، لكنه لا يضمن Good Standing ولا يغني عن مسؤولية الشركة عن المواعيد.',
-      'عدم تفويت أي إشعارات ضريبية أو تقارير سنوية صادرة عن سكرتير الولاية.',
+      'قد تساعد خدمة الوكيل على استلام بعض الإشعارات؛ تبقى متابعة المواعيد والتقارير مسؤولية الشركة.',
       'إمكانية استخدام العنوان القانوني في نماذج التأسيس وبعض متطلبات الامتثال.',
       'تُراجع مواعيد التجديد وشروط التنبيه وفق مزود الخدمة؛ لا يُفترض وجود تجديد أو تنبيه تلقائي.'
     ],
     benefitsEn: [
       'Timely receipt of notices may support compliance tracking but does not guarantee Good Standing or remove the company’s responsibility for deadlines.',
-      'Never miss critical tax notices or Secretary of State compliance deadlines.',
+      'An agent service may help receive certain notices; the company remains responsible for tracking deadlines and filings.',
       'Protect founder privacy across public corporate lookups.',
       'Renewal terms and reminders depend on the provider; automatic renewal or advance alerts are not assumed.'
     ],
@@ -613,8 +613,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       'معلومات ومساعدة في مراجعة خيار US LLC بحسب نشاطك ومكان ممارسة الأعمال ومتطلبات الولاية؛ لا يوجد اختصاص واحد مناسب للجميع وتخضع الرسوم والأهلية للتحقق.',
     subtitleEn:
       'Information and assistance reviewing a US LLC option against business activity, operating location, and state requirements; no single jurisdiction fits every founder and fees and eligibility require verification.',
-    seoTitleAr: 'تأسيس شركة US LLC أمريكية لغير المقيمين | أسعار الـ 50 ولاية — قبس',
-    seoTitleEn: 'Form a US LLC for Non-Residents | All 50 States Pricing — QABS',
+    seoTitleAr: 'مساعدة تأسيس شركة US LLC أمريكية | قبس',
+    seoTitleEn: 'US LLC Formation Assistance for Eligible Applicants | QABS',
     seoDescriptionAr:
       'مساعدة في مراجعة خيارات US LLC وتجهيز طلب التأسيس في الاختصاصات المتاحة، مع توضيح الرسوم والمتطلبات قبل قبول نطاق الخدمة؛ لا نضمن إصدار EIN أو فتح حساب بنكي.',
     seoDescriptionEn:
@@ -675,7 +675,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '01',
         titleAr: 'اختيار الولاية المناسبة',
         titleEn: 'Pick Your US State',
-        descriptionAr: 'قارن بين وايومنغ وديلاوير ونيو مكسيكو أو أي من الولايات الـ 50 واختر الأنسب.',
+        descriptionAr: 'راجع الاختصاصات المتاحة مثل وايومنغ وديلاوير ونيو مكسيكو، وتحقق من متطلبات ورسوم أي خيار آخر قبل الاختيار.',
         descriptionEn: 'Review selected jurisdictions such as Wyoming, Delaware, and New Mexico; other options require separate availability and fee confirmation.',
         durationAr: '5 دقائق',
         durationEn: '5 mins'
@@ -785,7 +785,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     formFields: [
       {
         name: 'preferredState',
-        labelAr: 'الولاية المختارة (من الـ 50 ولاية)',
+        labelAr: 'الولاية أو الاختصاص المطلوب',
         labelEn: 'Preferred US State',
         type: 'text',
         required: true,
