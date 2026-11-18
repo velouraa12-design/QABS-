@@ -64,6 +64,8 @@ const requiredPreviewSafetyContracts = [
   [appContextSource, 'const requireConnectedBackend = (): boolean'],
   [appContextSource, 'Checkout is disabled in this preview'],
   [appContextSource, 'if (!requireConnectedBackend()) return false;'],
+  [authSource, 'no session, account, or email will be created'],
+  [authSource, "disabled={authLoading || backendStatus !== 'connected'}"],
   [checkoutSource, 'Checkout and invoicing are disabled in this preview'],
   [checkoutSource, 'disabled'],
   [serviceOrderSource, "backendStatus !== 'connected'"],
