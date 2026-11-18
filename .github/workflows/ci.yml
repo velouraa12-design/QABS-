@@ -17,13 +17,19 @@ jobs:
     - name: Setup Node.js Environment
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 22
 
     - name: Install Dependencies
       run: npm install --ignore-scripts --legacy-peer-deps
 
     - name: Run TypeScript & Lint Checks
       run: npm run lint
+
+    - name: Run API & Route Contract Tests
+      run: npm test
+
+    - name: Verify workspace routes
+      run: npm run check:routes
 
     - name: Build Application Bundle
       run: npm run build
