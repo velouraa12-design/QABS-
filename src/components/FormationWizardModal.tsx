@@ -18,7 +18,7 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
   onClose,
   initialStateCode = 'WY'
 }) => {
-  const { language, addCompany, user } = useApp();
+  const { language, addCompany, user, backendStatus } = useApp();
   const isAr = language === 'ar';
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -44,8 +44,7 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
   const selectedPkg =
     QABS_FORMATION_PKGS.find(p => p.id === selectedPkgId) || QABS_FORMATION_PKGS[1];
 
-  const popularStates = US_STATES_PRICING.filter(s => s.tags.includes('popular'));
-  const otherStates = US_STATES_PRICING.filter(s => !s.tags.includes('popular'));
+  const allStates = [...US_STATES_PRICING].sort((a, b) => a.nameEn.localeCompare(b.nameEn));
 
   const availableAddons = QABS_FORMATION_ADDONS.filter(
     addon => selectedPkgId === 'starter' || !addon.starterOnly
@@ -66,7 +65,7 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!companyName.trim()) return;
+    if (backendStatus !== 'connected' || !companyName.trim()) return;
 
     addCompany({
       companyName:
@@ -138,6 +137,13 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
 
         {/* Form Body */}
         <div className="p-6 space-y-5 flex-1">
+          {backendStatus !== 'connected' && (
+            <div role="status" className="rounded-xl border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-900 p-3 text-xs leading-6 text-amber-900 dark:text-amber-200">
+              {isAr
+                ? 'المعاينة غير متصلة بخدمة التأسيس. يمكنك مراجعة البيانات والأسعار التقديرية فقط؛ الحفظ والتقديم غير متاحين ولم يتم إنشاء طلب.'
+                : 'The preview is not connected to the formation service. You may review the form and indicative pricing only; saving and submission are disabled and no request is created.'}
+            </div>
+          )}
           {step === 1 && (
             <div className="space-y-5">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -151,17 +157,10 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
                     onChange={e => setSelectedCode(e.target.value)}
                     className="w-full p-2.5 rounded-xl border-2 border-[#004457]/30 bg-[#F4FAFA] dark:bg-[#051724] text-xs font-extrabold text-[#003445] dark:text-white focus:outline-none focus:border-[#004457] cursor-pointer"
                   >
-                    <optgroup label={isAr ? '⭐ الأكثر شعبية' : '⭐ Most popular'}>
-                      {popularStates.map(st => (
-                        <option key={st.code} value={st.code}>
-                          {isAr ? `${st.nameAr} — $${st.stateFilingFee}` : `${st.nameEn} — $${st.stateFilingFee}`}
-                        </option>
-                      ))}
-                    </optgroup>
                     <optgroup label={isAr ? 'كل الولايات (50)' : 'All states (50)'}>
-                      {otherStates.map(st => (
+                      {allStates.map(st => (
                         <option key={st.code} value={st.code}>
-                          {isAr ? `${st.nameAr} — $${st.stateFilingFee}` : `${st.nameEn} — $${st.stateFilingFee}`}
+                          {isAr ? `${st.nameAr} — ${st.stateFilingFee}` : `${st.nameEn} — ${st.stateFilingFee}`}
                         </option>
                       ))}
                     </optgroup>
@@ -372,6 +371,11 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
                 </div>
                 <span className="text-3xl font-black text-white tabular-nums">${grandTotal}</span>
               </div>
+              <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+                {isAr
+                  ? 'رسوم الولاية تقديرية وقد تتغير، وقد تُضاف ضرائب ورسوم وكيل مسجل وجهات خارجية. تحقّق من الرسوم الرسمية قبل التقديم.'
+                  : 'State fees are indicative and may change; taxes, registered-agent, and third-party fees may also apply. Verify current official fees before filing.'}
+              </p>
             </div>
           )}
         </div>
@@ -402,7 +406,8 @@ export const FormationWizardModal: React.FC<FormationWizardModalProps> = ({
           ) : (
             <button
               onClick={handleSubmit}
-              className="px-6 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-[#00A896] to-[#007F8B] rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2"
+              disabled={backendStatus !== 'connected'}
+              className="px-6 py-2.5 text-xs font-extrabold text-white bg-gradient-to-r from-[#00A896] to-[#007F8B] rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ShieldCheck className="w-4 h-4 text-white" />
               <span>{isAr ? 'حفظ وتقديم طلب التأسيس' : 'Save & Submit Formation Request'}</span>
