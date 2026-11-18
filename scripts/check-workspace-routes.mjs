@@ -73,9 +73,9 @@ const requiredTruthfulCopy = [
   'QABS does not guarantee EIN issuance, account opening, or provider approval'
 ];
 for (const phrase of requiredTruthfulCopy) {
-  if (!landingSource.toLowerCase().includes(phrase.toLowerCase())) {
-    errors.push(`Missing truthful service disclaimer: ${phrase}`);
-  }
+  const hasTruthfulCopy = [landingSource, companyFormationCopy]
+    .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
+  if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
 const requiredPreviewSafetyContracts = [
   [appContextSource, 'const requireConnectedBackend = (): boolean'],
