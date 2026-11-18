@@ -92,6 +92,7 @@ const isWorkspaceLocation = (): boolean => {
   const path = normalizePath(window.location.pathname || '/');
   if (
     path === '/workspace' || path.startsWith('/workspace/') ||
+    path === '/account' ||
     path === '/studio' || path.startsWith('/studio/')
   ) return true;
   return WORKSPACE_HASH_PREFIXES.some(prefix => hash.startsWith(`#${prefix}`));
@@ -274,6 +275,7 @@ const MainLayout: React.FC = () => {
 
     if (
       path === '/' || path === '/workspace' || path.startsWith('/workspace/') ||
+      path === '/account' ||
       path === '/studio' || path.startsWith('/studio/') ||
       ['/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(path)
     ) {
