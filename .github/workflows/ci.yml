@@ -25,11 +25,15 @@ jobs:
     - name: Report dependency advisories (non-blocking)
       run: |
         npm audit --json > /tmp/qabs-npm-audit.json || true
+        npm audit --omit=dev --json > /tmp/qabs-prod-audit.json || true
         node --input-type=module -e '
           import fs from "node:fs";
           const report = JSON.parse(fs.readFileSync("/tmp/qabs-npm-audit.json", "utf8"));
+          const prodReport = JSON.parse(fs.readFileSync("/tmp/qabs-prod-audit.json", "utf8"));
           const vulnerabilities = Object.entries(report.vulnerabilities || {});
-          console.log("npm audit summary:", JSON.stringify(report.metadata?.vulnerabilities || {}));
+          const productionVulnerabilities = Object.entries(prodReport.vulnerabilities || {});
+          console.log("Full dependency audit:", JSON.stringify(report.metadata?.vulnerabilities || {}));
+          console.log("Production-only dependency audit:", JSON.stringify(prodReport.metadata?.vulnerabilities || {}));
           for (const [name, item] of vulnerabilities) {
             const via = (item.via || []).map(advisory =>
               typeof advisory === "string"
@@ -38,7 +42,11 @@ jobs:
             ).join("; ");
             console.log(`AUDIT ${item.severity}: ${name}; range=${item.range}; fixAvailable=${JSON.stringify(item.fixAvailable)}; advisories=${via}`);
           }
+          for (const [name, item] of productionVulnerabilities) {
+            console.log(`PRODUCTION AUDIT ${item.severity}: ${name}; range=${item.range}`);
+          }
           if (!vulnerabilities.length) console.log("npm audit: no package advisories reported.");
+          if (!productionVulnerabilities.length) console.log("Production-only audit: no package advisories reported.");
         '
 
     - name: Run TypeScript & Lint Checks
