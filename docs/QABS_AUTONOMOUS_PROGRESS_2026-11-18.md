@@ -516,3 +516,21 @@ Updated areas:
 - No end-to-end test has established full production-grade tenant isolation, file upload security, billing/subscription lifecycle, custom domains, domain purchase, store publication, or live checkout.
 - No live production deployment, DNS change, Shopify theme change, payment activation, or customer communication was performed.
 - Dependency advisory triage remains open.
+
+
+## 14. Dependency audit and development-server hardening — 2026-11-18
+
+- Moved `vite`, `@vitejs/plugin-react`, and `@tailwindcss/vite` into `devDependencies`; pinned the Vite toolchain floor to Vite `^8.3.8` and React plugin `^6.3.0`.
+- Changed the Vite development server from `0.0.0.0` to `127.0.0.1` and removed `allowedHosts: true`. Added a route/safety check that fails if the dev server binds to all interfaces or allows every host.
+- Replaced the misleading CI message “100% clean” with an explicit statement that the secret-pattern scan is limited and is not a complete security audit.
+- Added a non-blocking full dependency audit and a separate production-only audit to CI.
+
+### Dependency audit result (run 44242536778, commit `e1927f13e3a968a74a05a6757becec94d9a7b87c`)
+
+- Full dependency tree: 5 high findings, 0 critical/moderate/low.
+- Production-only dependency tree: 0 findings at all severities.
+- The five high entries all trace through the Vite build-tool dependency chain to Picomatch's ReDoS advisory GHSA-fc5q-39xc-vjpf. The advisory is unreviewed and currently lists no supported package/fixed-version metadata. A suggested npm downgrade to Vite 6.2.7 is a major downgrade and was not applied.
+- The Vite 8.3.8 baseline is above the Vite advisory's patched release 8.3.7 for GHSA-p4f5-76q4-ffq7. The dev server is also loopback-only now.
+- This does **not** mean the full development dependency tree is vulnerability-free. Keep the Picomatch advisory open for reassessment when upstream publishes a fix or reliable affected-version metadata. Do not expose the Vite dev server to the public network.
+
+CI run 44242536778 completed successfully (TypeScript, tests, route/marketing checks, build, secret scan, and both audit reports). The audit step is informational/non-blocking; the five development-tool findings remain visible.
