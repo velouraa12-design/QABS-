@@ -325,3 +325,37 @@ GitHub Actions run `44231386861` for commit `f9de0eabc375d20df0b8a3db69be44f7d28
 The test suite covers local Express preview API behavior including registration role injection, CSRF, session revocation, cross-tenant/cross-store access, RBAC, billing gates, credit ledger and document vault paths. These are local test-harness results, not proof that the separate Cloudflare Workers expose the same routes or are production-ready.
 
 The separate `workspace-preview.yml` generated failure-status run records with zero jobs and no job logs for the branch pushes; no Pages build/deploy is claimed from those records. Cause remains NOT VERIFIED. The independently deployed Worker preview v2 remains the available preview link.
+
+
+## 18. Second repository pass, API contract mismatch, and fresh Pages preview
+
+### Repository boundaries (read-only comparison)
+- `velouraa12-design/QABS-`: current working frontend/API candidate. Contains `src/services/qabsApi.ts` (legacy `/api/*` contract) and `src/services/qabsStudioApi.ts` (same-origin `/studio/api/*`, HttpOnly `__Host-qdp_session`, CSRF) but the latter is intentionally not wired into `AppContext`.
+- `velouraa12-design/Qabs-123`: separate Vite/React template repository. Its own source-of-truth and contract docs say the UI uses `mockData.ts` and React state, while `DATABASE_SCHEMA.sql` is a target schema, not a connected runtime. No changes made.
+- `velouraa12-design/-Qabs1.store-`: another separate template copy with additional module and backend audit docs. It also says the frontend state is mock/local and its `qabsApi.ts` assumptions do not match the deployed Studio API. No changes made.
+- `velouraa12-design/-qwer`: Express/Node candidate previously audited; JSON-file persistence and seeded/dev-only fallbacks make it a local test harness, not a Worker/D1 deployment target without a separate redesign.
+- No repository, branch, history, or user data was merged or deleted.
+
+### Live API contract checks on the new Worker preview
+Target: `qabs-unified-workspace-staging-v2.qabs1store.workers.dev`.
+- Worker Service Binding `API` points to `qabs-stores-acceptance-preview`.
+- `/_qabs_staging_health`: HTTP 200, `apiBridge=configured`.
+- `/studio/api/config`: HTTP 200.
+- `/studio/api/me`: HTTP 401 without session (expected protection).
+- `/api/health`, `/api/auth/session`, `/api/workspace/bootstrap`, `/api/integrations/status`: HTTP 401 from the proxied Studio API, not the legacy payload shape expected by `qabsApi.ts`.
+- Therefore the bridge itself is live, but the current React `qabsApi.ts` and the deployed Studio API contract are not yet compatible. The existing `qabsStudioApi.ts` is the correct same-origin cookie/CSRF client direction, but currently covers only a subset (config, me, login/register/logout, requests, project workspaces, workspace stores). Do not mark the customer workspace backend-integrated or wire only the login methods while the rest of the UI still relies on incompatible calls.
+
+### Preview workflow repaired and new preview deployed
+- Added the autonomous branch to `.github/workflows/workspace-preview.yml`.
+- Fixed secret guards to use the job-level `env` context rather than referencing `secrets` directly in step `if` expressions.
+- GitHub Actions CI run `44231866808`: SUCCESS — TypeScript/lint, API tests, route checks, build, secret scan.
+- Workspace preview run `44231862380`: SUCCESS — dependency install, lint, API tests, route checks, static build, artifact upload, Cloudflare Pages deploy.
+- Cloudflare Pages deployment ID `8ec711a0-857a-4695-af8b-d8fd8bcc5841`, environment `preview`, branch `autonomous/qabs-baseline-audit-20261118`, commit `5d14284afc159f724af9228d86f51b58b6166601`.
+- Fresh branch preview alias: `https://autonomous-qabs-baseline-aud.qabs-workspace-reference-preview.pages.dev`.
+- Root and selected hash URLs returned HTTP 200 in content-level scrape checks. Firecrawl does not execute the React app's client-side router, so those hash-route scrapes do NOT prove the routed page rendered; browser interaction/pixel QA remains NOT VERIFIED.
+- Existing PR-2 alias `https://pr-2.qabs-workspace-reference-preview.pages.dev` remains a separate deployment; no prior deployment was overwritten. No production branch or custom domain was changed.
+
+### Additional frontend auth handling
+- Browser UI no longer returns preview password-reset or email-verification tokens, even if a backend responds with them; recovery/verification instructions must be delivered by configured mail.
+- Logout always clears local UI state but now reports honestly if server-side session revocation could not be confirmed.
+- Latest commit includes these changes; CI on the latest commit must be confirmed separately before considering this exact commit validated.
