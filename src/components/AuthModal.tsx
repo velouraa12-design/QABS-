@@ -91,6 +91,7 @@ export const AuthModal: React.FC = () => {
   const handleRecoverRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    if (backendStatus !== 'connected') return;
     if (!email.trim()) return;
     const tok = await requestPasswordReset(email.trim());
     if (tok) setResetTokenInput(tok);
@@ -100,6 +101,7 @@ export const AuthModal: React.FC = () => {
   const handleRecoverConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    if (backendStatus !== 'connected') return;
     const ok = await confirmPasswordReset(resetTokenInput, newPasswordInput);
     if (ok) {
       setResetDone(true);
@@ -172,6 +174,14 @@ export const AuthModal: React.FC = () => {
             <X className="w-5 h-5" />
           </button>
         </div>
+
+        {backendStatus !== 'connected' && (
+          <div role="status" className="px-6 py-3 bg-amber-950/50 border-b border-amber-800 text-amber-200 text-[11px] leading-6">
+            {isAr
+              ? 'المعاينة غير متصلة بخدمة المصادقة والبريد. الدخول والتسجيل والتحقق واستعادة كلمة المرور معطلة؛ لن يتم إنشاء جلسة أو حساب أو إرسال رسالة.'
+              : 'This preview is not connected to authentication or email services. Sign-in, registration, verification, and recovery are disabled; no session, account, or email will be created.'}
+          </div>
+        )}
 
         {/* Auth Gate Notice when Pending Service Order exists */}
         {pendingServiceOrder && !isOwnerIntent && (
@@ -333,7 +343,7 @@ export const AuthModal: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={authLoading}
+                disabled={authLoading || backendStatus !== 'connected'}
                 className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
               >
                 {authLoading
@@ -410,6 +420,7 @@ export const AuthModal: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="submit"
+                      disabled={authLoading || backendStatus !== 'connected'}
                       className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs cursor-pointer"
                     >
                       {isAr ? 'تأكيد البريد الآن ✓' : 'Verify Email Now ✓'}
@@ -495,7 +506,7 @@ export const AuthModal: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={authLoading}
+                    disabled={authLoading || backendStatus !== 'connected'}
                     className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {authLoading
@@ -581,7 +592,7 @@ export const AuthModal: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={authLoading}
+                    disabled={authLoading || backendStatus !== 'connected'}
                     className="w-full py-2.5 bg-gradient-to-r from-[#00A389] to-[#2DD4BF] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {authLoading
@@ -621,6 +632,7 @@ export const AuthModal: React.FC = () => {
                     </div>
                     <button
                       type="submit"
+                      disabled={authLoading || backendStatus !== 'connected'}
                       className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                     >
                       {isAr ? 'إصدار رمز الاستعادة' : 'Request Recovery Token'}
@@ -666,6 +678,7 @@ export const AuthModal: React.FC = () => {
                     )}
                     <button
                       type="submit"
+                      disabled={authLoading || backendStatus !== 'connected'}
                       className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer"
                     >
                       {isAr ? 'تأكيد تغيير كلمة المرور' : 'Confirm Password Reset'}
