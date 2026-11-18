@@ -7,11 +7,11 @@ const UPSTREAM_ORIGIN = 'https://qabs-unified-workspace-staging-v2.qabs1store.wo
 
 describe('QABS Pages preview Studio API bridge', () => {
   it('forwards same-origin mutations, cookies, CSRF and request body to the isolated API binding', async () => {
-    let forwarded: Request | null = null;
+    const forwarded: Request[] = [];
     const env = {
       QABS_STUDIO_API: {
         fetch: async (request: Request) => {
-          forwarded = request;
+          forwarded.push(request);
           return new Response(JSON.stringify({ ok: true }), {
             headers: { 'Content-Type': 'application/json', 'Set-Cookie': '__Host-qdp_session=synthetic; Secure; HttpOnly; SameSite=Strict; Path=/' }
           });
@@ -31,12 +31,13 @@ describe('QABS Pages preview Studio API bridge', () => {
 
     const response = await onRequest({ request, env });
     assert.equal(response.status, 200);
-    assert.ok(forwarded);
-    assert.equal(forwarded.url, UPSTREAM_ORIGIN + '/studio/api/auth/login?source=ci');
-    assert.equal(forwarded.headers.get('Origin'), API_ORIGIN);
-    assert.equal(forwarded.headers.get('Cookie'), '__Host-qdp_session=synthetic');
-    assert.equal(forwarded.headers.get('X-CSRF-Token'), 'synthetic-csrf');
-    assert.deepEqual(await forwarded.json(), { email: 'ci@example.test', password: 'synthetic-only' });
+    assert.equal(forwarded.length, 1);
+    const forwardedRequest = forwarded[0]!;
+    assert.equal(forwardedRequest.url, UPSTREAM_ORIGIN + '/studio/api/auth/login?source=ci');
+    assert.equal(forwardedRequest.headers.get('Origin'), API_ORIGIN);
+    assert.equal(forwardedRequest.headers.get('Cookie'), '__Host-qdp_session=synthetic');
+    assert.equal(forwardedRequest.headers.get('X-CSRF-Token'), 'synthetic-csrf');
+    assert.deepEqual(await forwardedRequest.json(), { email: 'ci@example.test', password: 'synthetic-only' });
     assert.match(response.headers.get('Set-Cookie') || '', /HttpOnly/);
   });
 
