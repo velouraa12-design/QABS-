@@ -4,10 +4,13 @@
  * and CSRF token. The local Express candidate currently uses qabs_session;
  * those session contracts are not interchangeable.
  *
- * IMPORTANT: the public Pages preview is a different origin and cannot use
- * the portal's SameSite=Strict cookie. Use only behind the matching
- * same-origin portal /studio proxy. This client is not wired into AppContext
- * until deployed-worker parity and authenticated tenant-isolation tests pass.
+ * The isolated Pages preview now proxies /studio/api through a same-origin
+ * Cloudflare Pages Function service binding to the staging Worker. This keeps
+ * the __Host-qdp_session SameSite=Strict cookie first-party on the Pages host.
+ *
+ * IMPORTANT: this is a separate Studio/D1 session and data contract, not the
+ * Express qabs_session API. Do not wire it into the main AppContext until
+ * authenticated tenant-isolation tests pass against the deployed Worker.
  */
 export type StudioApiError = Error & { status?: number; code?: string };
 
