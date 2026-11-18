@@ -786,8 +786,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'تأسيس LLC أو C-Corp في كافة الولايات الخمسين (وايومنغ، ديلاوير، نيو مكسيكو...) والشركات البريطانية LTD.'
-                  : 'Register LLC or C-Corp in all 50 US states or UK LTD with full corporate documents.'}
+                  ? 'مساعدة في مراجعة خيارات LLC أو C-Corp الأمريكية أو UK LTD وتجهيز الطلبات وفق الأهلية والاختصاص ونطاق الخدمة المتاح.'
+                  : 'Review US LLC or C-Corp and UK LTD options and prepare applications subject to eligibility, jurisdiction, and available service scope.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1140,7 +1140,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
         </p>
       </section>
 
-      {/* 5. COLLAPSIBLE ALL 50 US STATES TRANSPARENT PRICING */}
+      {/* 5. COLLAPSIBLE INDICATIVE US STATE FEE GUIDE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-white dark:bg-[#071D2B] border-2 border-[#004457]/20 dark:border-cyan-950 p-6 shadow-md space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1164,11 +1164,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <span>
                 {showStatesPricing
                   ? isAr
-                    ? 'إخفاء جدول أسعار الولايات الأمريكية (50 ولاية)'
-                    : 'Hide All 50 US States Pricing'
+                    ? 'إخفاء جدول رسوم الولايات الإرشادي'
+                    : 'Hide Indicative US State Fee Guide'
                   : isAr
-                  ? 'عرض أسعار كافة الولايات الأمريكية (50 ولاية)'
-                  : 'Show All 50 US States Pricing'}
+                  ? 'عرض جدول رسوم الولايات الإرشادي'
+                  : 'Show Indicative US State Fee Guide'}
               </span>
               {showStatesPricing ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -1210,7 +1210,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     onChange={e => setStateFilter(e.target.value as any)}
                     className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs font-bold"
                   >
-                    <option value="all">{isAr ? 'كل الولايات (50)' : 'All 50 States'}</option>
+                    <option value="all">{isAr ? 'كل الخيارات المدرجة' : 'All listed options'}</option>
                     <option value="low_fee">{isAr ? 'رسوم حكومية منخفضة' : 'Low Filing Fee'}</option>
                   </select>
                 </div>
