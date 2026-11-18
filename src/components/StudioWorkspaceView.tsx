@@ -25,7 +25,7 @@ export const StudioWorkspaceView: React.FC = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [authMode, setAuthMode] = useState<'login' | 'register'>(() => {
-    if (typeof window !== 'undefined' && ['/signup', '/register'].includes(window.location.pathname.replace(/\\/$/, '') || '/')) return 'register';
+    if (typeof window !== 'undefined' && ['/signup', '/register'].includes(window.location.pathname || '/')) return 'register';
     return 'login';
   });
   const [email, setEmail] = useState('');
@@ -48,7 +48,7 @@ export const StudioWorkspaceView: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [draftName, setDraftName] = useState('');
   const [templateKey, setTemplateKey] = useState('');
-  const routePath = typeof window !== 'undefined' ? window.location.pathname.replace(/\\/$/, '') || '/' : '/';
+  const routePath = typeof window !== 'undefined' ? window.location.pathname || '/' : '/';
   const recoveryRoute = ['/forgot-password', '/recover', '/reset-password'].includes(routePath);
   const verificationRoute = routePath === '/verify-email';
 
