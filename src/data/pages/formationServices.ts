@@ -624,7 +624,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       'تساعد قبس في مراجعة بعض الاختصاصات المتاحة ومقارنة المتطلبات والرسوم المعلنة. الضرائب والتقارير والإفصاحات تختلف حسب الحالة وقد تتطلب التزامات في أكثر من ولاية؛ يجب التحقق من المصادر الرسمية قبل الاختيار.'
     ],
     detailedDescriptionEn: [
-      'A US Limited Liability Company (LLC) is the most flexible, cost-effective entity for international founders, combining personal asset protection with streamlined governance.',
+      'A US Limited Liability Company (LLC) is one available US entity type. Legal and tax effects depend on the state, ownership, activity, and operating locations; it does not provide absolute protection or replace professional advice.',
       'QABS can help review selected jurisdictions and published requirements and fees. Tax, reporting, and disclosure obligations vary by circumstances and may apply in more than one state; verify official sources before choosing.'
     ],
     deliveryTimeAr: 'المدة غير مضمونة وتختلف حسب الولاية واكتمال المستندات ومعالجة السجل',
@@ -662,13 +662,13 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       'قد يوفر الكيان فصلاً قانونياً بين الأصول عند الالتزام بالقوانين والإدارة السليمة؛ لا يمثل ذلك حماية مطلقة.',
       'يصدر رقم الملف أو السجل من الجهة المختصة بعد قبول الإيداع؛ لا يمكن ضمان مدة الإصدار.',
       'قد تساعد مستندات الكيان في تجهيز طلب حساب تجاري؛ قرار فتح الحساب يعود للمزود ولا نضمنه.',
-      'مرونة إضافة أو تعديل الشركاء عبر اتفاقية التشغيل.'
+      'يمكن أن تحدد اتفاقية التشغيل بعض ترتيبات الإدارة والملكية وفق القانون المعمول به؛ إعدادها أو تعديلها يخضع لنطاق خدمة مستقل.'
     ],
     benefitsEn: [
       'An entity may provide legal separation of assets when properly maintained; this is not absolute protection.',
       'The relevant registry issues a filing or record number after accepting the submission; timing is not guaranteed.',
       'Entity documents may support a business-account application; the provider decides approval and QABS does not guarantee it.',
-      'Simple governance without rigid corporate board formalities.'
+      'An operating agreement may set out management and ownership arrangements subject to applicable law and the agreed scope.'
     ],
     steps: [
       {
@@ -695,8 +695,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         titleEn: 'Formation Coordination & EIN Application Assistance',
         descriptionAr: 'تُنسّق قبس تجهيز طلب الإيداع بعد قبول الأهلية والنطاق وتوفر جهة التنفيذ؛ السجل الحكومي يصدر شهادة التأسيس، ويخضع طلب EIN لمتطلبات IRS.',
         descriptionEn: 'QABS coordinates filing preparation after eligibility and scope acceptance and service availability; the registry issues formation records, and any EIN request is subject to IRS requirements.',
-        durationAr: '3 – 10 أيام عمل',
-        durationEn: '3 – 10 business days'
+        durationAr: 'المدة غير مضمونة وتخضع لمعالجة السجل واكتمال المستندات',
+        durationEn: 'Timing is not guaranteed and depends on registry processing and document completeness'
       }
     ],
     packages: [
@@ -756,7 +756,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         descriptionEn: 'An indicative option to review Delaware suitability against entity type and business plans; investor or bank acceptance is not guaranteed.',
         featuresAr: [
           'مساعدة في تجهيز طلب LLC في ديلاوير بعد مراجعة الأهلية والرسوم',
-          'الاستفادة من محاكم Chancery المتخصصة',
+          'مراجعة خصائص النظام القانوني في ديلاوير مع مستشار مؤهل',
           'مساعدة في طلب EIN ومسودة اتفاقية تشغيل إذا شملهما العرض',
           'مراجعة توفر الوكيل ومتطلبات العنوان وتكلفته قبل الطلب'
         ],
@@ -778,8 +778,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل يمكن تأسيس LLC بشريك واحد (Single-Member) أم أكثر؟',
         questionEn: 'Can I form a Single-Member or Multi-Member LLC?',
-        answerAr: 'يدعم نظام قبس تأسيس شركة بمالك واحد (Single-Member LLC) أو بعدة شركاء (Multi-Member LLC) مع توثيق نسب الحصص في اتفاقية التشغيل.',
-        answerEn: 'QABS supports both Single-Member and Multi-Member LLCs, documenting ownership percentages clearly in your Operating Agreement.'
+        answerAr: 'تسمح كثير من الولايات بهياكل LLC بمالك واحد أو عدة أعضاء؛ تُراجع متطلبات الولاية والملكية واتفاقية التشغيل قبل التقديم.',
+        answerEn: 'Many states allow single-member or multi-member LLC structures; state, ownership, and operating-agreement requirements should be reviewed before filing.'
       }
     ],
     formFields: [
