@@ -122,7 +122,7 @@ export const StudioWorkspaceView: React.FC = () => {
     setError('');
     try {
       if (authMode === 'register') {
-        if (!config?.registration) throw new Error('التسجيل غير متاح حالياً.');
+        if (!registrationReady) throw new Error('إنشاء الحساب متوقف حتى تفعيل التحقق من البريد الإلكتروني.');
         await studioApi.register(email.trim(), password);
       } else {
         await studioApi.login(email.trim(), password);
@@ -260,6 +260,8 @@ export const StudioWorkspaceView: React.FC = () => {
   const storeTemplates = templates.filter(template => template.type === 'store');
   const availableStoreTemplates = storeTemplates.length ? storeTemplates : templates;
 
+  const registrationReady = config?.registration === true && config?.emailVerification === true;
+
   const templateLabel = useMemo(
     () => new Map(templates.map(template => [template.key, template.ar || template.en])),
     [templates]
@@ -278,14 +280,14 @@ export const StudioWorkspaceView: React.FC = () => {
       <section dir="rtl" className="min-h-[72vh] bg-[#071A2A] px-4 py-12 text-white">
         <div className="mx-auto max-w-md rounded-3xl border border-[#D5B46B]/30 bg-[#0D2639] p-7 shadow-2xl">
           <div className="mb-6 text-center"><div className="text-sm font-bold tracking-[.25em] text-[#D5B46B]">QABS STUDIO</div><h1 className="mt-3 text-2xl font-black">مساحة أعمالك في قبس</h1><p className="mt-2 text-sm text-slate-300">سجّل الدخول لإدارة مساحات العمل وطلبات الخدمات ومسودات المتاجر.</p></div>
-          <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#071A2A] p-1 text-sm"><button onClick={() => setAuthMode('login')} className={`rounded-lg py-2 font-bold ${authMode === 'login' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>تسجيل الدخول</button><button onClick={() => setAuthMode('register')} disabled={!config?.registration} className={`rounded-lg py-2 font-bold disabled:opacity-40 ${authMode === 'register' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>إنشاء حساب</button></div>
+          <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#071A2A] p-1 text-sm"><button onClick={() => setAuthMode('login')} className={`rounded-lg py-2 font-bold ${authMode === 'login' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>تسجيل الدخول</button><button onClick={() => setAuthMode('register')} disabled={!registrationReady} className={`rounded-lg py-2 font-bold disabled:opacity-40 ${authMode === 'register' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>إنشاء حساب</button></div>
           <form onSubmit={handleAuth} className="space-y-4">
             <label className="block text-sm font-bold">البريد الإلكتروني<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /></label>
             <label className="block text-sm font-bold">كلمة المرور<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={12} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /><span className="mt-1 block text-xs text-slate-400">12 حرفاً على الأقل.</span></label>
             {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
-            <button disabled={busy || (authMode === 'register' && !config?.registration)} className="w-full rounded-xl bg-[#D5B46B] px-5 py-3 font-black text-[#14243E] disabled:opacity-50">{busy ? 'جارٍ التنفيذ…' : authMode === 'login' ? 'دخول آمن' : 'إنشاء الحساب'}</button>
+            <button disabled={busy || (authMode === 'register' && !registrationReady)} className="w-full rounded-xl bg-[#D5B46B] px-5 py-3 font-black text-[#14243E] disabled:opacity-50">{busy ? 'جارٍ التنفيذ…' : authMode === 'login' ? 'دخول آمن' : 'إنشاء الحساب'}</button>
           </form>
-          {config?.emailVerification !== true && <p className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">تنبيه المعاينة: التحقق من البريد واستعادة كلمة المرور غير مفعّلين بعد. لا تُدخل بيانات حساسة أو مستندات حقيقية في هذه البيئة.</p>}
+          {config?.emailVerification !== true && <p className="mt-5 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">التسجيل الجديد متوقف مؤقتاً حتى تفعيل التحقق من البريد. استعادة كلمة المرور غير مفعّلة بعد. هذه بيئة معاينة؛ لا تُدخل بيانات حساسة أو مستندات حقيقية.</p>}
           <p className="mt-4 text-center text-xs text-slate-400">الدفع غير مفعّل في بيئة المعاينة.</p>
         </div>
       </section>
