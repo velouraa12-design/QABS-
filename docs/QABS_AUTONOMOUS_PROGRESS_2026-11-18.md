@@ -578,3 +578,26 @@ Verification:
 - CI run 44243493086, commit `e8435acd544a9a7b97e1e51d3f00d3a312fdfa83`: success.
 - Isolated Pages deployment run 44243488227: success.
 - Latest preview: `https://68765c2c.qabs-workspace-reference-preview.pages.dev`. A live scrape confirms the calculator, top package, and AI/store cards display no-payment/disabled states and indicative service copy.
+
+
+## 13. Store, AI, formation and EIN capability disclosure hardening — 2026-11-18
+
+Additional UI and service-copy changes were committed on the same isolated branch after the earlier Studio contract test.
+
+- Store plans are now clearly assessment-only, not active subscriptions. No payment, domain, gateway activation, or automatic publication is offered from the landing page.
+- QABS AI is marked in preparation. Credit purchases and automated AI operations are unavailable; the corresponding CTAs are disabled rather than creating fake service requests.
+- Removed/qualified unsupported platform claims around multi-tenant isolation, integrated dashboards, payment-provider connection, and business-account opening.
+- Formation and EIN service pages now describe eligibility review and application-preparation assistance, not guaranteed registration, EIN issuance, IRS timelines, bank opening, or provider approval.
+- Corrected unsupported claims about IRS international-desk submission, original PDF delivery, banking readiness, tax-form completion, employment/invoicing, and guaranteed 3–10 day LLC formation.
+- LLC copy now states that legal/tax outcomes vary by circumstances and that single/multi-member eligibility depends on jurisdiction, rather than claiming QABS itself provides a completed formation workflow.
+- Corrected the Studio API client's comment to match the actual same-origin `qabs_session` cookie contract.
+
+### Latest verified checks before the most recent source edits
+- Commit `17c5a1248cc37cedf6f7ad1f2c78beba886a1b60`: CI and isolated Pages preview deployment both succeeded.
+- The deployed preview at `https://ccc393cd.qabs-workspace-reference-preview.pages.dev` returned HTTP 200 for home, company-formation, and EIN routes. The scrape confirmed store/AI assessment-only copy and the revised EIN claims present in that commit.
+- Follow-up LLC copy changes and Studio API comment correction were committed after that deployment. Their CI and preview results are pending verification.
+- The Express candidate server currently exposes only a subset of the Studio API methods: config, me, auth login/register/logout, requests GET, project-workspaces GET, and workspace-stores GET. The client also defines service catalog/request writes, store drafts, workspace creation, store creation/update/activity, settings, and formation-selection operations without matching Express routes found in the current server source.
+- This parity gap is a blocker. Do not wire the Studio client into AppContext or claim the full workspace is operational until the missing routes are implemented, tenant-guarded, and integration-tested.
+- Cloudflare acceptance Worker remains a separate codebase and has not been proven equivalent by these Express tests.
+
+No production Worker, D1 database, DNS, Shopify configuration, payment provider, or customer data was changed. No PR merge or production release was performed.
