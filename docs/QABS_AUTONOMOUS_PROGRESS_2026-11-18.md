@@ -42,7 +42,7 @@ Observed Workers and bindings:
 
 Read-only D1 `sqlite_master` queries confirmed that the auth, Studio acceptance, stores, forms and portal databases contain different table families. No schema/data migrations or writes were run. Database listing metadata reports `num_tables=0` even though read-only sqlite_master queries returned tables; use the actual query result rather than that metadata field.
 
-Cloudflare Pages project listing returned HTTP 400 for the attempted list options. Pages project/deployment identity and deployment history are therefore NOT VERIFIED in this run.
+Cloudflare Pages inventory was subsequently retrieved with the API's accepted pagination (`page=1, per_page=10`). Project `qabs-workspace-reference-preview` exists; latest preview deployment is `f8e83ae5` at `https://f8e83ae5.qabs-workspace-reference-preview.pages.dev`, alias `https://4-merge.qabs-workspace-reference-preview.pages.dev`. It is an isolated preview deployment and `uses_functions=false` (static Pages only).
 
 ## 4. HTTP smoke probes
 
@@ -81,7 +81,7 @@ Cloudflare Pages project listing returned HTTP 400 for the attempted list option
 | Real payment collection | BLOCKED | Payments disabled; no real transactions authorized. |
 | Tenant/store isolation in deployed Workers | NOT VERIFIED | Run synthetic two-user/two-store adversarial API tests against a dedicated isolated acceptance database. |
 | Frontend-to-canonical-API integration | FAIL (contract mismatch) | Select one API authority and write contract tests before connecting AppContext. |
-| Pages project inventory/deployment history | NOT VERIFIED | Cloudflare list endpoint rejected the attempted pagination parameters; retry using endpoint schema. |
+| Pages project inventory/deployment history | PASS (inventory) | Pages project and latest preview deployment retrieved with valid pagination; static-only deployment (`uses_functions=false`). |
 | Staging/live environment separation | FAIL (risk identified) | Staging-named portal Worker has live portal origin and a service binding to `qabs-stores`; isolate/verify before use. |
 | Production deployment / DNS / checkout / payment mutation | NOT AUTHORIZED | Explicitly out of scope. |
 
@@ -98,3 +98,35 @@ Cloudflare Pages project listing returned HTTP 400 for the attempted list option
 ## 9. Safety boundary
 
 No production deploy, PR merge, DNS change, Shopify checkout/theme change, payment key change, real payment, customer email, database migration, data deletion, account migration or external purchase was performed or authorized.
+
+
+## 10. New isolated preview deployment and CI evidence
+
+GitHub Actions run `44226926881` for draft PR #4 completed successfully. The observed job steps all completed successfully:
+- TypeScript check (`npm run lint`).
+- API/security and route tests: 10 tests passed, 0 failed.
+- Workspace route checker: 34 tabs had sidebar entries, unique URL slugs and page renderers.
+- Vite static build succeeded.
+- Public preview artifact scan removed/excluded AI Studio access-history JSON.
+- Preview artifact upload succeeded.
+- Cloudflare Pages deploy succeeded.
+
+Run log warnings:
+- Vite reports use of `__dirname` in `vite.config.ts` is unsupported by the future native config loader.
+- Main JS chunk is approximately 1.225 MB (302 KB gzip), above the 500 KB advisory threshold.
+- The deployment reports a dirty working tree in its checkout.
+These are warnings, not failed steps; they remain cleanup items.
+
+New preview:
+- `https://4-merge.qabs-workspace-reference-preview.pages.dev`
+- Immutable deployment URL: `https://f8e83ae5.qabs-workspace-reference-preview.pages.dev`
+- Cloudflare project: `qabs-workspace-reference-preview`
+- Deployment environment: `preview`; `uses_functions=false`.
+
+Live scrape checks on the new deployment:
+- Root homepage: HTTP 200; Arabic marketing landing page rendered.
+- `/services/company-formation`: HTTP 200; standalone service page rendered.
+- Mobile viewport scrape: HTTP 200; same page content returned. Screenshot was generated, but no pixel-by-pixel visual QA was completed.
+- `#/overview`, `#/workspace`, `#/workspace/overview`, `#/login`, `#/portal`, and `?workspacePreview=1#/overview` all returned the marketing landing page in the Firecrawl scrape. The customer workspace therefore remains NOT VERIFIED on this Pages preview; the route may require a browser interaction or a different host/route. The preview reference link from PR-2 remains a separate demo environment.
+
+The newly deployed preview visibly contains prices and marketing claims (including an EIN success-rate claim). Those are content, not verified service outcomes or approved current pricing; review them before any public release.
