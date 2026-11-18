@@ -83,7 +83,7 @@ export const UsLlcPage: React.FC = () => {
                 [
                   { id: 'all', ar: 'جميع الولايات', en: 'All States' },
                   { id: 'popular', ar: 'الأكثر طلباً', en: 'Popular' },
-                  { id: 'zero_tax', ar: '0% ضريبة دخل', en: 'Zero Income Tax' },
+                  { id: 'zero_tax', ar: 'لا ضريبة دخل على مستوى الولاية', en: 'No State-Level Income Tax' },
                   { id: 'low_fee', ar: 'رسوم ≤ $100', en: 'Fee ≤ $100' }
                 ] as const
               ).map(f => (
@@ -102,6 +102,12 @@ export const UsLlcPage: React.FC = () => {
               ))}
             </div>
           </div>
+
+          <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+            {isAr
+              ? 'الرسوم المعروضة إرشادية وقد تتغير. لا تشمل بالضرورة الضرائب الفيدرالية أو رسوم الوكيل المسجل أو الجهات الخارجية؛ تحقّق من الرسوم الرسمية والالتزامات الضريبية قبل التقديم.'
+              : 'Displayed fees are indicative and may change. They may exclude federal taxes, registered-agent fees, and third-party charges; verify current official fees and tax obligations before filing.'}
+          </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto p-0.5">
             {filteredStates.map(st => {
