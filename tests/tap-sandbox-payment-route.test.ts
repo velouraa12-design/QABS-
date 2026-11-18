@@ -61,11 +61,11 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
         '2026-11-18'
       );
 
-      let tapChargeRequest: Record<string, any> | null = null;
+      const tapChargeRequest: { current?: Record<string, any> } = {};
       globalThis.fetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
         const url = String(input);
         if (url.endsWith('/v2/charges/') && init.method === 'POST') {
-          tapChargeRequest = JSON.parse(String(init.body));
+          tapChargeRequest.current = JSON.parse(String(init.body));
           return new Response(JSON.stringify({
             id: 'chg_tap_sandbox_123',
             status: 'INITIATED',
@@ -101,9 +101,9 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       assert.equal(charge.mode, 'sandbox');
       assert.equal(charge.paymentConfirmed, false);
       assert.equal(charge.redirectUrl, 'https://checkout.tap.company/sandbox/123');
-      assert.equal(tapChargeRequest?.amount, 349, 'server must use invoice amount, not client amount');
-      assert.equal(tapChargeRequest?.currency, 'USD');
-      assert.equal(tapChargeRequest?.save_card, false);
+      assert.equal(tapChargeRequest.current?.amount, 349, 'server must use invoice amount, not client amount');
+      assert.equal(tapChargeRequest.current?.currency, 'USD');
+      assert.equal(tapChargeRequest.current?.save_card, false);
 
       const beforeVerify = db.prepare('SELECT status, payment_proof_ref FROM billing_invoices WHERE id = ?')
         .get('inv_tap_sandbox_1') as { status: string; payment_proof_ref: string };
