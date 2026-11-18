@@ -67,15 +67,15 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
         if (url.endsWith('/v2/charges/') && init.method === 'POST') {
           tapChargeRequest.current = JSON.parse(String(init.body));
           return new Response(JSON.stringify({
-            id: 'chg_tap_sandbox_123',
+            id: 'chg_TapSandbox123',
             status: 'INITIATED',
             live_mode: false,
             transaction: { url: 'https://checkout.tap.company/sandbox/123' }
           }), { status: 200, headers: { 'content-type': 'application/json' } });
         }
-        if (url.endsWith('/v2/charges/chg_tap_sandbox_123') && init.method === 'GET') {
+        if (url.endsWith('/v2/charges/chg_TapSandbox123') && init.method === 'GET') {
           return new Response(JSON.stringify({
-            id: 'chg_tap_sandbox_123',
+            id: 'chg_TapSandbox123',
             status: 'CAPTURED',
             live_mode: false,
             amount: 349,
@@ -108,12 +108,12 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       const beforeVerify = db.prepare('SELECT status, payment_proof_ref FROM billing_invoices WHERE id = ?')
         .get('inv_tap_sandbox_1') as { status: string; payment_proof_ref: string };
       assert.equal(beforeVerify.status, 'pending_verification');
-      assert.equal(beforeVerify.payment_proof_ref, 'tap:chg_tap_sandbox_123');
+      assert.equal(beforeVerify.payment_proof_ref, 'tap:chg_TapSandbox123');
 
       const verifyResponse = await originalFetch(`${baseUrl}/api/payments/tap/verify`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ invoiceId: 'inv_tap_sandbox_1', chargeId: 'chg_tap_sandbox_123' })
+        body: JSON.stringify({ invoiceId: 'inv_tap_sandbox_1', chargeId: 'chg_TapSandbox123' })
       });
       assert.equal(verifyResponse.status, 200);
       const verified = await verifyResponse.json() as Record<string, any>;
