@@ -247,7 +247,10 @@ const MainLayout: React.FC = () => {
       '/verify-email': 'verify'
     };
     const studioAuthPaths = new Set(['/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email']);
-    if (studioAuthPaths.has(path)) return;
+    if (studioAuthPaths.has(path)) {
+      setAuthModalOpen(false);
+      return;
+    }
     const requestedMode = authRoutes[path];
     if (!requestedMode) return;
     if (isAuthenticated) {
