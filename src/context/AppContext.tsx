@@ -296,8 +296,6 @@ interface AppContextType {
   showToast: (msg: string) => void;
 }
 
-const STORAGE_KEY = 'qabs_workspace_state_v1';
-
 export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   overview: {
     showKpiCards: true,
@@ -372,44 +370,6 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   }
 };
 
-interface PersistedWorkspaceState {
-  isAuthenticated?: boolean;
-  pendingServiceOrder?: PendingServiceOrder | null;
-  isProductionMode?: boolean;
-  user?: UserProfile;
-  companies?: CompanyFormation[];
-  stores?: StoreInstance[];
-  activeStoreId?: string;
-  products?: StoreProduct[];
-  orders?: StoreOrder[];
-  customers?: StoreCustomer[];
-  discounts?: StoreDiscount[];
-  shippingZones?: StoreShippingZone[];
-  storePages?: StorePageItem[];
-  storeApps?: StoreAppAddon[];
-  storeTemplates?: StoreTemplatePreset[];
-  banking?: BankingAccount[];
-  tickets?: SupportTicket[];
-  staff?: StaffMember[];
-  auditLogs?: AuditLogItem[];
-  subscription?: UserSubscription;
-  invoices?: Invoice[];
-  refunds?: RefundRecord[];
-  aiHistory?: AICommandHistoryItem[];
-  sectionSettings?: WorkspaceSectionSettings;
-  submittedServiceOrders?: SubmittedServiceOrder[];
-}
-
-function loadPersistedState(): PersistedWorkspaceState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as PersistedWorkspaceState;
-  } catch {
-    return {};
-  }
-}
-
 function isWorkspaceUrl(): boolean {
   const hash = window.location.hash || '';
   const path = window.location.pathname || '';
@@ -435,8 +395,6 @@ function isWorkspaceUrl(): boolean {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [persisted] = useState<PersistedWorkspaceState>(() => loadPersistedState());
-
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('qabs_lang') as Language) || 'ar';
   });
@@ -659,21 +617,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch {
         if (!active) return;
-        // Static CDN deployment fallback (explicitly marked preview_offline)
+        // Fail closed on static/offline previews: never restore a browser-stored
+        // identity, role, customer record, or operational data as an authenticated session.
         setBackendStatus('preview_offline');
-        if (persisted.isAuthenticated && persisted.user) {
-          setIsAuthenticated(true);
-          setUser(persisted.user);
-          if (isWorkspaceUrl()) setMode('portal');
-        }
-        if (persisted.companies) setCompanies(persisted.companies);
-        if (persisted.stores) setStores(persisted.stores);
-        if (persisted.activeStoreId) setActiveStoreId(persisted.activeStoreId);
-        if (persisted.products) setProducts(persisted.products);
-        if (persisted.orders) setOrders(persisted.orders);
-        if (persisted.customers) setCustomers(persisted.customers);
-        if (persisted.tickets) setTickets(persisted.tickets);
-        if (persisted.invoices) setInvoices(persisted.invoices);
+        setIsAuthenticated(false);
+        setUser(INITIAL_USER);
+        setMode('landing');
+        setCompanies([]);
+        setStores([]);
+        setProducts([]);
+        setOrders([]);
+        setCustomers([]);
+        setDiscounts([]);
+        setShippingZones([]);
+        setStorePages([]);
+        setStoreApps([]);
+        setStoreTemplates([]);
+        setBanking([]);
+        setTickets([]);
+        setStaff([]);
+        setAuditLogs([]);
+        setNotifications([]);
+        setInvoices([]);
+        setRefunds([]);
+        setAiHistory([]);
+        setWorkspaceBackups([]);
+        setSubmittedServiceOrders([]);
+        setPendingServiceOrder(null);
+        setCheckoutModalOpen(false);
+        setAdminOverview(null);
       }
     })();
     return () => {
@@ -681,69 +653,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [applyBootstrapPayload]);
 
-  // Persist local fallback state ONLY when running in static preview_offline mode
-  useEffect(() => {
-    if (backendStatus !== 'preview_offline') return;
-    try {
-      const payload: PersistedWorkspaceState = {
-        isAuthenticated,
-        pendingServiceOrder,
-        isProductionMode,
-        user,
-        companies,
-        stores,
-        activeStoreId,
-        products,
-        orders,
-        customers,
-        discounts,
-        shippingZones,
-        storePages,
-        storeApps,
-        storeTemplates,
-        banking,
-        tickets,
-        staff,
-        auditLogs,
-        subscription,
-        invoices,
-        refunds,
-        aiHistory,
-        sectionSettings,
-        submittedServiceOrders
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-      // Ignore quota errors
-    }
-  }, [
-    backendStatus,
-    isAuthenticated,
-    pendingServiceOrder,
-    isProductionMode,
-    user,
-    companies,
-    stores,
-    activeStoreId,
-    products,
-    orders,
-    customers,
-    discounts,
-    shippingZones,
-    storePages,
-    storeApps,
-    storeTemplates,
-    banking,
-    tickets,
-    staff,
-    auditLogs,
-    subscription,
-    invoices,
-    refunds,
-    aiHistory,
-    sectionSettings,
-    submittedServiceOrders
-  ]);
+  // Offline previews do not persist authenticated or operational workspace state.
 
   useEffect(() => {
     document.documentElement.lang = language;
