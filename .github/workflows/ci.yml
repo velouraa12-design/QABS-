@@ -67,6 +67,43 @@ jobs:
     - name: Build isolated Node preview container
       run: docker build --pull -t qabs-preview:ci .
 
+    - name: Start isolated API container for smoke tests
+      run: |
+        docker run -d --name qabs-preview-ci -p 3000:3000 \
+          -e NODE_ENV=production \
+          -e QABS_DB_PATH=/tmp/qabs-ci.sqlite \
+          -e QABS_ALLOW_SANDBOX_PAYMENTS=false \
+          -e APP_ORIGIN=https://preview.example.test \
+          qabs-preview:ci
+
+    - name: Smoke-test container health, auth and disabled payments
+      run: |
+        for attempt in $(seq 1 30); do
+          if curl -fsS http://127.0.0.1:3000/api/health > /tmp/qabs-health.json; then
+            break
+          fi
+          sleep 2
+        done
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const health = JSON.parse(fs.readFileSync("/tmp/qabs-health.json", "utf8"));
+          if (health.status !== "ok" || health.paymentsEnabled !== false) process.exit(1);
+        '
+        curl -fsS http://127.0.0.1:3000/api/auth/session | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const session = JSON.parse(body);
+          if (session.authenticated !== false || session.user !== null) process.exit(1);
+        '
+        curl -fsS http://127.0.0.1:3000/studio/api/config | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const config = JSON.parse(body);
+          if (config.stage !== "preview-isolated" || config.payments !== false) process.exit(1);
+        '
+
+    - name: Stop isolated API container
+      if: always()
+      run: docker rm -f qabs-preview-ci || true
+
     - name: Security & Secret Scan
       run: |
         echo "Running zero-leak secrets audit..."
