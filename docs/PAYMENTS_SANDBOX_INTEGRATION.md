@@ -9,6 +9,7 @@ Status: implemented in the isolated development branch; not enabled on the previ
 - The adapter refuses missing or live Tap keys. Only a key beginning with `sk_test` is accepted.
 - The hosted checkout uses `src_all`, 3-D Secure, and `save_card=false`.
 - The provider redirect is HTTPS and is derived from the configured `APP_ORIGIN`; callers cannot supply an arbitrary return URL.
+- The Tap `post.url` is configured independently through `TAP_WEBHOOK_URL`; it must be an HTTPS URL with the exact `/api/payments/tap/webhook` path. Payment initiation and the UI capability flag remain disabled until this endpoint is configured.
 - Server-side reconciliation through `POST /api/payments/tap/verify`. The browser redirect alone is not trusted.
 - Signed Tap server-to-server webhook endpoint at `POST /api/payments/tap/webhook`, configured as the charge `post.url` and verified with Tap's HMAC-SHA256 `hashstring` header using constant-time comparison.
 - Webhook invoice reconciliation is idempotent and requires the charge ID, invoice ID, invoice number, amount, currency, captured status, and sandbox `live_mode=false` to match.
@@ -24,6 +25,7 @@ Configure these only in a non-production preview environment:
 APP_ORIGIN=https://preview.qabs1.store
 QABS_ALLOW_SANDBOX_PAYMENTS=true
 TAP_SECRET_KEY=sk_test_...
+TAP_WEBHOOK_URL=https://<public-api-host>/api/payments/tap/webhook
 ```
 
 Do not configure `sk_live_...` in this integration. `QABS_ALLOW_SANDBOX_PAYMENTS` defaults to false. Production payment collection remains disabled.
@@ -39,7 +41,7 @@ Do not configure `sk_live_...` in this integration. `QABS_ALLOW_SANDBOX_PAYMENTS
 ## Remaining acceptance work
 
 - The UI and webhook implementation are committed to the isolated branch, but have not yet been run against Tap's external sandbox with provider credentials.
-- Configure a disposable `sk_test_...` key and `QABS_ALLOW_SANDBOX_PAYMENTS=true` only in the isolated preview secret store after an authorized operator confirms the account and test window.
+- Configure a disposable `sk_test_...` key, `TAP_WEBHOOK_URL` pointing to the publicly reachable API runtime, and `QABS_ALLOW_SANDBOX_PAYMENTS=true` only in the isolated preview secret store after an authorized operator confirms the account and test window. Do not point `TAP_WEBHOOK_URL` at the static Pages frontend unless that host actually routes the webhook path to the API.
 - Moyasar, Stripe and PayPal remain status-only/gated; this commit does not enable them.
 - No live keys, live charges, refunds, payouts, payment-account activation or production changes are included.
 - Provider sandbox credentials are not present in this repository and no external payment request was made by CI.
