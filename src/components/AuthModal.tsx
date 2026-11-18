@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { OWNER_USER_PROFILE } from '../data/mockData.ts';
 import {
@@ -50,7 +50,11 @@ export const AuthModal: React.FC = () => {
   const [resetTokenInput, setResetTokenInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [verifyTokenInput, setVerifyTokenInput] = useState('');
-  const [showVerifyPanel, setShowVerifyPanel] = useState(false);
+  const [showVerifyPanel, setShowVerifyPanel] = useState(authMode === 'verify');
+
+  useEffect(() => {
+    setShowVerifyPanel(authMode === 'verify');
+  }, [authMode]);
   const [verifyDone, setVerifyDone] = useState(false);
   const [recoveryStage, setRecoveryStage] = useState<'request' | 'confirm'>('request');
   const [resetDone, setResetDone] = useState(false);
@@ -140,6 +144,10 @@ export const AuthModal: React.FC = () => {
                   ? isAr
                     ? 'إنشاء حساب عميل جديد'
                     : 'Register Client Account'
+                  : authMode === 'verify'
+                  ? isAr
+                    ? 'تأكيد البريد الإلكتروني'
+                    : 'Verify Email Address'
                   : isAr
                   ? 'استعادة كلمة المرور'
                   : 'Recover Password'}
