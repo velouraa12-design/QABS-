@@ -10,9 +10,9 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     titleAr: 'تأسيس الشركات الأمريكية والبريطانية الدولية',
     titleEn: 'US & UK International Company Formation',
     subtitleAr:
-      'أسّس شركتك القانونية في الولايات المتحدة (50 ولاية) أو المملكة المتحدة بنسبة ملكية 100% لغير المقيمين، مع ملف قانوني جاهز للبنوك وبوابات الدفع.',
+      'ابدأ طلب تأسيس كيان في الولايات المتحدة أو المملكة المتحدة. أهلية الملكية الأجنبية ومتطلبات التأسيس والضرائب تختلف حسب الولاية ونوع الكيان والنشاط؛ كما أن التسجيل لا يضمن فتح حساب بنكي أو قبول بوابة دفع.',
     subtitleEn:
-      'Incorporate your legal entity in any of the 50 US states or the UK with 100% non-resident ownership, built for global banking and payment processing.',
+      'Request US or UK entity formation. Foreign-ownership eligibility, filing, and tax requirements vary by jurisdiction, entity type, and activity; incorporation does not guarantee a bank account or payment-processor approval.',
     seoTitleAr: 'تأسيس الشركات الأمريكية والبريطانية | منصة قبس QABS',
     seoTitleEn: 'US & UK Company Formation Services | QABS Digital Platform',
     seoDescriptionAr:
@@ -27,23 +27,23 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       'QABS provides end-to-end remote company formation for global founders, e-commerce merchants, and agencies without requiring US or UK residency or physical travel.',
       'Our specialists handle name availability screening, statutory document drafting, Secretary of State or UK Companies House filing, and digital delivery of your certified corporate kit directly into your QABS Document Vault.'
     ],
-    deliveryTimeAr: '1 – 3 أيام عمل للإيداع الحكومي',
-    deliveryTimeEn: '1 – 3 business days for state filing',
+    deliveryTimeAr: 'المدة تقديرية وتتغير حسب الجهة الحكومية واكتمال المستندات',
+    deliveryTimeEn: 'Estimated timing varies by registry and document completeness',
     startingPriceUsd: 179,
-    pricingNoteAr: 'الرسوم الحكومية لبعض الولايات تُضاف بشفافية حسب الولاية المختارة',
-    pricingNoteEn: 'State filing fees vary transparently by selected jurisdiction',
+    pricingNoteAr: 'رسوم الإيداع الحكومية تُضاف حسب الاختصاص. الخدمة تخضع لمراجعة الأهلية والمستندات وتأكيد التوفر والسعر قبل التنفيذ؛ لا تضمن قبس إصدار EIN أو فتح حساب أو موافقة أي مزود.',
+    pricingNoteEn: 'Government filing fees vary by jurisdiction. Service is subject to eligibility, document review, availability, and price confirmation; QABS does not guarantee EIN issuance, account opening, or provider approval.',
     features: [
       {
-        titleAr: 'ملكية أجنبية كاملة 100%',
-        titleEn: '100% Foreign Ownership',
-        descriptionAr: 'تأسيس وتملك كامل للشركة باسمك دون الحاجة لشريك محلي أو رقم إقامة أمريكي.',
-        descriptionEn: 'Full legal ownership without requiring a local partner, SSN, or residency.'
+        titleAr: 'إمكانية الملكية لغير المقيمين',
+        titleEn: 'Non-Resident Ownership Eligibility',
+        descriptionAr: 'قد تسمح بعض الولايات والهياكل بملكية غير المقيمين؛ تُراجع أهلية المالك والنشاط ومتطلبات الإفصاح قبل التقديم.',
+        descriptionEn: 'Some jurisdictions and entity structures may permit non-resident ownership; owner eligibility, business activity, and disclosure rules must be reviewed before filing.'
       },
       {
-        titleAr: 'موافقة قانونية للبنوك والدفع',
-        titleEn: 'Banking & Gateway Ready',
-        descriptionAr: 'وثائق متوافقة مع متطلبات Mercury و Wise و Stripe و PayPal.',
-        descriptionEn: 'Documentation structured specifically for Mercury, Wise, Stripe, and PayPal verification.'
+        titleAr: 'مستندات مساعدة لطلبات الحسابات والدفع',
+        titleEn: 'Banking & Payment Application Support',
+        descriptionAr: 'نساعد في تنظيم مستندات الشركة لطلبات مقدمي الخدمات؛ لكل مزود شروطه وفحوصه وقراره المستقل.',
+        descriptionEn: 'We help organize company documents for provider applications; each provider applies its own eligibility checks and makes independent approval decisions.'
       },
       {
         titleAr: 'اتفاقية تشغيل وصلاحيات مخصصة',
@@ -54,8 +54,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         titleAr: 'خزينة مستندات موثقة',
         titleEn: 'Digital Corporate Vault',
-        descriptionAr: 'أرشفة دائمة لجميع شهادات التأسيس وعقود التشغيل داخل مساحة عملك.',
-        descriptionEn: 'Permanent cloud access to all certified articles, filings, and corporate records.'
+        descriptionAr: 'تُسلّم المستندات عبر القناة المتاحة بعد اكتمال الخدمة وتأكيد تفعيل خزينة الوثائق.',
+        descriptionEn: 'Documents are delivered through the available channel after service completion and confirmation that the document vault is enabled.'
       }
     ],
     benefitsAr: [
@@ -86,26 +86,26 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         titleEn: 'Name Screening & KYC Review',
         descriptionAr: 'يتحقق فريق الامتثال في قبس من توفر الاسم التجاري ومطابقة بيانات المؤسسين.',
         descriptionEn: 'Our compliance desk verifies corporate name availability and founder documentation.',
-        durationAr: 'نفس اليوم',
-        durationEn: 'Same day'
+        durationAr: 'بعد اكتمال المراجعة',
+        durationEn: 'After review is completed'
       },
       {
         stepNumber: '03',
         titleAr: 'الإيداع الرسمي وإصدار الشهادة',
         titleEn: 'Official State Filing & Issuance',
-        descriptionAr: 'رفع ملف التأسيس لدى الولاية واستلام شهادة التأسيس المعتمدة وتوقيع اتفاقية التشغيل.',
-        descriptionEn: 'Official submission to the state registry and delivery of certified formation documents.',
-        durationAr: '1 – 3 أيام عمل',
-        durationEn: '1 – 3 business days'
+        descriptionAr: 'يُقدّم الملف بعد اكتمال المتطلبات؛ تصدر الشهادة وفق وقت معالجة الجهة الحكومية.',
+        descriptionEn: 'The filing is submitted after requirements are complete; the registry determines issuance timing.',
+        durationAr: 'حسب مدة معالجة الجهة الحكومية',
+        durationEn: 'Subject to government processing times'
       },
       {
         stepNumber: '04',
         titleAr: 'استخراج EIN وتجهيز الحسابات',
         titleEn: 'EIN & Banking Readiness',
-        descriptionAr: 'متابعة استخراج الرقم الضريبي الفيدرالي وتجهيز ملف التقديم على البنك وبوابات الدفع.',
-        descriptionEn: 'Proceed with Federal EIN issuance and prepare your commercial banking and gateway files.',
-        durationAr: '4 – 10 أيام عمل',
-        durationEn: '4 – 10 business days'
+        descriptionAr: 'متابعة طلب EIN عند انطباق الأهلية، وتنظيم المستندات المطلوبة لتقديمات الحسابات والدفع دون ضمان الموافقة.',
+        descriptionEn: 'Assist with the EIN request where eligible and organize documents for banking and payment applications without guaranteeing approval.',
+        durationAr: 'تختلف حسب معالجة IRS واكتمال الطلب',
+        durationEn: 'Varies with IRS processing and application completeness'
       }
     ],
     packages: [
@@ -185,8 +185,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل أحتاج إلى تأشيرة أو سفر لأمريكا لتأسيس الشركة؟',
         questionEn: 'Do I need a US visa or travel to form a company?',
-        answerAr: 'لا، يتم التأسيس إلكترونياً بالكامل بنسبة 100% عبر قبس دون الحاجة لأي سفر أو حضور شخصي.',
-        answerEn: 'No, the entire incorporation process is completed 100% remotely without travel or physical presence.'
+        answerAr: 'غالباً يمكن إنجاز أجزاء كبيرة عن بُعد، لكن قد تتطلب بعض الحالات توثيقاً أو تحققاً إضافياً أو إجراءات حضور وفق الجهة والكيان.',
+        answerEn: 'Much of the process can often be handled remotely, but some cases may require notarization, additional verification, or in-person steps depending on the registry and entity.'
       },
       {
         questionAr: 'ما هي المستندات المطلوبة لبدء طلب التأسيس؟',
