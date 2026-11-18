@@ -24,6 +24,23 @@ if (declared.length !== sidebar.length) errors.push(`Tab/sidebar count mismatch:
 
 const appSource = readFileSync('src/App.tsx', 'utf8');
 const authSource = readFileSync('src/components/AuthModal.tsx', 'utf8');
+const landingSource = readFileSync('src/components/LandingView.tsx', 'utf8');
+const forbiddenUnverifiedClaims = [
+  '+1,450',
+  'EIN Issuance Success',
+  'Avg State Filing Speed',
+  '48h',
+  '4 to 10 business days',
+  'نسبة نجاح استخراج EIN',
+  'متوسط سرعة الإيداع لدى الولاية',
+  'يؤهلك لفتح حسابات بنكية',
+  'guarantee a bank account'
+];
+for (const claim of forbiddenUnverifiedClaims) {
+  if (landingSource.toLowerCase().includes(claim.toLowerCase())) {
+    errors.push(`Unverified marketing claim remains: ${claim}`);
+  }
+}
 const requiredRouteContracts = [
   ["workspace deep links", "path.startsWith('/workspace/')"],
   ["Studio entry alias", "path === '/studio'"],
