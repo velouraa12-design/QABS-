@@ -164,7 +164,7 @@ export function verifyTapWebhookHashstring(
   receivedHash: string | undefined,
   secretKey: string | undefined
 ): boolean {
-  if (!isTapTestSecret(secretKey) || !receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash)) return false;
+  if (typeof secretKey !== 'string' || !isTapTestSecret(secretKey) || !receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash)) return false;
   if (typeof payload.id !== 'string' || typeof payload.status !== 'string' ||
       typeof payload.currency !== 'string' || !Number.isFinite(Number(payload.amount)) ||
       typeof payload.transaction?.created !== 'string' && typeof payload.transaction?.created !== 'number') return false;
