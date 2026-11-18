@@ -4,7 +4,7 @@ The Express API is a Node runtime, not a Pages Functions bundle. It imports `nod
 
 ## Container
 
-- `Dockerfile`: Node 22.18 runtime, builds the SPA, runs the existing Express API, and exposes `/api/health`.
+- `Dockerfile`: Node 22.18 runtime, builds the SPA, bundles the Express server with esbuild, prunes development dependencies, and exposes `/api/health`.
 - `.dockerignore`: excludes local environment files, databases, and build artifacts.
 - Mount a persistent volume at `/data`; SQLite is configured at `/data/qabs.sqlite`.
 
