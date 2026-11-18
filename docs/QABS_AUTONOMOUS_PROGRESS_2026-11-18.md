@@ -461,3 +461,27 @@ Required email-provider bindings are absent:
 The deployed Worker contains email-code login and password-recovery modules, but their readiness checks require the Resend key, sender identity, and explicit feature flags. The password recovery implementation uses a single-use short-lived token and session invalidation; it remains disabled. Do not copy secrets from another Worker, enable flags, or send test/customer emails without explicit authorization and a safe test recipient.
 
 Formation document upload is disabled by `FORMATION_UPLOAD_ENABLED=false`; the service catalog also reports sensitive-document uploads disallowed and malware scanning unavailable. Keep uploads disabled until a server-side document vault, access checks, retention rules, and malware scanning are verified.
+
+
+## 12. Studio API server contract exercise — 2026-11-18
+
+A new isolated integration test was added at `tests/studio-server-contract.test.ts` (commit `0b07770245aafee706071d218a55c7874267f404`). It boots the Express candidate against an in-memory SQLite database and uses synthetic `.example.test` accounts only.
+
+The test exercises:
+- Studio config advertises payments and Google sign-in as disabled.
+- Registration, session cookie, and `/studio/api/me` response shape.
+- Per-tenant workspace discovery and workspace-store read.
+- A second synthetic tenant attempting to read the first tenant's workspace receives HTTP 403 `FORBIDDEN_TENANT_ACCESS`.
+- Studio logout revokes the session; the next `/studio/api/me` returns 401.
+
+This is a source-level Express candidate test, **not** a test of the deployed Cloudflare acceptance Worker or production. CI has not yet been observed for this commit at the time this log was updated.
+
+### Confirmed API contract gap
+
+The inspected Express candidate currently implements Studio endpoints for config, me, login/register/logout, requests, project-workspaces, and workspace-stores (GET). The frontend Studio client additionally exposes store-draft creation, service catalogue/requests, project-workspace creation, workspace-store creation/update/activity, settings, and formation-selection endpoints. Those additional operations were not found as matching Express routes in the inspected source. The deployed acceptance Worker remains a separate implementation and must be tested independently.
+
+Therefore:
+- `qabsStudioApi` remains intentionally unwired into `AppContext`.
+- The legacy `qabsApi` and Studio API must not be mixed; their session and endpoint contracts differ.
+- The new test increases confidence in the subset that exists; it does not close the frontend/backend parity gap or establish Cloudflare tenant isolation.
+- No live Worker, database, DNS, Shopify, payment, or production resource was changed.
