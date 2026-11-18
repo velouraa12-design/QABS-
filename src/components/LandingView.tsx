@@ -413,6 +413,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <div className="grid grid-cols-2 gap-2.5 pt-2">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() =>
                       requestServiceAction({
                         id: `svc_turnkey_${Date.now()}`,
@@ -425,13 +427,16 @@ export const LandingView: React.FC<LandingViewProps> = ({
                         details: {
                           jurisdiction: 'US_WYOMING',
                           entityType: 'LLC',
-                          addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false }
+                          addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false },
+                          indicativeOnly: true,
+                          quoteReviewOnly: true,
+                          governmentFeesMayBeAdditional: true
                         }
                       })
                     }
-                    className="py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1c3357] text-white font-black text-xs transition-all cursor-pointer text-center"
+                    className={`py-3 px-4 rounded-xl text-white font-black text-xs transition-all text-center ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#14243E] hover:bg-[#1c3357] cursor-pointer'}`}
                   >
-                    {isAr ? 'اطلب الباقة الآن' : 'Order Package Now'}
+                    {isAr ? (isPagesPreview ? 'المعاينة فقط — الطلب والدفع غير مفعّلين' : 'اطلب مراجعة الأهلية والتكلفة') : (isPagesPreview ? 'Preview only — requests and payments are disabled' : 'Request Eligibility & Quote Review')}
                   </button>
                   <button
                     type="button"
@@ -1262,6 +1267,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                       <button
                         type="button"
+                        disabled={isPagesPreview}
+                        aria-disabled={isPagesPreview}
                         onClick={() =>
                           isAuthenticated
                             ? onOpenFormationModal(st.code)
@@ -1270,19 +1277,22 @@ export const LandingView: React.FC<LandingViewProps> = ({
                                 serviceType: 'company_formation',
                                 titleAr: `تأسيس شركة في ${st.nameAr} (${selectedPkg.nameAr})`,
                                 titleEn: `Form Company in ${st.nameEn} (${selectedPkg.nameEn})`,
-                                subtitleAr: `رسوم الولاية: $${st.stateFilingFee} + باقة ${selectedPkg.nameAr}`,
-                                subtitleEn: `State fee: $${st.stateFilingFee} + ${selectedPkg.nameEn}`,
+                                subtitleAr: `تقدير إرشادي يشمل رسوم الولاية المعروضة وباقة ${selectedPkg.nameAr}؛ الأهلية والتوفر والرسوم النهائية تحتاج تأكيداً.`,
+                                subtitleEn: `Indicative estimate including the displayed state fee and ${selectedPkg.nameEn}; eligibility, availability, and final fees require confirmation.`,
                                 priceUsd: totalWithPkg,
                                 details: {
                                   jurisdiction: st.jurisdictionId as 'US_WYOMING' | 'US_DELAWARE' | 'US_KENTUCKY' | 'US_NEW_MEXICO' | 'UK_LTD',
                                   entityType: 'LLC',
-                                  addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false }
+                                  addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false },
+                                  indicativeOnly: true,
+                                  quoteReviewOnly: true,
+                                  governmentFeesMayBeAdditional: true
                                 }
                               })
                         }
-                        className="w-full py-2 rounded-xl bg-[#004457] hover:bg-[#003342] text-white text-xs font-bold cursor-pointer"
+                        className={`w-full py-2 rounded-xl text-white text-xs font-bold ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#004457] hover:bg-[#003342] cursor-pointer'}`}
                       >
-                        {isAr ? `اطلب التأسيس في ${st.nameAr}` : `Order in ${st.nameEn}`}
+                        {isAr ? (isPagesPreview ? 'المعاينة فقط — لا يوجد طلب أو دفع' : `اطلب مراجعة خيار ${st.nameAr}`) : (isPagesPreview ? 'Preview only — no order or payment' : `Request review for ${st.nameEn}`)}
                       </button>
                     </div>
                   );
