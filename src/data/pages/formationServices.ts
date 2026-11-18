@@ -91,8 +91,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '03',
-        titleAr: 'الإيداع الرسمي وإصدار الشهادة',
-        titleEn: 'Official State Filing & Issuance',
+        titleAr: 'تنسيق الإيداع وإصدار السجل الحكومي',
+        titleEn: 'Filing Coordination & Registry Issuance',
         descriptionAr: 'يُنسّق الإيداع بعد قبول الطلب وتأكيد نطاق التنفيذ وتوفر جهة الإيداع؛ الجهة الحكومية وحدها تصدر المستندات الرسمية وتحدد وقت المعالجة.',
         descriptionEn: 'Filing coordination occurs only after request acceptance, scope confirmation, and filing-service availability; the government registry alone issues official records and controls processing time.',
         durationAr: 'حسب مدة معالجة الجهة الحكومية',
