@@ -47,7 +47,16 @@ const einCopy = einStart >= 0 && nextEinRecord > einStart
   ? formationDataSource.slice(einStart, nextEinRecord)
   : '';
 if (!einCopy) errors.push('Could not inspect the EIN marketing record.');
-const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, einCopy, customizerSource, serviceTemplateSource].join('\n');
+const registeredAgentStart = formationDataSource.indexOf("slug: 'registered-agent'");
+const nextRegisteredAgentRecord = formationDataSource.indexOf("slug:", registeredAgentStart + 5);
+const registeredAgentCopy = registeredAgentStart >= 0 && nextRegisteredAgentRecord > registeredAgentStart
+  ? formationDataSource.slice(registeredAgentStart, nextRegisteredAgentRecord)
+  : '';
+if (!registeredAgentCopy) errors.push('Could not inspect the registered-agent marketing record.');
+const usLlcStart = formationDataSource.indexOf("slug: 'us-llc'");
+const usLlcCopy = usLlcStart >= 0 ? formationDataSource.slice(usLlcStart) : '';
+if (!usLlcCopy) errors.push('Could not inspect the US LLC marketing record.');
+const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, einCopy, registeredAgentCopy, usLlcCopy, customizerSource, serviceTemplateSource].join('\n');
 const forbiddenUnverifiedClaims = [
   '+1,450',
   'EIN Issuance Success',
@@ -96,7 +105,16 @@ const forbiddenUnverifiedClaims = [
   'Priority queue + verification letter',
   'Within 24h',
   '4 – 10 أيام عمل',
-  '4 – 10 business days'
+  '4 – 10 business days',
+  'all 50 US states',
+  'All 50 States Pricing',
+  'same-day mail scanning',
+  'Same-Day Mail Scanning',
+  'same-day PDF scanning',
+  'within 24 hours',
+  'تفعيل فوري خلال 24 ساعة',
+  '0% state income tax in top states',
+  '0% ضريبة ولاية'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -129,7 +147,7 @@ const requiredTruthfulCopy = [
   'does not imply bank or payment-provider approval'
 ];
 for (const phrase of requiredTruthfulCopy) {
-  const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, customizerSource, serviceTemplateSource]
+  const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, registeredAgentCopy, usLlcCopy, customizerSource, serviceTemplateSource]
     .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
   if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
