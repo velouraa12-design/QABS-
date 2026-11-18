@@ -470,6 +470,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app.post('/studio/api/auth/logout', handleLogout);
 
   app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+    if (!passwordRecoveryEnabled()) {
+      res.status(503).json({ error: 'Password recovery is not configured.', code: 'PASSWORD_RECOVERY_DISABLED' });
+      return;
+    }
     const email = sanitizeText(req.body?.email, 200).toLowerCase();
     if (!checkRateLimit(`forgot:${email || req.ip}`)) {
       res.status(429).json({ error: 'Too many recovery requests.', code: 'RATE_LIMITED' });
@@ -504,6 +508,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+    if (!passwordRecoveryEnabled()) {
+      res.status(503).json({ error: 'Password recovery is not configured.', code: 'PASSWORD_RECOVERY_DISABLED' });
+      return;
+    }
     const token = sanitizeText(req.body?.token, 160);
     const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
     if (!token || !isStrongPassword(newPassword)) {
@@ -547,6 +555,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   app.post('/api/auth/verify-email', (req: Request, res: Response) => {
+    if (!emailVerificationEnabled()) {
+      res.status(503).json({ error: 'Email verification is not configured.', code: 'EMAIL_VERIFICATION_DISABLED' });
+      return;
+    }
     const token = sanitizeText(req.body?.token, 160);
     if (!token) {
       res.status(400).json({ error: 'Verification token required.', code: 'TOKEN_REQUIRED' });
