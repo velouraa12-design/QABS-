@@ -25,7 +25,7 @@ import {
 } from './security.ts';
 import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
-import { createTapSandboxCharge, isTapTestSecret } from './payments/tap.ts';
+import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge } from './payments/tap.ts';
 
 export interface CreateServerOptions {
   dbPath?: string;
@@ -1637,6 +1637,80 @@ export function createQabsApp(options: CreateServerOptions = {}): {
         'TAP_SANDBOX_INVALID_RESPONSE'
       ].includes(code) ? code : 'TAP_SANDBOX_REQUEST_FAILED';
       res.status(502).json({ error: 'Tap sandbox could not create the payment session.', code: safeCode });
+    }
+  });
+
+  // Verify the provider-side sandbox result before updating the invoice. Browser
+  // redirects are never trusted as proof of payment.
+  app.post('/api/payments/tap/verify', requireAuth, async (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true') {
+      res.status(503).json({ error: 'Sandbox payment verification is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (!isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'A Tap test-mode secret key is required.', code: 'TAP_SANDBOX_NOT_CONFIGURED' });
+      return;
+    }
+    const invoiceId = sanitizeId(req.body?.invoiceId);
+    const chargeId = typeof req.body?.chargeId === 'string' ? req.body.chargeId.trim() : '';
+    if (!invoiceId || !/^chg_[A-Za-z0-9]+$/.test(chargeId)) {
+      res.status(400).json({ error: 'Valid invoiceId and chargeId are required.', code: 'INVALID_PAYMENT_REFERENCE' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ? AND tenant_id = ?`
+    ).get(invoiceId, actor.tenantId) as Record<string, unknown> | undefined;
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found.', code: 'INVOICE_NOT_FOUND' });
+      return;
+    }
+    if (invoice.payment_proof_ref !== `tap:${chargeId}`) {
+      res.status(409).json({ error: 'Payment reference does not match this invoice.', code: 'PAYMENT_REFERENCE_MISMATCH' });
+      return;
+    }
+
+    try {
+      const charge = await retrieveTapSandboxCharge(chargeId, secretKey);
+      const amountMatches = Math.abs(charge.amount - Number(invoice.amount)) < 0.000001;
+      const currencyMatches = charge.currency === String(invoice.currency || 'USD').toUpperCase();
+      const referencesMatch =
+        charge.transactionReference === invoiceId &&
+        charge.orderReference === String(invoice.invoice_number);
+      const captured = charge.status === 'CAPTURED' && charge.liveMode === false;
+      if (captured && amountMatches && currencyMatches && referencesMatch && invoice.status !== 'paid') {
+        db.prepare(
+          `UPDATE billing_invoices SET status = 'paid', verified_at = ?
+           WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+        ).run(new Date().toISOString(), invoiceId, actor.tenantId, `tap:${chargeId}`);
+        logAudit(
+          db,
+          actor.tenantId,
+          actor.userId,
+          actor.name,
+          `تأكيد دفع تجريبي للفاتورة ${invoice.invoice_number} عبر Tap`,
+          `Verified Tap sandbox payment for invoice ${invoice.invoice_number}`,
+          chargeId
+        );
+      }
+      const verifiedInvoice = db.prepare(
+        'SELECT id, invoice_number, amount, currency, status, verified_at FROM billing_invoices WHERE id = ? AND tenant_id = ?'
+      ).get(invoiceId, actor.tenantId);
+      res.json({
+        provider: 'tap',
+        mode: 'sandbox',
+        providerStatus: charge.status,
+        paymentConfirmed: captured && amountMatches && currencyMatches && referencesMatch,
+        invoice: verifiedInvoice
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'TAP_SANDBOX_REQUEST_FAILED';
+      const safeCode = ['TAP_SANDBOX_KEY_REQUIRED', 'INVALID_TAP_CHARGE_ID', 'TAP_SANDBOX_AUTH_FAILED', 'TAP_SANDBOX_REQUEST_FAILED', 'TAP_SANDBOX_INVALID_RESPONSE'].includes(code)
+        ? code
+        : 'TAP_SANDBOX_REQUEST_FAILED';
+      res.status(502).json({ error: 'Tap sandbox verification failed.', code: safeCode });
     }
   });
 
