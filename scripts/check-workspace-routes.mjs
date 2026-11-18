@@ -272,6 +272,32 @@ for (const [source, token] of requiredStudioContracts) {
   if (!source.includes(token)) errors.push(`Missing QABS Studio multi-store safety contract: ${token}`);
 }
 
+const safeDefaultSettings = [
+  "autoDeductInventory: false",
+  "autoArchiveIssuedInvoices: false",
+  "taxNumber: ''",
+  "enableBankTransfer: false",
+  "bankIban: ''",
+  "autoExecuteEnabled: false",
+  "allowPriceModification: false",
+  "allowOrderFulfillment: false",
+  "usdtTrc20Address: ''",
+  "usdtErc20Address: ''",
+  "btcAddress: ''",
+  "enabledNetworks: []",
+  "autoReplyEnabled: false",
+  "autoAnnualReportReminder: false",
+  "autoAgentRenewalReminder: false",
+  "autoCreateStoreOnCompletion: false",
+  "autoCreateDocsFolderOnCompletion: false"
+];
+for (const setting of safeDefaultSettings) {
+  if (!appContextSource.includes(setting)) errors.push(`Unsafe default configuration: ${setting}`);
+}
+if (appContextSource.includes("taxNumber: '310492819400003'") || appContextSource.includes("bankIban: 'SA4480000492608010492811'")) {
+  errors.push('Unverified tax or payout account details must not be prefilled.');
+}
+
 if (errors.length) {
   console.error('QABS workspace route check failed:');
   for (const error of errors) console.error(`- ${error}`);
