@@ -116,9 +116,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
     titleAr: 'قبس الرقمية QABS | تأسيس الشركات الأمريكية والبريطانية والمتاجر وبوابات الدفع',
     titleEn: 'QABS Digital Platform | US & UK Company Formation, Stores & Payment Gateways',
     descriptionAr:
-      'منصة قبس الرقمية المتكاملة: تأسيس شركات LLC و C-Corp في الـ 50 ولاية وبريطانيا، الرقم الضريبي EIN، المتاجر المستقلة، بوابات الدفع، والخدمات الرقمية.',
+      'تساعد قبس في مراجعة خيارات تأسيس الشركات وتجهيز الطلبات وخدمات إعداد المتاجر والحلول الرقمية وفق الأهلية والتوفر ونطاق العمل؛ عرض الخدمة لا يعني تفعيلها تلقائياً.',
     descriptionEn:
-      'QABS Digital Platform: 50-state US LLC & UK LTD formation, IRS EIN, isolated multi-tenant e-commerce stores, payment gateways, and digital business services.',
+      'QABS assists with company-formation options, application preparation, store setup, and digital services subject to eligibility, availability, and agreed scope; a listed service is not automatically activated.',
     path: '/',
     schemaType: 'WebPage'
   });
@@ -880,8 +880,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'متجر إلكتروني مستقل لكل عميل مع لوحة تحكم متكاملة واستوديو تصميم مرئي وعزل كامل للبيانات.'
-                  : 'Independent online store per client with full dashboard, visual QABS Studio, and strict isolation.'}
+                  ? 'نراجع احتياجات إنشاء المتجر وتصميمه وإدارته؛ حدود التشغيل والتكاملات وعزل البيانات لا تُعتمد إلا بعد التحقق الفني وتأكيد نطاق الخدمة.'
+                  : 'We assess store creation, design, and management needs; operational scope, integrations, and data isolation require technical verification and explicit confirmation.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -916,8 +916,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'ربط حسابات Mercury و Wise وبوابات الدفع Stripe و PayPal و Tap و Moyasar بعد اعتماد قبس.'
-                  : 'Connect Mercury, Wise, Stripe, PayPal, Tap & Moyasar with verified governance.'}
+                  ? 'نساعد في مراجعة متطلبات مزودي الحسابات والدفع وتجهيز مستندات التقديم عند الأهلية؛ قرار القبول والتفعيل يعود إلى كل مزود ولا نضمنه.'
+                  : 'We help review account and payment-provider requirements and prepare application documents where eligible; each provider independently decides approval and activation.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
@@ -1054,8 +1054,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'نوجهك لفتح حساب Mercury أو Wise، وربط بوابة Stripe، وتفعيل متجرك الإلكتروني المستقل في قبس.'
-                  : 'Open Mercury or Wise accounts, connect Stripe payment gateway, and launch your store on QABS.'}
+                  ? 'نراجع متطلبات حسابات الأعمال وبوابات الدفع وتجهيز مستندات التقديم؛ فتح الحساب أو قبول المزود أو إطلاق المتجر ليس مضموناً.'
+                  : 'Review business-account and payment-provider requirements and prepare application documents; account opening, provider approval, and store launch are not guaranteed.'}
               </p>
             </div>
           </div>
