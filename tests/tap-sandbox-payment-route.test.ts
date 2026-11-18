@@ -8,11 +8,13 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
     const originalEnv = {
       allow: process.env.QABS_ALLOW_SANDBOX_PAYMENTS,
       tap: process.env.TAP_SECRET_KEY,
-      origin: process.env.APP_ORIGIN
+      origin: process.env.APP_ORIGIN,
+      resend: process.env.RESEND_API_KEY
     };
     process.env.QABS_ALLOW_SANDBOX_PAYMENTS = 'true';
     process.env.TAP_SECRET_KEY = 'sk_test_qabs_fake_key';
     process.env.APP_ORIGIN = 'https://preview.qabs1.store';
+    delete process.env.RESEND_API_KEY;
 
     const { app, db } = createQabsApp({ dbPath: ':memory:', exposePreviewTokens: true, rateLimitMax: 100 });
     const server = app.listen(0, '127.0.0.1');
@@ -133,6 +135,8 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       else process.env.TAP_SECRET_KEY = originalEnv.tap;
       if (originalEnv.origin === undefined) delete process.env.APP_ORIGIN;
       else process.env.APP_ORIGIN = originalEnv.origin;
+      if (originalEnv.resend === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalEnv.resend;
       db.close();
     }
   });
