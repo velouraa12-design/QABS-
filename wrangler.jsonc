@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "qabs-workspace-reference-preview",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-11-16",
+  "env": {
+    "preview": {
+      "services": [
+        {
+          "binding": "QABS_STUDIO_API",
+          "service": "qabs-unified-workspace-staging-v2"
+        }
+      ]
+    }
+  }
+}
