@@ -180,7 +180,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
       titleAr: `مراجعة خيار تأسيس ${foundJur.labelAr}`,
       titleEn: `Review formation option: ${foundJur.labelEn}`,
       subtitleAr: 'طلب مراجعة أهلية وتجهيز مستندات التأسيس؛ الإيداع والإصدار والوكيل تخضع للتوفر والجهات المختصة.',
-      subtitleEn: 'Request eligibility review and formation-document preparation; filing, issuance, and agent services depend on availability and the relevant authorities.'
+      subtitleEn: 'Request eligibility review and formation-document preparation; filing, issuance, and agent services depend on availability and the relevant authorities.',
       priceUsd: foundJur.baseUsd + einFee + agentFee,
       details: {
         jurisdiction: foundJur.id,
