@@ -25,7 +25,7 @@ import {
 } from './security.ts';
 import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
-import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge } from './payments/tap.ts';
+import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from './payments/tap.ts';
 
 export interface CreateServerOptions {
   dbPath?: string;
@@ -137,6 +137,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/verify-email',
+      '/api/payments/tap/webhook',
       '/studio/api/auth/login',
       '/studio/api/auth/register'
     ]);
@@ -1542,6 +1543,50 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ invoice: inv });
   });
 
+  // Tap server-to-server webhook. Unauthenticated by design; HMAC and invoice binding are mandatory.
+  app.post('/api/payments/tap/webhook', (req: Request, res: Response) => {
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true' || !isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'Tap sandbox webhook is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const payload = req.body as Record<string, any>;
+    const hashHeader = req.headers.hashstring;
+    const hashstring = Array.isArray(hashHeader) ? hashHeader[0] : hashHeader;
+    if (!verifyTapWebhookHashstring(payload, typeof hashstring === 'string' ? hashstring : undefined, secretKey)) {
+      res.status(401).json({ error: 'Invalid Tap webhook signature.', code: 'INVALID_WEBHOOK_SIGNATURE' });
+      return;
+    }
+    if (payload.object !== 'charge' || payload.live_mode !== false ||
+        typeof payload.id !== 'string' || !/^chg_[A-Za-z0-9]+$/.test(payload.id)) {
+      res.status(400).json({ error: 'Unsupported Tap webhook event.', code: 'INVALID_WEBHOOK_EVENT' });
+      return;
+    }
+    const invoiceId = sanitizeId(payload.reference?.transaction);
+    const invoiceNumber = String(payload.reference?.order || '');
+    if (!invoiceId || !invoiceNumber) {
+      res.status(400).json({ error: 'Tap webhook is missing invoice references.', code: 'INVALID_WEBHOOK_REFERENCE' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ?`
+    ).get(invoiceId) as Record<string, unknown> | undefined;
+    if (!invoice || invoice.invoice_number !== invoiceNumber || invoice.payment_proof_ref !== `tap:${payload.id}`) {
+      res.status(200).json({ received: true, processed: false });
+      return;
+    }
+    const amountMatches = Math.abs(Number(payload.amount) - Number(invoice.amount)) < 0.000001;
+    const currencyMatches = String(payload.currency || '').toUpperCase() === String(invoice.currency || 'USD').toUpperCase();
+    if (payload.status === 'CAPTURED' && amountMatches && currencyMatches) {
+      db.prepare(
+        `UPDATE billing_invoices SET status = 'paid', verified_at = ?
+         WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+      ).run(new Date().toISOString(), invoiceId, invoice.tenant_id, `tap:${payload.id}`);
+    }
+    res.status(200).json({ received: true, processed: payload.status === 'CAPTURED' && amountMatches && currencyMatches });
+  });
+
   // Tap hosted checkout — sandbox only. The amount is always loaded from the
   // authenticated tenant's invoice; callers cannot supply or override it.
   app.post('/api/payments/tap/charges', requireAuth, async (req: AuthedRequest, res: Response) => {
@@ -1616,7 +1661,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
         invoiceNumber: String(invoice.invoice_number),
         customerName: actor.name,
         customerEmail: actor.email,
-        redirectUrl: redirect.toString()
+        redirectUrl: redirect.toString(),
+        webhookUrl: new URL('/api/payments/tap/webhook', appOrigin).toString()
       }, secretKey);
       db.prepare(
         `UPDATE billing_invoices
