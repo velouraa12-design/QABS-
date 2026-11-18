@@ -27,7 +27,7 @@ Set these only in the preview service secret/environment manager:
 - `NODE_ENV=production`
 - `QABS_DB_PATH=/data/qabs.sqlite`
 - `QABS_ALLOW_SANDBOX_PAYMENTS=false` until API/auth/invoice tests pass.
-- `APP_ORIGIN` to the exact preview origin.
+- `APP_ORIGIN` to the exact preview origin. The Render Blueprint maps this to Render's generated `RENDER_EXTERNAL_URL`, so the SPA and API remain same-origin.
 - `TAP_SECRET_KEY` only if a disposable Tap test key is approved.
 - `TAP_WEBHOOK_URL` to the public HTTPS URL ending exactly in `/api/payments/tap/webhook`.
 - Enable `QABS_ALLOW_SANDBOX_PAYMENTS=true` only after isolated runtime, persistent storage, authentication, tenant isolation, invoice reconciliation, and webhook reachability are verified.
@@ -51,7 +51,7 @@ This change does not create a hosting service, attach a paid persistent disk, co
 
 ## Optional free preview blueprint (non-durable acceptance only)
 
-The root `render.yaml` defines a free Docker web service with payments disabled and no custom domain. It is suitable only for temporary API/authentication smoke tests. Render free services spin down after inactivity and their local filesystem is ephemeral; the configured SQLite file under `/tmp` can be lost on restart, spin-down, or redeploy. Do not store real customer records or documents there, do not enable Tap, and do not treat this as production or durable staging.
+The root `render.yaml` defines a free Docker web service with payments disabled, auto-deploy disabled, and no custom domain. It maps `APP_ORIGIN` to the service's generated HTTPS `RENDER_EXTERNAL_URL`. It is suitable only for temporary API/authentication smoke tests. Render free services spin down after inactivity and their local filesystem is ephemeral; the configured SQLite file under `/tmp` can be lost on restart, spin-down, or redeploy. Do not store real customer records or documents there, do not enable Tap, and do not treat this as production or durable staging.
 
 To create it, the repository owner must import the existing GitHub repository into Render and explicitly create the Blueprint. This repository change alone does not create the service. A durable environment requires a paid persistent disk or migration to a managed persistent database; no paid resource is provisioned by this change.
 
