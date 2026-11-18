@@ -91,6 +91,10 @@ const forbiddenUnverifiedClaims = [
   'Open Mercury or Wise accounts, connect Stripe payment gateway',
   'We manage all legal, governmental, and technical procedures',
   'We file Articles of Organization, obtain IRS EIN letter',
+  'proceed to checkout',
+  'Order Service Now — Checkout',
+  'اطلب الخدمة الآن — متابعة للدفع',
+  'لإتمام الطلب',
   'Choose the best state (Wyoming for commerce, Delaware for VC)',
   'نتولى عنك كافة الإجراءات الحكومية والقانونية والتقنية',
   'نقوم بإيداع النظام الأساسي لدى سكرتير الولاية واستخراج الرقم الضريبي',
@@ -165,6 +169,10 @@ const requiredTruthfulCopy = [
   'مساعدة في تأسيس الأعمال وتجهيز الطلبات ومراجعة احتياجات المتاجر والخدمات الرقمية',
   'Explore Store Setup',
   'Explore Compliance Services',
+  'this preview does not collect payment',
+  'المعاينة فقط — الطلب والدفع غير مفعّلين',
+  'indicative estimate for review only',
+  'تقدير إرشادي للمراجعة فقط',
   'We are developing account and data-protection controls',
   'نطوّر ضوابط لحماية الحسابات والبيانات',
   'لا يمكن ضمان عدد محدد من الأيام',
@@ -186,6 +194,10 @@ if (!viteConfigSource.includes("host: '127.0.0.1'")) {
 }
 if (viteConfigSource.includes("host: '0.0.0.0'") || viteConfigSource.includes('allowedHosts: true')) {
   errors.push('Vite development server must not bind to all interfaces or allow every host.');
+}
+
+if (!landingSource.includes('disabled={isPagesPreview}') || !landingSource.includes('if (isPagesPreview) return;')) {
+  errors.push('Formation order and checkout actions must be disabled in the public Pages preview.');
 }
 
 const requiredPreviewSafetyContracts = [
