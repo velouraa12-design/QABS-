@@ -33,12 +33,22 @@ const forbiddenUnverifiedClaims = [
   '4 to 10 business days',
   'نسبة نجاح استخراج EIN',
   'متوسط سرعة الإيداع لدى الولاية',
-  'يؤهلك لفتح حسابات بنكية',
-  'guarantee a bank account'
+  'يؤهلك لفتح حسابات بنكية'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (landingSource.toLowerCase().includes(claim.toLowerCase())) {
     errors.push(`Unverified marketing claim remains: ${claim}`);
+  }
+}
+
+const requiredTruthfulCopy = [
+  'do not guarantee a bank account',
+  'لا تضمن فتح حساب بنكي',
+  'لا يعني إيداعاً حكومياً'
+];
+for (const phrase of requiredTruthfulCopy) {
+  if (!landingSource.toLowerCase().includes(phrase.toLowerCase())) {
+    errors.push(`Missing truthful service disclaimer: ${phrase}`);
   }
 }
 const requiredRouteContracts = [
