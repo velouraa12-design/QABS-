@@ -54,6 +54,7 @@ import {
 } from './pages/index.ts';
 import { CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { qabsApi } from './services/qabsApi.ts';
+import { StudioWorkspaceView } from './components/StudioWorkspaceView.tsx';
 
 const WORKSPACE_HASH_PREFIXES = [
   '/overview',
@@ -92,8 +93,7 @@ const isWorkspaceLocation = (): boolean => {
   const path = normalizePath(window.location.pathname || '/');
   if (
     path === '/workspace' || path.startsWith('/workspace/') ||
-    path === '/account' ||
-    path === '/studio' || path.startsWith('/studio/')
+    path === '/account'
   ) return true;
   return WORKSPACE_HASH_PREFIXES.some(prefix => hash.startsWith(`#${prefix}`));
 };
@@ -276,7 +276,6 @@ const MainLayout: React.FC = () => {
     if (
       path === '/' || path === '/workspace' || path.startsWith('/workspace/') ||
       path === '/account' ||
-      path === '/studio' || path.startsWith('/studio/') ||
       ['/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(path)
     ) {
       return (
@@ -392,7 +391,7 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       <main className="flex-1">
-        {normalizePath(currentPath) === '/payment/return' ? <TapPaymentReturnView /> : <>
+        {normalizePath(currentPath) === '/studio' || normalizePath(currentPath).startsWith('/studio/') ? <StudioWorkspaceView /> : normalizePath(currentPath) === '/payment/return' ? <TapPaymentReturnView /> : <>
         {(mode === 'landing' || !isAuthenticated) && renderPublicRoute()}
 
         {isAuthenticated && mode === 'portal' && (
