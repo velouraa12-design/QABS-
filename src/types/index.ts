@@ -114,6 +114,9 @@ export interface PendingServiceOrder {
     billingCycle?: 'monthly' | 'annual';
     storeName?: string;
     creditsAmount?: number;
+    indicativeOnly?: boolean;
+    quoteReviewOnly?: boolean;
+    governmentFeesMayBeAdditional?: boolean;
   };
 }
 
