@@ -4,6 +4,7 @@ on:
     branches:
       - preview/workspace-reference-layout
       - unified-template-preview-20261116
+      - autonomous/qabs-baseline-audit-20261118
       - chore/qabs-123-unified-completion
   workflow_dispatch:
 permissions:
