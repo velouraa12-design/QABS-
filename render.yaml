@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: qabs-isolated-preview-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "3000"
+      - key: QABS_DB_PATH
+        value: /tmp/qabs-preview.sqlite
+      - key: QABS_ALLOW_SANDBOX_PAYMENTS
+        value: "false"
+      - key: APP_ORIGIN
+        value: https://preview.qabs1.store
