@@ -87,6 +87,53 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       assert.equal(ownStores.status, 200);
       assert.equal(ownStores.json.operational_commerce_migrated, false);
 
+      const catalog = await alpha.request('GET', '/studio/api/services/catalog');
+      assert.equal(catalog.status, 200);
+      assert.equal(catalog.json.payments, false);
+      assert.equal(catalog.json.externalExecution, 'manual_review_only');
+
+      const createRequest = await alpha.request('POST', '/studio/api/services/requests', {
+        service: 'company-formation',
+        title: 'Synthetic formation assessment',
+        attempt_id: 'alpha-attempt-0001',
+        workspace_id: alphaWorkspaceId,
+        payload: { companyName: 'Synthetic Alpha LLC', purpose: 'tenant isolation test' }
+      });
+      assert.equal(createRequest.status, 201);
+      assert.equal(createRequest.json.request.status, 'new');
+      assert.equal(createRequest.json.request.payload.includes('Synthetic Alpha LLC'), true);
+      assert.equal(createRequest.json.replayed, false);
+
+      const replayRequest = await alpha.request('POST', '/studio/api/services/requests', {
+        service: 'company-formation',
+        title: 'Changed title must not create a duplicate',
+        attempt_id: 'alpha-attempt-0001',
+        workspace_id: alphaWorkspaceId,
+        payload: { companyName: 'Changed Synthetic Name' }
+      });
+      assert.equal(replayRequest.status, 200);
+      assert.equal(replayRequest.json.replayed, true);
+      assert.equal(replayRequest.json.request.id, createRequest.json.request.id);
+
+      const alphaServiceRequests = await alpha.request('GET', '/studio/api/services/requests');
+      assert.equal(alphaServiceRequests.status, 200);
+      assert.equal(alphaServiceRequests.json.requests.length, 1);
+      assert.equal(alphaServiceRequests.json.requests[0].id, createRequest.json.request.id);
+
+      const betaServiceRequests = await beta.request('GET', '/studio/api/services/requests');
+      assert.equal(betaServiceRequests.status, 200);
+      assert.equal(betaServiceRequests.json.requests.length, 0);
+
+      const crossTenantRequest = await beta.request('POST', '/studio/api/services/requests', {
+        service: 'company-formation',
+        title: 'Cross-tenant attempt',
+        attempt_id: 'beta-attempt-0001',
+        workspace_id: alphaWorkspaceId,
+        payload: { companyName: 'Must Not Be Created' }
+      });
+      assert.equal(crossTenantRequest.status, 403);
+      assert.equal(crossTenantRequest.json.code, 'FORBIDDEN_TENANT_ACCESS');
+
       const crossTenant = await beta.request(
         'GET',
         `/studio/api/workspace-stores?workspace_id=${encodeURIComponent(alphaWorkspaceId)}`
