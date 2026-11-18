@@ -161,8 +161,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة الانطلاقة الشاملة (Turnkey)',
         nameEn: 'Turnkey Executive',
         priceUsd: 599,
-        billingNoteAr: 'تشمل أولوية التنفيذ وسنة وكيل',
-        billingNoteEn: 'Includes priority filing & 1-yr agent',
+        billingNoteAr: 'نطاق مخصص؛ تُراجع المدة والوكيل والتكلفة في عرض منفصل',
+        billingNoteEn: 'Custom scope; timing, agent, and fees confirmed in a separate quote',
         descriptionAr: 'خيار مخصص يخضع لعرض سعر منفصل؛ لا تُعد أولوية المعالجة أو سنة الوكيل أو تجهيز الحسابات أو قبول بوابات الدفع مضمونة قبل التأكيد الكتابي.',
         descriptionEn: 'A custom option requiring a separate quote; priority processing, a one-year agent, account preparation, and payment-provider acceptance are not guaranteed until confirmed in writing.',
         featuresAr: [
@@ -676,7 +676,7 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         titleAr: 'اختيار الولاية المناسبة',
         titleEn: 'Pick Your US State',
         descriptionAr: 'قارن بين وايومنغ وديلاوير ونيو مكسيكو أو أي من الولايات الـ 50 واختر الأنسب.',
-        descriptionEn: 'Compare Wyoming, Delaware, New Mexico, or any of the 50 states.',
+        descriptionEn: 'Review selected jurisdictions such as Wyoming, Delaware, and New Mexico; other options require separate availability and fee confirmation.',
         durationAr: '5 دقائق',
         durationEn: '5 mins'
       },
