@@ -122,7 +122,7 @@ const requiredTruthfulCopy = [
   'does not imply bank or payment-provider approval'
 ];
 for (const phrase of requiredTruthfulCopy) {
-  const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, serviceTemplateSource]
+  const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, customizerSource, serviceTemplateSource]
     .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
   if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
