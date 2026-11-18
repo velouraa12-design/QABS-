@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 export interface TapSandboxChargeInput {
   amount: number;
   currency: string;
@@ -7,6 +9,7 @@ export interface TapSandboxChargeInput {
   customerName: string;
   customerEmail: string;
   redirectUrl: string;
+  webhookUrl?: string;
 }
 
 export interface TapSandboxChargeResult {
@@ -67,7 +70,8 @@ export async function createTapSandboxCharge(
         email: input.customerEmail
       },
       source: { id: 'src_all' },
-      redirect: { url: input.redirectUrl }
+      redirect: { url: input.redirectUrl },
+      ...(input.webhookUrl ? { post: { url: input.webhookUrl } } : {})
     })
   });
 
@@ -137,4 +141,45 @@ export async function retrieveTapSandboxCharge(
     transactionReference: String(payload.reference?.transaction || ''),
     orderReference: String(payload.reference?.order || '')
   };
+}
+
+
+export interface TapWebhookPayload {
+  id?: unknown;
+  object?: unknown;
+  live_mode?: unknown;
+  status?: unknown;
+  amount?: unknown;
+  currency?: unknown;
+  reference?: { gateway?: unknown; payment?: unknown; transaction?: unknown; order?: unknown };
+  transaction?: { created?: unknown };
+}
+
+function tapCurrencyMinorUnits(currency: string): number {
+  return ['BHD', 'IQD', 'JOD', 'KWD', 'OMR', 'TND'].includes(currency.toUpperCase()) ? 3 : 2;
+}
+
+export function verifyTapWebhookHashstring(
+  payload: TapWebhookPayload,
+  receivedHash: string | undefined,
+  secretKey: string | undefined
+): boolean {
+  if (!isTapTestSecret(secretKey) || !receivedHash || !/^[a-f0-9]{64}$/i.test(receivedHash)) return false;
+  if (typeof payload.id !== 'string' || typeof payload.status !== 'string' ||
+      typeof payload.currency !== 'string' || !Number.isFinite(Number(payload.amount)) ||
+      typeof payload.transaction?.created !== 'string' && typeof payload.transaction?.created !== 'number') return false;
+  const currency = payload.currency.toUpperCase();
+  const amount = Number(payload.amount).toFixed(tapCurrencyMinorUnits(currency));
+  const reference = payload.reference || {};
+  const hashInput =
+    'x_id' + payload.id +
+    'x_amount' + amount +
+    'x_currency' + currency +
+    'x_gateway_reference' + String(reference.gateway || '') +
+    'x_payment_reference' + String(reference.payment || '') +
+    'x_status' + payload.status +
+    'x_created' + String(payload.transaction?.created);
+  const expected = createHmac('sha256', secretKey).update(hashInput, 'utf8').digest();
+  const received = Buffer.from(receivedHash, 'hex');
+  return received.length === expected.length && timingSafeEqual(received, expected);
 }
