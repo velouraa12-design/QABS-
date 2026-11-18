@@ -99,6 +99,33 @@ jobs:
           const config = JSON.parse(body);
           if (config.stage !== "preview-isolated" || config.payments !== false) process.exit(1);
         '
+        # Exercise a complete synthetic registration/session/CSRF/logout lifecycle.
+        curl -fsS -c /tmp/qabs-cookies.txt -H 'Content-Type: application/json' \
+          -d '{"name":"CI Customer","email":"ci-customer@example.test","companyName":"CI Workspace","password":"Qabs-CI-Strong-2026!","role":"super_admin"}' \
+          http://127.0.0.1:3000/api/auth/register > /tmp/qabs-register.json
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const result = JSON.parse(fs.readFileSync("/tmp/qabs-register.json", "utf8"));
+          if (!result.ok || !result.authenticated || result.user?.role !== "customer" || !result.csrfToken) {
+            throw new Error("Registration/session contract failed");
+          }
+          fs.writeFileSync("/tmp/qabs-csrf.txt", result.csrfToken);
+        '
+        curl -fsS -b /tmp/qabs-cookies.txt http://127.0.0.1:3000/api/auth/session | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const session = JSON.parse(body);
+          if (!session.authenticated || session.user?.email !== "ci-customer@example.test") process.exit(1);
+        '
+        csrf="$(cat /tmp/qabs-csrf.txt)"
+        curl -fsS -b /tmp/qabs-cookies.txt -H "X-CSRF-Token: $csrf" -X POST \
+          http://127.0.0.1:3000/api/auth/logout | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          if (JSON.parse(body).authenticated !== false) process.exit(1);
+        '
+        curl -fsS -b /tmp/qabs-cookies.txt http://127.0.0.1:3000/api/auth/session | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          if (JSON.parse(body).authenticated !== false) process.exit(1);
+        '
 
     - name: Stop isolated API container
       if: always()
