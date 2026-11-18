@@ -1,5 +1,17 @@
 name: Build and deploy QABS isolated workspace preview
 on:
+  pull_request:
+    branches:
+      - integration/qabs-unified-preview-20261118
+    paths:
+      - '.github/workflows/workspace-preview.yml'
+      - 'src/**'
+      - 'public/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vite.config.*'
+      - 'scripts/**'
+      - 'tests/**'
   push:
     branches:
       - preview/workspace-reference-layout
