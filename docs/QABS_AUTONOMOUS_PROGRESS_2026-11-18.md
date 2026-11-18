@@ -304,3 +304,24 @@ GitHub Actions run `44231080195` completed with SUCCESS:
 - Secret scan: PASS.
 
 The repository's current `ci.yml` does not run `npm test` or `check:routes`; those remain NOT VERIFIED in this run. This is not a full regression-test pass.
+
+
+## 17. Expanded CI regression suite — verified
+
+Updated `.github/workflows/ci.yml`:
+- Node runtime moved from 20 to 22 for compatibility with the test server's built-in `node:sqlite`.
+- CI now runs `npm test` and `npm run check:routes` in addition to TypeScript/lint, Vite build and secret scan.
+
+GitHub Actions run `44231386861` for commit `f9de0eabc375d20df0b8a3db69be44f7d288ff59` completed SUCCESS:
+| Step | Result |
+|---|---|
+| Dependency install | PASS |
+| TypeScript / lint | PASS |
+| API/auth/tenant-isolation tests | PASS |
+| Workspace route checker | PASS |
+| Vite build | PASS |
+| Secret scan | PASS |
+
+The test suite covers local Express preview API behavior including registration role injection, CSRF, session revocation, cross-tenant/cross-store access, RBAC, billing gates, credit ledger and document vault paths. These are local test-harness results, not proof that the separate Cloudflare Workers expose the same routes or are production-ready.
+
+The separate `workspace-preview.yml` generated failure-status run records with zero jobs and no job logs for the branch pushes; no Pages build/deploy is claimed from those records. Cause remains NOT VERIFIED. The independently deployed Worker preview v2 remains the available preview link.
