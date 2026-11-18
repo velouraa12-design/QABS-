@@ -234,76 +234,76 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     category: 'formation',
     categoryLabelAr: 'تأسيس الشركات',
     categoryLabelEn: 'Company Formation',
-    titleAr: 'استخراج الرقم الضريبي الفيدرالي الأمريكي (EIN)',
-    titleEn: 'Federal IRS EIN Tax ID Issuance',
+    titleAr: 'المساعدة في طلب الرقم الضريبي الفيدرالي الأمريكي (EIN)',
+    titleEn: 'Federal EIN Application Assistance',
     subtitleAr:
-      'احصل على الرقم التعريفي لصاحب العمل (EIN) من مصلحة الضرائب الأمريكية IRS لغير المقيمين دون رقم SSN، مع تسليم خطاب CP575 الرسمي.',
+      'نساعد في مراجعة أهلية طلب رقم EIN وتجهيز نموذج SS-4 والمستندات المطلوبة عند انطباق متطلبات IRS؛ قرار الإصدار ووقت المعالجة يعودان إلى المصلحة.',
     subtitleEn:
-      'Obtain your official IRS Employer Identification Number (EIN) as a non-US resident without an SSN, including official IRS confirmation.',
+      'We help review EIN eligibility and prepare Form SS-4 and supporting information where IRS requirements are met; the IRS controls issuance and processing time.',
     seoTitleAr: 'استخراج الرقم الضريبي الأمريكي EIN لغير المقيمين | قبس',
     seoTitleEn: 'Federal EIN Application for Non-US Residents | QABS',
     seoDescriptionAr:
-      'خدمة استخراج الرقم الضريبي الفيدرالي EIN للشركات الأمريكية المملوكة لغير المقيمين عبر نموذج SS-4 الرسمي لفتح الحسابات البنكية وربط Stripe.',
+      'مساعدة في إعداد طلب EIN للشركات الأمريكية وفق أهلية المتقدم ومتطلبات IRS، دون ضمان الإصدار أو فتح حساب بنكي أو قبول بوابة دفع.',
     seoDescriptionEn:
-      'Fast, compliant IRS Form SS-4 filing and EIN retrieval for international founders without an SSN or ITIN.',
+      'EIN application preparation support for eligible international founders, subject to IRS requirements and processing.',
     detailedDescriptionAr: [
       'يُعد الرقم الضريبي الفيدرالي (Employer Identification Number - EIN) بمثابة الهوية الضريبية والمالية الرسمية لشركتك الأمريكية لدى مصلحة الضرائب الفيدرالية (IRS).',
-      'يتعذر على المؤسسين خارج الولايات المتحدة التقديم عبر البوابة الإلكترونية الفورية لـ IRS لعدم امتلاكهم رقم ضمان اجتماعي (SSN). تتولى قبس إعداد نموذج SS-4 بدقة، والتواصل المباشر مع قسم الشركات الدولية في IRS حتى صدور الخطاب الرسمي.'
+      'قد تختلف قنوات التقديم ومتطلبات SSN أو ITIN بحسب حالة مقدم الطلب. تساعد قبس في إعداد نموذج SS-4 ومراجعة المستندات وتنسيق التقديم عبر قناة متاحة بعد قبول الطلب؛ لا تتحكم قبس في قرار IRS أو مدة المعالجة.'
     ],
     detailedDescriptionEn: [
       'The Employer Identification Number (EIN) serves as your US company’s federal tax identity, functioning like a national business ID for banking, taxes, and compliance.',
-      'Because non-US residents without an SSN or ITIN cannot use the IRS online portal, QABS prepares IRS Form SS-4 accurately and coordinates directly with the IRS International desk until your official EIN notice is issued.'
+      'Application channels and SSN or ITIN requirements vary by applicant. QABS can assist with Form SS-4 and document preparation and coordinate submission through an available channel after request acceptance; the IRS controls the decision and processing time.'
     ],
-    deliveryTimeAr: '4 – 10 أيام عمل لغير المقيمين',
-    deliveryTimeEn: '4 – 10 business days for non-SSN founders',
+    deliveryTimeAr: 'المدة غير مضمونة وتخضع لمعالجة IRS واكتمال الطلب والقناة المتاحة',
+    deliveryTimeEn: 'Timing is not guaranteed and depends on IRS processing, application completeness, and the available channel',
     startingPriceUsd: 70,
-    pricingNoteAr: 'رسوم الخدمة المستقلة — ومشمولة تلقائياً في الباقة المتكاملة',
-    pricingNoteEn: 'Standalone service fee — included automatically in Complete package',
+    pricingNoteAr: 'السعر إرشادي؛ تشمل الخدمة المساعدة في إعداد الطلب فقط عند تأكيد النطاق والأهلية، ولا تضمن إصدار EIN أو قبول مزود حسابات أو دفع.',
+    pricingNoteEn: 'Indicative fee; scope is application-preparation assistance subject to eligibility and confirmation, with no guarantee of EIN issuance or provider approval.',
     features: [
       {
         titleAr: 'لا يتطلب رقم SSN أو ITIN',
         titleEn: 'No SSN or ITIN Required',
-        descriptionAr: 'إجراءات مخصصة بالكامل لملاك الشركات الدوليين من خارج الولايات المتحدة.',
-        descriptionEn: 'Specialized filing workflow designed specifically for international founders.'
+        descriptionAr: 'تُراجع متطلبات SSN أو ITIN وقناة التقديم وفق حالة مقدم الطلب وتعليمات IRS.',
+        descriptionEn: 'SSN or ITIN requirements and application channels are reviewed against the applicant’s circumstances and IRS instructions.'
       },
       {
         titleAr: 'إعداد احترافي لنموذج SS-4',
         titleEn: 'Accurate Form SS-4 Preparation',
-        descriptionAr: 'صياغة قانونية خالية من الأخطاء التي تتسبب برفض أو تأخير ملفات IRS.',
-        descriptionEn: 'Error-free preparation preventing common IRS rejections or multi-week delays.'
+        descriptionAr: 'مساعدة في إعداد ومراجعة نموذج SS-4 والبيانات المقدمة؛ لا يمكن ضمان خلو الطلب من الملاحظات أو تأخر المعالجة.',
+        descriptionEn: 'Assistance preparing and reviewing Form SS-4; comments, rejection, or processing delays cannot be ruled out.'
       },
       {
         titleAr: 'مؤهل لـ Mercury و Stripe و Amazon',
         titleEn: 'Required for Banking & Stripe',
-        descriptionAr: 'المتطلب الأساسي لفتح حسابات البنوك الأمريكية وتفعيل بوابات الدفع.',
-        descriptionEn: 'Mandatory prerequisite for US fintech banking, Stripe, PayPal, and Amazon.'
+        descriptionAr: 'قد يطلب بعض مزودي الحسابات والدفع رقم EIN؛ وجوده وحده لا يضمن أهلية الحساب أو الموافقة.',
+        descriptionEn: 'Some account and payment providers may request an EIN; having one does not by itself establish eligibility or approval.'
       },
       {
         titleAr: 'متابعة مباشرة وتسليم PDF',
         titleEn: 'Direct Tracking & Digital Delivery',
-        descriptionAr: 'رفع شهادة الرقم الضريبي الرسمية مباشرة في خزينة مستندات قبس.',
-        descriptionEn: 'Official EIN confirmation letter uploaded directly to your QABS Vault.'
+        descriptionAr: 'تُسلّم نسخة المستند الرسمي بعد صدوره عبر قناة التسليم المتاحة إذا كانت مفعّلة.',
+        descriptionEn: 'The official notice is handed over after issuance through the available delivery channel, if enabled.'
       }
     ],
     benefitsAr: [
-      'إمكانية فتح الحساب البنكي التجاري الأمريكي للشركة.',
+      'قد يكون EIN أحد المستندات المطلوبة لدى بعض مزودي الحسابات؛ يطبق كل مزود شروطه وقراره المستقل.',
       'تعبئة نماذج W-9 / W-8BEN-E للمنصات والشركات الأمريكية.',
       'توظيف متعاقدين وموظفين وإصدار فواتير نظامية.',
-      'تجنب الاستقطاع الضريبي التلقائي بنسبة 30% في بعض الحالات التجارية.'
+      'تحديد النماذج والالتزامات الضريبية المناسبة يحتاج مراجعة مستقلة وفق حالة الشركة والمعاملة.'
     ],
     benefitsEn: [
-      'Unlock eligibility for US business bank accounts (Mercury, Relay, Wise).',
+      'An EIN may be one of the documents requested by some providers; each provider applies independent eligibility checks and decisions.',
       'Complete vendor and marketplace tax forms cleanly.',
       'Hire contractors and issue formal US corporate invoices.',
-      'Prevent improper tax withholding across US B2B partners.'
+      'Tax forms and withholding treatment require separate review based on the entity and transaction.'
     ],
     steps: [
       {
         stepNumber: '01',
         titleAr: 'تزويدنا بعقد التأسيس',
         titleEn: 'Provide Articles of Organization',
-        descriptionAr: 'ارفع نسخة شهادة التأسيس واسم المدير المسؤول (Responsible Party).',
-        descriptionEn: 'Upload your certified state formation document and designate the Responsible Party.',
+        descriptionAr: 'تُراجع مستندات التأسيس وبيانات الشخص المسؤول وفق متطلبات IRS، عبر قناة آمنة عند الحاجة.',
+        descriptionEn: 'Formation records and responsible-party details are reviewed against IRS requirements through an approved secure channel when needed.',
         durationAr: '5 دقائق',
         durationEn: '5 mins'
       },
@@ -311,8 +311,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '02',
         titleAr: 'إعداد وتوقيع نموذج SS-4',
         titleEn: 'Prepare & Sign Form SS-4',
-        descriptionAr: 'نقوم بتعبئة النموذج الفيدرالي وإرساله لك للتوقيع الإلكتروني المعتمد.',
-        descriptionEn: 'We populate IRS Form SS-4 and send it for your quick digital signature.',
+        descriptionAr: 'تساعد قبس في إعداد نموذج SS-4 ومراجعته؛ تُحدد طريقة التوقيع والتقديم وفق القناة والمتطلبات المعمول بها.',
+        descriptionEn: 'QABS can assist with Form SS-4 preparation and review; signing and submission methods depend on the applicable channel and requirements.',
         durationAr: 'خلال 24 ساعة',
         durationEn: 'Within 24h'
       },
@@ -320,8 +320,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '03',
         titleAr: 'الإيداع لدى قسم IRS الدولي',
         titleEn: 'IRS International Submission',
-        descriptionAr: 'إرسال الطلب للقناة المعتمدة ومتابعة استخراج الرقم الضريبي.',
-        descriptionEn: 'Submission to the IRS international unit with active status follow-up.',
+        descriptionAr: 'يُنسّق التقديم عبر قناة متاحة بعد قبول الطلب؛ تحدد IRS إجراءات المعالجة والرد.',
+        descriptionEn: 'Submission is coordinated through an available channel after acceptance; the IRS determines processing and response.',
         durationAr: '4 – 10 أيام عمل',
         durationEn: '4 – 10 business days'
       },
@@ -329,8 +329,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '04',
         titleAr: 'استلام الخطاب الرسمي',
         titleEn: 'Official Letter Delivery',
-        descriptionAr: 'تسليم خطاب CP575 / 147C بصيغة PDF جاهز للبنوك وبوابات الدفع.',
-        descriptionEn: 'Digital delivery of your official EIN confirmation notice ready for verification.',
+        descriptionAr: 'تُسلّم نسخة CP575 أو 147C إذا أصدرتها IRS وكانت متاحة، ولا يعني ذلك قبول البنوك أو بوابات الدفع.',
+        descriptionEn: 'A CP575 or 147C copy is handed over if issued by the IRS and available; this does not imply bank or payment-provider approval.',
         durationAr: 'فوري عند الإصدار',
         durationEn: 'Instant upon issuance'
       }
@@ -343,8 +343,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 70,
         billingNoteAr: 'دفعة واحدة لشركة قائمة',
         billingNoteEn: 'One-time fee for existing LLC/Corp',
-        descriptionAr: 'إعداد نموذج SS-4 وإيداعه لدى IRS ومتابعة صدور الرقم الضريبي.',
-        descriptionEn: 'Complete Form SS-4 preparation, submission, and IRS follow-up.',
+        descriptionAr: 'مساعدة في إعداد نموذج SS-4 ومراجعة المستندات وتنسيق التقديم عند تأكيد الأهلية والتوفر.',
+        descriptionEn: 'Assist with Form SS-4 and document review and coordinate submission subject to eligibility and availability.',
         recommended: true,
         featuresAr: [
           'إعداد ومراجعة نموذج IRS SS-4',
@@ -366,19 +366,19 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 119,
         billingNoteAr: 'أولوية قصوى + خطاب تحقق إضافي',
         billingNoteEn: 'Priority queue + verification letter',
-        descriptionAr: 'مخصصة للشركات التي تحتاج خطاب التحقق 147C أو تصحيح بيانات سابقة لدى IRS.',
-        descriptionEn: 'Ideal for urgent applications, lost EIN retrieval (147C), or IRS record updates.',
+        descriptionAr: 'طلب مساعدة لمراجعة متطلبات خطاب 147C أو تحديث بيانات سابقة لدى IRS؛ توفر الإجراء ونتيجته يخضعان للمصلحة.',
+        descriptionEn: 'Assistance reviewing a 147C request or prior IRS record update; availability and outcome are determined by the IRS.',
         featuresAr: [
-          'أولوية تنفيذ ومتابعة يومية',
+          'تحديد نطاق المتابعة الممكنة قبل قبول العرض',
           'استخراج خطاب 147C عند الحاجة',
           'تحديث اسم أو عنوان الشركة لدى IRS',
-          'مرافقة فنية عند ربط Stripe'
+          'مراجعة مستندات التقديم لمزود الدفع دون ضمان القبول أو الربط'
         ],
         featuresEn: [
-          'Priority handling & daily follow-up',
+          'Confirm the available follow-up scope before accepting the quote',
           'IRS Letter 147C retrieval if needed',
           'IRS entity address/name update guidance',
-          'Technical support for Stripe EIN verification'
+          'Review payment-provider application documents without guaranteeing approval or integration'
         ]
       }
     ],
@@ -386,8 +386,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'كم المدة الفعلية لصدور الرقم الضريبي EIN؟',
         questionEn: 'How long does it actually take to get an EIN?',
-        answerAr: 'في الظروف القياسية لغير المقيمين تستغرق المعالجة ما بين 4 إلى 10 أيام عمل حسب ضغط مصلحة الضرائب الأمريكية.',
-        answerEn: 'Standard non-resident processing takes 4 to 10 business days depending on IRS processing volume.'
+        answerAr: 'تختلف مدة المعالجة بحسب قناة التقديم واكتمال الطلب وحجم العمل لدى IRS؛ لا يمكن ضمان عدد محدد من الأيام.',
+        answerEn: 'Processing time varies by submission channel, application completeness, and IRS workload; a fixed number of days cannot be guaranteed.'
       },
       {
         questionAr: 'هل ينتهي مفعول الرقم الضريبي EIN؟',
