@@ -134,7 +134,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
   });
 
   // Store Package Cycle & Name
-  const [showcaseStoreName, setShowcaseStoreName] = useState('');
 
   // Collapsible states pricing
   const [showStatesPricing, setShowStatesPricing] = useState(false);
@@ -626,13 +625,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
               ? 'هذه خيارات أولية لطلب تقييم الاحتياج وليست اشتراكات مفعّلة. لا يتم من هذه الصفحة تحصيل رسوم أو تفعيل بوابات دفع أو نطاقات أو نشر متجر تلقائياً. نراجع المتطلبات والتوفر ونطاق العمل ثم نؤكد العرض قبل أي تنفيذ.'
               : 'These are preliminary options for a needs assessment, not active subscriptions. This page does not collect payment or automatically activate gateways, domains, or store publication. Requirements, availability, and scope are reviewed before a quote or work is confirmed.'}
           </p>
-          <input
-            type="text"
-            value={showcaseStoreName}
-            onChange={e => setShowcaseStoreName(e.target.value)}
-            placeholder={isAr ? 'اسم المتجر المقترح (اختياري)...' : 'Proposed store name (optional)...'}
-            className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
-          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
@@ -678,21 +670,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    requestServiceAction({
-                      id: `svc_store_assessment_${plan.id}_${Date.now()}`,
-                      serviceType: 'store_assessment',
-                      titleAr: isAr ? plan.nameAr : plan.nameEn,
-                      titleEn: plan.nameEn,
-                      subtitleAr: 'طلب تقييم احتياجات المتجر والتوفر ونطاق العمل؛ دون اشتراك أو تحصيل رسوم.',
-                      subtitleEn: 'Request a store needs, availability, and scope assessment; no subscription or payment is activated.',
-                      priceUsd: 0,
-                      details: { planId: plan.id, storeName: showcaseStoreName.trim() || undefined, assessmentOnly: true }
-                    })
-                  }
-                  className="w-full py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs cursor-pointer transition-colors"
+                  disabled
+                  aria-disabled="true"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-xs cursor-not-allowed"
                 >
-                  {isAr ? 'اطلب تقييم التوفر' : 'Request availability review'}
+                  {isAr ? 'قيد الإعداد — لا يوجد اشتراك أو دفع' : 'In preparation — no subscription or payment'}
                 </button>
               </div>
             );
@@ -762,21 +744,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 </div>
                 <button
                   type="button"
-                  onClick={() =>
-                    requestServiceAction({
-                      id: `svc_${item.id}_${Date.now()}`,
-                      serviceType: 'ai_interest',
-                      titleAr: item.titleAr,
-                      titleEn: item.titleEn,
-                      subtitleAr: 'تسجيل اهتمام فقط؛ لا رصيد ولا اشتراك ولا تنفيذ آلي مفعّل.',
-                      subtitleEn: 'Interest only; no credits, subscription, or automated execution is activated.',
-                      priceUsd: 0,
-                      details: { interestOnly: true }
-                    })
-                  }
-                  className="w-full py-2.5 px-4 rounded-xl border-2 border-[#14243E] dark:border-[#D5B46B] text-[#14243E] dark:text-[#D5B46B] hover:bg-[#14243E] hover:text-white font-black text-xs transition-colors cursor-pointer"
+                  disabled
+                  aria-disabled="true"
+                  className="w-full py-2.5 px-4 rounded-xl border-2 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-black text-xs cursor-not-allowed"
                 >
-                  {isAr ? 'سجل اهتمامك' : 'Register interest'}
+                  {isAr ? 'قريباً — لا توجد أرصدة قابلة للشراء' : 'Coming soon — no credits available for purchase'}
                 </button>
               </div>
             );
