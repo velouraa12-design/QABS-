@@ -34,14 +34,14 @@ export interface SiteContent {
 }
 
 const DEFAULT_SITE_CONTENT: SiteContent = {
-  heroBadgeAr: 'باقة انطلاقة الدفع العالمي',
-  heroBadgeEn: 'Global Payments Launch Package',
+  heroBadgeAr: 'خدمات تأسيس وتجهيز الأعمال',
+  heroBadgeEn: 'Business Formation & Setup Services',
   heroTitleAr: 'خلّ تجارتك تنطلق عالميًا مع قبس!',
   heroTitleEn: 'Propel Your Global Commerce with QABS!',
   heroSubtitleAr:
-    'بوابتك المعتمدة نحو التجارة العالمية: تأسيس شركات LLC أمريكية، استخراج الرقم الضريبي الفيدرالي EIN، تجهيز بوابات Stripe و PayPal، وفتح الحسابات البنكية الدولية.',
+    'نساعدك في مراجعة خيارات تأسيس الشركات وتجهيز مستندات التقديم للحسابات وبوابات الدفع، بعد التحقق من أهلية بلد الإقامة والنشاط ومتطلبات الجهات.',
   heroSubtitleEn:
-    'Your sovereign gateway to global business: US LLC formation, Federal EIN issuance, Stripe & PayPal turnkey setup, and commercial fintech banking.',
+    'We help review company-formation options and prepare application documents for banking and payment providers, subject to residence, business-activity, and provider eligibility.',
   heroCtaTextAr: 'ابدأ الآن — اطلب مراجعة باقتك',
   heroCtaTextEn: 'Start Now — Review Package',
   heroCtaLink: 'https://qabs1.store',
@@ -49,20 +49,20 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
   cardImageUrl: '/src/assets/images/qabs_banking_card_1794351469053.jpg',
   whatsappNumber: '+159 710 784 967',
   storeDomain: 'qabs1.store',
-  showcasePackageTitleAr: 'باقة انطلاقة الدفع العالمي المتكاملة',
-  showcasePackageTitleEn: 'Turnkey Global Payment & Formation Package',
+  showcasePackageTitleAr: 'باقة تأسيس وتجهيز الدفع',
+  showcasePackageTitleEn: 'Formation & Payment Application Support',
   showcasePrice: 349,
   showcaseFeaturesAr: [
-    'تأسيس LLC أمريكية معتمدة رسمياً',
-    'المساعدة في تجهيز Stripe و PayPal',
-    'استخراج الرقم الضريبي الفيدرالي EIN',
-    'الوكيل المسجل والعنوان الأمريكي للسنة الأولى'
+    'مساعدة في طلب تأسيس LLC وفق الأهلية والاختصاص',
+    'مساعدة في إعداد مستندات طلب Stripe و PayPal دون ضمان القبول',
+    'مساعدة في طلب EIN وفق متطلبات IRS والأهلية',
+    'الوكيل المسجل والعنوان حسب الباقة والاختصاص وتأكيد التوفر'
   ],
   showcaseFeaturesEn: [
-    'Official US LLC Formation',
-    'Turnkey Stripe & PayPal Integration',
-    'IRS Federal EIN Issuance',
-    'Registered Agent & US Street Address (1st Year)'
+    'US LLC formation assistance, subject to eligibility',
+    'Stripe & PayPal application-document support; approval is not guaranteed',
+    'EIN application assistance, subject to IRS requirements',
+    'Registered-agent and address service, subject to package and availability'
   ],
   customPages: [
     {
