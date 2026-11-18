@@ -85,7 +85,7 @@ const requiredTruthfulCopy = [
   'الأسعار والباقات الإرشادية'
 ];
 for (const phrase of requiredTruthfulCopy) {
-  const hasTruthfulCopy = [landingSource, companyFormationCopy]
+  const hasTruthfulCopy = [landingSource, companyFormationCopy, serviceTemplateSource]
     .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
   if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
