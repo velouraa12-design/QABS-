@@ -270,14 +270,14 @@ export const LandingView: React.FC<LandingViewProps> = ({
     {
       qAr: 'كيف يساعدني الكيان في ربط بوابات الدفع Stripe والحساب البنكي؟',
       qEn: 'How does the entity facilitate Stripe and US banking approval?',
-      aAr: 'بمجرد صدور وثائق التأسيس والرقم الضريبي EIN وعنوان الوكيل المسجل، يصبح لديك ملف تجاري أمريكي متكامل يؤهلك لفتح حسابات بنكية أعمال (مثل Mercury و Wise Business) والتقديم على بوابات الدفع العالمية مثل Stripe و PayPal.',
-      aEn: 'With state formation papers, IRS EIN, and registered address, you possess a compliant US business profile to open business fintech accounts (Mercury, Wise) and apply for Stripe and PayPal.'
+      aAr: 'قد تساعد وثائق التأسيس ورقم EIN وعنوان الوكيل المسجل في تجهيز ملف التقديم، لكنها لا تضمن فتح حساب بنكي أو قبول بوابة دفع. لكل مزود معايير تحقق مستقلة تتعلق بالإقامة والنشاط والوثائق والمخاطر.',
+      aEn: 'Formation documents, an EIN, and a registered address may help prepare an application, but they do not guarantee a bank account or payment-provider approval. Each provider applies its own checks for residence, business activity, documents, and risk.'
     },
     {
       qAr: 'هل يمكنني إدارة متاجري الإلكترونية وتأسيس الشركات من نفس لوحة التحكم؟',
       qEn: 'Can I manage my online stores and corporate entities from one unified portal?',
-      aAr: 'نعم تماماً! تقدم منصة قبس الموحدة لوحة تحكم واحدة تجمع إدارة ملفات تأسيس الشركات ووثائقها القانونية، إلى جانب إدارة متاجرك الإلكترونية المستقلة ومنتجاتها وطلباتها واستوديو التصميم.',
-      aEn: 'Yes! QABS provides a unified dashboard merging corporate entity filings and legal compliance with independent online stores, product catalogs, and QABS Studio design.'
+      aAr: 'تجمع واجهة قبس مسارات لعرض ملفات التأسيس ووثائقها ومتابعة المتاجر والمنتجات والطلبات. وتختلف الوظائف المتاحة بحسب حالة ربط كل خدمة واعتمادها.',
+      aEn: 'The QABS interface brings together areas for formation files and documents, stores, products, and orders. Available actions depend on each service being connected and approved.'
     }
   ];
 
