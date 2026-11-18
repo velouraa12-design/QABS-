@@ -233,7 +233,7 @@ for (const [source, token] of requiredPreviewSafetyContracts) {
 
 const requiredRouteContracts = [
   ["workspace deep links", "path.startsWith('/workspace/')"],
-  ["account alias mounts Studio directly", "normalizePath(currentPath) === '/account' ? <StudioWorkspaceView />"],
+  ["account and auth aliases mount Studio directly", "['/account', '/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(normalizePath(currentPath))"],
   ["Studio route mounts its own API-backed workspace", "normalizePath(currentPath) === '/studio'"],
   ["Studio view is mounted as a standalone API-backed workspace", "StudioWorkspaceView"],
   ["login route mounts Studio", "['/account', '/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(normalizePath(currentPath))"],
