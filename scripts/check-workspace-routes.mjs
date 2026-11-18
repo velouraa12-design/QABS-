@@ -72,7 +72,11 @@ const forbiddenUnverifiedClaims = [
   'Instant recharge of',
   'with verified governance',
   'full dashboard, visual QABS Studio, and strict isolation',
-  'Open Mercury or Wise accounts, connect Stripe payment gateway'
+  'Open Mercury or Wise accounts, connect Stripe payment gateway',
+  'premier sovereign digital operating platform',
+  'highest standard of data encryption and strict multi-tenant isolation',
+  'المنصة الرائدة في تمكين رواد الأعمال',
+  'أعلى معايير تشفير البيانات وعزل بيئات المستأجرين'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -96,7 +100,9 @@ const requiredTruthfulCopy = [
   'No credits are currently purchasable',
   'لا توجد أرصدة قابلة للشراء',
   'does not collect payment',
-  'لا يتم من هذه الصفحة تحصيل رسوم'
+  'لا يتم من هذه الصفحة تحصيل رسوم',
+  'We are developing account and data-protection controls',
+  'نطوّر ضوابط لحماية الحسابات والبيانات'
 ];
 for (const phrase of requiredTruthfulCopy) {
   const hasTruthfulCopy = [landingSource, companyFormationCopy, serviceTemplateSource]
