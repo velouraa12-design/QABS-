@@ -670,6 +670,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(msg);
   };
 
+  const requireConnectedBackend = (): boolean => {
+    if (backendStatus === 'connected') return true;
+    showToast(language === 'ar'
+      ? 'خدمة الخلفية غير متصلة في هذه المعاينة؛ لم يتم حفظ أي تغيير أو إنشاء أي طلب.'
+      : 'The backend is not connected in this preview; no change or request was saved.');
+    return false;
+  };
+
+
   const appendAudit = (actionAr: string, actionEn: string, target: string, status: AuditLogItem['status'] = 'success') => {
     setAuditLogs(prev => [
       {
@@ -697,6 +706,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- COMPANIES ---
   const addCompany = (comp: Omit<CompanyFormation, 'id' | 'filingDate' | 'status' | 'documents'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -758,10 +769,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCompanyStatus = (id: string, status: CompanyFormation['status']) => {
+    if (!requireConnectedBackend()) return;
+
     setCompanies(prev => prev.map(c => (c.id === id ? { ...c, status } : c)));
   };
 
   const advanceCompanyStage = (id: string, nextStage?: 1 | 2 | 3 | 4 | 5) => {
+    if (!requireConnectedBackend()) return;
+
     const target = companies.find(c => c.id === id);
     if (!target) return;
     const computedStage = (nextStage ?? Math.min(5, (target.formationStage ?? 1) + 1)) as 1 | 2 | 3 | 4 | 5;
@@ -783,6 +798,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const addStore = (
     storeData: Omit<StoreInstance, 'id' | 'productsCount' | 'ordersCount' | 'totalRevenue' | 'createdAt'>
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -836,6 +853,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStoreTheme = (id: string, newTheme: StoreInstance['theme'], customDomain?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -855,6 +874,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStoreDetails = (id: string, updates: Partial<StoreInstance>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -884,6 +905,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitStoreForApproval = (storeId: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -911,6 +934,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     decision: 'approved_published' | 'changes_requested' | 'rejected',
     feedback?: string
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -952,6 +977,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       merchantReference?: string;
     }
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -990,6 +1017,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveStorePayment = (storeId: string, approved: boolean) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1014,6 +1043,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const requestDomainVerification = (storeId: string, customDomain: string) => {
+    if (!requireConnectedBackend()) return;
+
     const cleanDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
     if (backendStatus === 'connected') {
       updateStoreDetails(storeId, { customDomain: cleanDomain });
@@ -1025,6 +1056,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyStoreDomain = (storeId: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1041,6 +1074,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveStoreSnapshot = (storeId: string, label: string) => {
+    if (!requireConnectedBackend()) return;
+
     const target = stores.find(s => s.id === storeId);
     const newSnap = {
       id: `ver_${Date.now()}`,
@@ -1100,6 +1135,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStoreSections = (storeId: string, sections: StoreSectionBlock[]) => {
+    if (!requireConnectedBackend()) return;
+
     setStores(prev => prev.map(s => (s.id === storeId ? { ...s, sections } : s)));
     if (backendStatus === 'connected') {
       void qabsApi
@@ -1110,6 +1147,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStoreCategory = async (storeId: string, nameAr: string, nameEn?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.createCategory(storeId, { nameAr, nameEn });
@@ -1130,6 +1169,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storeId: string,
     input: { name: string; email: string; role: 'admin' | 'staff' | 'support'; permissions?: string[] }
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.addStoreTeamMember(storeId, input);
@@ -1156,6 +1197,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- PRODUCTS ---
   const addProduct = (p: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = p.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1188,6 +1231,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProduct = (id: string, updates: Partial<StoreProduct>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       const target = products.find(p => p.id === id);
       if (!target) return;
@@ -1212,6 +1257,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const deleteProduct = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     const prod = products.find(p => p.id === id);
     if (backendStatus === 'connected' && prod) {
       void (async () => {
@@ -1236,6 +1283,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- STORE ORDERS ---
   const addOrder = (orderData: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1265,6 +1314,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateOrderStatus = (id: string, status: StoreOrder['status'], trackingNumber?: string) => {
+    if (!requireConnectedBackend()) return;
+
     const existing = orders.find(o => o.id === id);
     if (backendStatus === 'connected' && existing) {
       void (async () => {
@@ -1305,6 +1356,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addCustomer = (c: Omit<StoreCustomer, 'id' | 'ordersCount' | 'totalSpent' | 'lastOrderDate'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = c.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1334,6 +1387,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addDiscount = (d: Omit<StoreDiscount, 'id' | 'usedCount'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = d.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1371,6 +1426,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscounts(prev => prev.map(d => (d.id === id ? { ...d, status: d.status === 'active' ? 'expired' : 'active' } : d)));
   };
   const addShippingZone = (z: Omit<StoreShippingZone, 'id'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = z.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1395,6 +1452,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShippingZones(prev => [{ ...z, id: `shp_${Date.now()}` }, ...prev]);
   };
   const saveStorePage = (page: Omit<StorePageItem, 'id' | 'updatedAt'> & { id?: string }) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = page.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1424,6 +1483,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
   const deleteStorePage = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     const existing = storePages.find(p => p.id === id);
     if (backendStatus === 'connected' && existing) {
       void (async () => {
@@ -1493,6 +1554,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
+    if (!requireConnectedBackend()) return;
+
     setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
   };
   const triggerSystemBackup = (targetLabel?: string) => {
@@ -1517,11 +1580,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
+    if (!requireConnectedBackend()) return;
+
     setBanking(prev => [{ ...bank, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' }, ...prev]);
   };
 
   // --- SUPPORT TICKETS ---
   const addTicket = (t: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'status'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1551,6 +1618,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resolveTicket = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1568,6 +1637,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- NOTIFICATIONS & DOCUMENTS VAULT ---
   const markNotificationRead = async (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.markNotificationRead(id);
@@ -1581,6 +1652,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markAllNotificationsRead = async () => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.markAllNotificationsRead();
@@ -1601,6 +1674,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     requestId?: string;
     formationId?: string;
   }): Promise<RequestDocumentMeta | null> => {
+    if (!requireConnectedBackend()) return null;
+
     if (backendStatus === 'connected') {
       try {
         const res = await qabsApi.uploadDocument(input);
@@ -1630,17 +1705,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- STAFF ---
   const addStaff = (s: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
+    if (!requireConnectedBackend()) return;
+
     setStaff(prev => [{ ...s, id: `stf_${Date.now()}`, status: 'active', lastActive: 'now' }, ...prev]);
   };
   const updateStaffPermissions = (staffId: string, permissions: string[]) => {
+    if (!requireConnectedBackend()) return;
+
     setStaff(prev => prev.map(m => (m.id === staffId ? { ...m, permissions } : m)));
   };
   const removeStaff = (staffId: string) => {
+    if (!requireConnectedBackend()) return;
+
     setStaff(prev => prev.filter(m => m.id !== staffId));
   };
 
   // --- BILLING, SUBSCRIPTIONS, INVOICES & CREDITS (STRICT FINANCIAL GATE) ---
   const changeSubscriptionPlan = (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1679,6 +1762,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const cancelSubscription = async (reason?: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.cancelSubscription(reason);
@@ -1738,6 +1823,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueRefund = (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => {
+    if (!requireConnectedBackend()) return;
+
     const newRefund: RefundRecord = {
       id: `ref_${Date.now()}`,
       orderNumber,
@@ -1889,6 +1976,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeServiceCheckout = (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => {
+    if (!requireConnectedBackend()) return;
+
     if (!pendingServiceOrder) return;
     const ord = pendingServiceOrder;
     const d = ord.details || {};
@@ -1967,6 +2056,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       document?: { name: string; mimeType: string; base64: string; type?: string };
     }
   ): Promise<SubmittedServiceOrder> => {
+    if (!requireConnectedBackend()) {
+      throw new Error(language === 'ar'
+        ? 'خدمة إرسال الطلبات غير متصلة؛ لم يتم حفظ الطلب.'
+        : 'The request service is disconnected; the request was not saved.');
+    }
+
     if (backendStatus === 'connected') {
       const res = await qabsApi.createServiceRequest({
         serviceSlug: input.serviceSlug,
@@ -2012,6 +2107,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateServiceOrderStatus = async (id: string, status: ServiceOrderStatus, adminNotes?: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.updateServiceRequest(id, { status, adminNotes });
@@ -2297,6 +2394,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSetupStep = (storeId: string, stepId: string) => {
+    if (!requireConnectedBackend()) return;
+
     const target = stores.find(s => s.id === storeId);
     const current = target?.setupStepsCompleted || [];
     const nextSteps = current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId];
@@ -2316,6 +2415,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     name: string,
     docType: CompanyFormation['documents'][number]['type']
   ) => {
+    if (!requireConnectedBackend()) return;
+
     const today = new Date().toISOString().split('T')[0];
     setCompanies(prev =>
       prev.map(c =>
