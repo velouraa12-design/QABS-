@@ -1118,6 +1118,126 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ requests: rows });
   });
 
+  // Studio service catalogue and customer-owned service requests. These are
+  // request records only: no payment, filing, provider activation, or external
+  // execution is triggered by these endpoints.
+  app.get('/studio/api/services/catalog', requireAuth, (_req: AuthedRequest, res: Response) => {
+    const services = db.prepare(
+      'SELECT slug, category, title_ar, title_en, starting_price_usd, active FROM services_catalog WHERE active = 1 ORDER BY category, title_ar'
+    ).all();
+    res.json({
+      services,
+      statusLabels: ORDER_STATUS_LABELS,
+      statusLabelsEn: Object.fromEntries(Object.entries(ORDER_STATUS_LABELS).map(([key, value]) => [key, value.en])),
+      payments: false,
+      externalExecution: 'manual_review_only',
+      attachments: { enabled: false },
+      preview: true
+    });
+  });
+
+  app.get('/studio/api/services/requests', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const workspaceId = sanitizeId(req.query.workspace_id);
+    if (workspaceId && workspaceId !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to workspace.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    const service = sanitizeText(req.query.service, 64);
+    const status = sanitizeText(req.query.status, 32);
+    const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
+    const pageSize = 25;
+    const where: string[] = [];
+    const params: (string | number)[] = [];
+    if (!isPrivilegedRole(actor.role)) {
+      where.push('tenant_id = ?');
+      params.push(actor.tenantId);
+    }
+    if (service) { where.push('service_slug = ?'); params.push(service); }
+    if (status) { where.push('status = ?'); params.push(status); }
+    const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const requests = db.prepare(
+      `SELECT id, service_slug AS service, service_title_ar AS title, status, custom_fields_json AS payload, created_at, updated_at
+       FROM service_requests ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).all(...params, pageSize, (page - 1) * pageSize);
+    const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM service_requests ${clause}`).get(...params) as { total: number };
+    res.json({ requests, legacyFormation: [], hasMore: page * pageSize < Number(totalRow.total), page });
+  });
+
+  app.post('/studio/api/services/requests', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const service = sanitizeText(req.body?.service, 64);
+    const title = sanitizeText(req.body?.title, 200);
+    const attemptId = sanitizeText(req.body?.attempt_id, 100);
+    const payload = req.body?.payload && typeof req.body.payload === 'object' && !Array.isArray(req.body.payload)
+      ? req.body.payload as Record<string, unknown>
+      : {};
+    const workspaceId = req.body?.workspace_id ? sanitizeId(req.body.workspace_id) : actor.tenantId;
+
+    if (!service || !title || !attemptId || attemptId.length < 8 || attemptId.length > 100) {
+      res.status(400).json({ error: 'service, title, and a valid attempt_id are required.', code: 'INVALID_REQUEST_DATA' });
+      return;
+    }
+    if (workspaceId !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to workspace.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    const payloadJson = JSON.stringify(payload);
+    if (payloadJson.length > 20_000) {
+      res.status(413).json({ error: 'Request payload is too large.', code: 'PAYLOAD_TOO_LARGE' });
+      return;
+    }
+
+    const prior = db.prepare(
+      'SELECT r.id, r.service_slug AS service, r.service_title_ar AS title, r.status, r.custom_fields_json AS payload, r.created_at, r.updated_at FROM studio_request_attempts a JOIN service_requests r ON r.id = a.request_id WHERE a.tenant_id = ? AND a.attempt_id = ?'
+    ).get(actor.tenantId, attemptId);
+    if (prior) {
+      res.json({ request: prior, replayed: true });
+      return;
+    }
+
+    const customerName = sanitizeText(actor.name || actor.email, 160);
+    const companyName = sanitizeText(payload.companyName || payload.company_name || '', 160);
+    const phone = sanitizeText(payload.phone || payload.customerPhone || '', 64) || 'not-provided';
+    const catalog = db.prepare('SELECT title_ar, title_en FROM services_catalog WHERE slug = ? AND active = 1').get(service) as
+      | { title_ar: string; title_en: string }
+      | undefined;
+    const requestId = `sreq_${generateToken(8)}`;
+    const referenceCode = `QBS-${Math.floor(100000 + Math.random() * 899999)}`;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare(
+        `INSERT INTO service_requests (
+          id, reference_code, tenant_id, user_id, service_slug, service_path,
+          service_title_ar, service_title_en, price_usd, customer_name, customer_email,
+          customer_phone, company_or_store_name, custom_fields_json, notes, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'new')`
+      ).run(
+        requestId, referenceCode, actor.tenantId, actor.userId, service,
+        `/services/${service}`, title, catalog?.title_en || title,
+        customerName, actor.email, phone, companyName, payloadJson,
+        'Studio preview request; manual review required. No payment or external execution.'
+      );
+      db.prepare(
+        'INSERT INTO studio_request_attempts (tenant_id, attempt_id, request_id) VALUES (?, ?, ?)'
+      ).run(actor.tenantId, attemptId, requestId);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      if (String(error).includes('UNIQUE constraint failed: studio_request_attempts.tenant_id, studio_request_attempts.attempt_id')) {
+        const replay = db.prepare(
+          'SELECT r.id, r.service_slug AS service, r.service_title_ar AS title, r.status, r.custom_fields_json AS payload, r.created_at, r.updated_at FROM studio_request_attempts a JOIN service_requests r ON r.id = a.request_id WHERE a.tenant_id = ? AND a.attempt_id = ?'
+        ).get(actor.tenantId, attemptId);
+        if (replay) { res.json({ request: replay, replayed: true }); return; }
+      }
+      throw error;
+    }
+    const created = db.prepare(
+      'SELECT id, service_slug AS service, service_title_ar AS title, status, custom_fields_json AS payload, created_at, updated_at FROM service_requests WHERE id = ? AND tenant_id = ?'
+    ).get(requestId, actor.tenantId);
+    res.status(201).json({ request: created, replayed: false });
+  });
+
   app.get('/studio/api/project-workspaces', requireAuth, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
     const tenant = db.prepare('SELECT id, company_legal_name, owner_name FROM tenants WHERE id = ?').get(actor.tenantId) as
