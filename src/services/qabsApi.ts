@@ -94,6 +94,10 @@ export interface BootstrapResponse {
   orders: Record<string, unknown>[];
   customers: Record<string, unknown>[];
   teamMembers: Record<string, unknown>[];
+  discounts: Record<string, unknown>[];
+  shippingZones: Record<string, unknown>[];
+  storePages: Record<string, unknown>[];
+  backups: Record<string, unknown>[];
   serviceRequests: Record<string, unknown>[];
   documents: Record<string, unknown>[];
   subscription: Record<string, unknown> | null;
@@ -120,6 +124,8 @@ export interface AdminOverviewResponse {
   tickets: Record<string, unknown>[];
   notifications: Record<string, unknown>[];
   auditLogs: Record<string, unknown>[];
+  errorLogs?: Record<string, unknown>[];
+  backups?: Record<string, unknown>[];
   platformSettings: Record<string, unknown>;
 }
 
@@ -132,7 +138,8 @@ export interface IntegrationsStatusResponse {
     stripe: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
     shopify: { configured: boolean; mode: string };
     gemini: { configured: boolean; model: string };
-    cloudflare: { configured: boolean; dnsLocked: boolean };
+    email?: { configured: boolean; provider: string };
+    cloudflare: { configured: boolean; workersReady?: boolean; d1SchemaParity?: boolean; r2Configured?: boolean; dnsLocked: boolean };
     database: { engine: string; connected: boolean };
   };
 }
@@ -200,9 +207,23 @@ export const qabsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token })
     }),
+  resendVerification: () =>
+    apiRequest<{ ok: boolean; emailVerified: boolean; previewEmailVerifyToken?: string }>('/api/auth/resend-verification', {
+      method: 'POST'
+    }),
 
-  // Workspace bootstrap
+  // Public & CMS site content
+  getSiteContent: () => apiRequest<{ siteContent: Record<string, unknown> | null }>('/api/site-content'),
+
+  // Workspace bootstrap & backups
   bootstrap: () => apiRequest<BootstrapResponse>('/api/workspace/bootstrap'),
+  listWorkspaceBackups: () => apiRequest<{ backups: Record<string, unknown>[] }>('/api/workspace/backups'),
+  createWorkspaceBackup: (label?: string) =>
+    apiRequest<{ backup: Record<string, unknown>; snapshot: Record<string, unknown> }>('/api/workspace/backup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label })
+    }),
 
   // Service Requests (8-status lifecycle)
   listServiceRequests: () => apiRequest<{ requests: Record<string, unknown>[] }>('/api/service-requests'),
@@ -374,6 +395,76 @@ export const qabsApi = {
       grossOrderValue: number;
       totalCustomers: number;
     }>(`/api/stores/${encodeURIComponent(storeId)}/reports`),
+  createDiscount: (storeId: string, input: { code: string; type: 'percentage' | 'fixed'; value: number; usageLimit?: number }) =>
+    apiRequest<{ discount: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/discounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  toggleDiscount: (storeId: string, discountId: string, status?: 'active' | 'expired') =>
+    apiRequest<{ discount: Record<string, unknown> }>(
+      `/api/stores/${encodeURIComponent(storeId)}/discounts/${encodeURIComponent(discountId)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status })
+      }
+    ),
+  createShippingZone: (
+    storeId: string,
+    input: {
+      regionNameAr: string;
+      regionNameEn?: string;
+      carrier?: string;
+      rate: number;
+      deliveryTimeAr?: string;
+      deliveryTimeEn?: string;
+      active?: boolean;
+    }
+  ) =>
+    apiRequest<{ shippingZone: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/shipping-zones`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  saveStorePage: (
+    storeId: string,
+    input: {
+      id?: string;
+      slug?: string;
+      titleAr: string;
+      titleEn?: string;
+      contentAr?: string;
+      contentEn?: string;
+      published?: boolean;
+    }
+  ) =>
+    apiRequest<{ page: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/pages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  deleteStorePage: (storeId: string, pageId: string) =>
+    apiRequest<{ ok: boolean }>(`/api/stores/${encodeURIComponent(storeId)}/pages/${encodeURIComponent(pageId)}`, {
+      method: 'DELETE'
+    }),
+  importSupplierProduct: (
+    storeId: string,
+    input: {
+      supplierName: string;
+      titleAr: string;
+      titleEn?: string;
+      sku?: string;
+      retailPrice: number;
+      costPrice?: number;
+      stock?: number;
+    }
+  ) =>
+    apiRequest<{ product: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/supplier-import`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
 
   // Billing, Invoices, Subscriptions & AI Credits
   billingOverview: () =>
@@ -386,6 +477,18 @@ export const qabsApi = {
     }>('/api/billing/overview'),
   requestSubscriptionChange: (planId: 'starter' | 'growth' | 'enterprise', billingCycle: 'monthly' | 'annual') =>
     apiRequest<{ invoice: Record<string, unknown> }>('/api/billing/subscription-change', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ planId, billingCycle })
+    }),
+  cancelSubscription: (reason?: string) =>
+    apiRequest<{ subscription: Record<string, unknown> }>('/api/billing/subscription-cancel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason })
+    }),
+  renewSubscription: (planId?: 'starter' | 'growth' | 'enterprise', billingCycle?: 'monthly' | 'annual') =>
+    apiRequest<{ invoice: Record<string, unknown> }>('/api/billing/subscription-renew', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ planId, billingCycle })
@@ -492,5 +595,12 @@ export const qabsApi = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings)
-    })
+    }),
+  adminUpdateSiteContent: (siteContent: Record<string, unknown>) =>
+    apiRequest<{ siteContent: Record<string, unknown> }>('/api/admin/site-content', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ siteContent })
+    }),
+  adminErrorLogs: () => apiRequest<{ errorLogs: Record<string, unknown>[] }>('/api/admin/error-logs')
 };

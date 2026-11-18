@@ -331,6 +331,67 @@ export function createDatabase(dbPath: string): DatabaseSync {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS store_discounts (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      code TEXT NOT NULL,
+      discount_type TEXT NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+      value REAL NOT NULL CHECK (value >= 0),
+      used_count INTEGER NOT NULL DEFAULT 0,
+      usage_limit INTEGER NOT NULL DEFAULT 100,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired')),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS store_shipping_zones (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      region_name_ar TEXT NOT NULL,
+      region_name_en TEXT NOT NULL,
+      carrier TEXT NOT NULL,
+      rate REAL NOT NULL CHECK (rate >= 0),
+      delivery_time_ar TEXT NOT NULL,
+      delivery_time_en TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS store_pages (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      slug TEXT NOT NULL,
+      title_ar TEXT NOT NULL,
+      title_en TEXT NOT NULL,
+      content_ar TEXT NOT NULL,
+      content_en TEXT NOT NULL,
+      published INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS workspace_backups (
+      id TEXT PRIMARY KEY,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      actor_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      label TEXT NOT NULL,
+      snapshot_json TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS system_error_logs (
+      id TEXT PRIMARY KEY,
+      route TEXT NOT NULL,
+      method TEXT NOT NULL,
+      status_code INTEGER NOT NULL,
+      error_code TEXT NOT NULL,
+      message TEXT NOT NULL,
+      tenant_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
     CREATE INDEX IF NOT EXISTS idx_requests_tenant ON service_requests(tenant_id, status);
@@ -338,6 +399,10 @@ export function createDatabase(dbPath: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_stores_tenant ON store_instances(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_products_store ON store_products(store_id, tenant_id);
     CREATE INDEX IF NOT EXISTS idx_orders_store ON store_orders(store_id, tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_discounts_store ON store_discounts(store_id, tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_shipping_store ON store_shipping_zones(store_id, tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_pages_store ON store_pages(store_id, tenant_id);
+    CREATE INDEX IF NOT EXISTS idx_backups_tenant ON workspace_backups(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON billing_invoices(tenant_id, status);
     CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON credit_ledger(tenant_id);
     CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, is_read);
@@ -585,6 +650,31 @@ function seedInitialPreviewData(db: DatabaseSync): void {
   for (const row of defaultCatalog) {
     insertSvc.run(...row);
   }
+
+  db.prepare(`
+    INSERT INTO store_discounts (id, store_id, tenant_id, code, discount_type, value, used_count, usage_limit, status)
+    VALUES (?, ?, ?, ?, ?, ?, 0, 100, 'active')
+  `).run('dsc_atlas_1', 'store_atlas_1', 'tenant_atlas', 'QABS10', 'percentage', 10);
+
+  db.prepare(`
+    INSERT INTO store_shipping_zones (
+      id, store_id, tenant_id, region_name_ar, region_name_en, carrier, rate, delivery_time_ar, delivery_time_en, active
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `).run('shp_atlas_1', 'store_atlas_1', 'tenant_atlas', 'السعودية ودول الخليج', 'KSA & GCC Express', 'DHL Express / Aramex', 25, '2 - 4 أيام عمل', '2 - 4 Business Days');
+
+  db.prepare(`
+    INSERT INTO store_pages (id, store_id, tenant_id, slug, title_ar, title_en, content_ar, content_en, published)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `).run(
+    'pg_atlas_1',
+    'store_atlas_1',
+    'tenant_atlas',
+    'shipping-returns',
+    'سياسة الشحن والاسترجاع',
+    'Shipping & Returns Policy',
+    'يتم تجهيز وشحن الطلبات خلال 24-48 ساعة عبر شركائنا المعتمدين مع ضمان الاستبدال والاسترجاع وفق سياسات المتجر.',
+    'Orders are fulfilled within 24-48 hours via verified carriers with straightforward returns.',
+  );
 
   db.prepare(
     'INSERT INTO platform_settings (key, value_json, updated_by) VALUES (?, ?, ?)'

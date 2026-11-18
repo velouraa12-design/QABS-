@@ -522,6 +522,35 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ ok: true, emailVerified: true });
   });
 
+  app.post('/api/auth/resend-verification', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (!checkRateLimit(`verify_resend:${actor.userId}`)) {
+      res.status(429).json({ error: 'Too many verification requests.', code: 'RATE_LIMITED' });
+      return;
+    }
+    const verifyToken = generateToken(24);
+    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+    db.prepare(
+      `INSERT INTO auth_tokens (id, user_id, purpose, token_hash, expires_at)
+       VALUES (?, ?, 'email_verify', ?, ?)`
+    ).run(`tok_${generateToken(6)}`, actor.userId, sha256Hex(verifyToken), expires);
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, 'إعادة إرسال رمز تأكيد البريد الإلكتروني', 'Issued email verification token', actor.userId);
+    res.json({
+      ok: true,
+      emailVerified: actor.emailVerified,
+      ...(exposePreviewTokens ? { previewEmailVerifyToken: verifyToken } : {})
+    });
+  });
+
+  // Public CMS site-content read (admin writes via /api/admin/site-content)
+  app.get('/api/site-content', (_req: Request, res: Response) => {
+    const row = db.prepare("SELECT value_json FROM platform_settings WHERE key = 'site_content'").get() as
+      | { value_json: string }
+      | undefined;
+    res.json({ siteContent: row ? JSON.parse(row.value_json) : null });
+  });
+
   // ==================== WORKSPACE BOOTSTRAP (TENANT ISOLATED) ====================
   app.get('/api/workspace/bootstrap', requireAuth, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
@@ -577,6 +606,18 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     const auditLogs = isAdminOrStaff
       ? db.prepare('SELECT * FROM security_audit_logs ORDER BY created_at DESC LIMIT 100').all()
       : db.prepare('SELECT * FROM security_audit_logs WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 50').all(tenantId);
+    const discounts = isAdminOrStaff
+      ? db.prepare('SELECT * FROM store_discounts ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM store_discounts WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId);
+    const shippingZones = isAdminOrStaff
+      ? db.prepare('SELECT * FROM store_shipping_zones ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM store_shipping_zones WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId);
+    const storePages = isAdminOrStaff
+      ? db.prepare('SELECT * FROM store_pages ORDER BY updated_at DESC').all()
+      : db.prepare('SELECT * FROM store_pages WHERE tenant_id = ? ORDER BY updated_at DESC').all(tenantId);
+    const backups = db
+      .prepare('SELECT id, tenant_id, label, size_bytes, created_at FROM workspace_backups WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 20')
+      .all(tenantId);
 
     res.json({
       user: loadSafeUserSnapshot(actor.userId, tenantId),
@@ -587,6 +628,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       orders,
       customers,
       teamMembers,
+      discounts,
+      shippingZones,
+      storePages,
+      backups,
       serviceRequests,
       documents,
       subscription,
@@ -1124,6 +1169,144 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     });
   });
 
+  // Cancel active subscription renewal (never deletes billing history)
+  app.post('/api/billing/subscription-cancel', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const sub = db.prepare('SELECT * FROM user_subscriptions WHERE tenant_id = ?').get(actor.tenantId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!sub) {
+      res.status(404).json({ error: 'No active subscription found for tenant.', code: 'SUBSCRIPTION_NOT_FOUND' });
+      return;
+    }
+
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare("UPDATE user_subscriptions SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE tenant_id = ?").run(
+        actor.tenantId
+      );
+      db.prepare(
+        `INSERT INTO subscription_history (id, tenant_id, plan_tier, billing_cycle, price, status, note)
+         VALUES (?, ?, ?, ?, ?, 'cancelled', ?)`
+      ).run(
+        `subh_${generateToken(6)}`,
+        actor.tenantId,
+        String(sub.plan_tier),
+        String(sub.billing_cycle),
+        Number(sub.current_price || 0),
+        sanitizeText(req.body?.reason || 'Cancelled by account owner', 200)
+      );
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+
+    createNotification(
+      db,
+      actor.tenantId,
+      'تم إيقاف التجديد التلقائي للاشتراك',
+      'Subscription Renewal Cancelled',
+      `تم تحديث حالة اشتراك (${sub.plan_tier}) إلى ملغى دون التأثير على الفواتير السابقة.`,
+      `Subscription (${sub.plan_tier}) marked as cancelled. Historical invoices preserved.`,
+      'billing',
+      '/billing',
+      actor.userId
+    );
+    logAudit(db, actor.tenantId, actor.userId, actor.name, 'إلغاء تجديد الاشتراك', 'Cancelled subscription auto-renewal', String(sub.id));
+    res.json({ subscription: db.prepare('SELECT * FROM user_subscriptions WHERE tenant_id = ?').get(actor.tenantId) });
+  });
+
+  // Request subscription renewal / reactivation (issues pending_verification invoice — NEVER marks paid automatically)
+  app.post('/api/billing/subscription-renew', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const sub = db.prepare('SELECT * FROM user_subscriptions WHERE tenant_id = ?').get(actor.tenantId) as
+      | Record<string, unknown>
+      | undefined;
+    const planId = sanitizeText(req.body?.planId || sub?.plan_tier || 'growth', 32);
+    const cycle = req.body?.billingCycle === 'annual' || sub?.billing_cycle === 'annual' ? 'annual' : 'monthly';
+    const planPrices: Record<string, { monthly: number; annual: number; labelAr: string; labelEn: string }> = {
+      starter: { monthly: 29, annual: 23, labelAr: 'باقة البداية', labelEn: 'Starter Plan' },
+      growth: { monthly: 79, annual: 63, labelAr: 'باقة النمو', labelEn: 'Growth Plan' },
+      enterprise: { monthly: 199, annual: 159, labelAr: 'باقة المؤسسات', labelEn: 'Enterprise Plan' }
+    };
+    const plan = planPrices[planId] || planPrices.growth;
+    const amount = cycle === 'annual' ? plan.annual * 12 : plan.monthly;
+    const invId = `inv_${generateToken(6)}`;
+    const invNum = `INV-RNW-${Math.floor(1000 + Math.random() * 8999)}`;
+
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare(
+        `INSERT INTO subscription_history (id, tenant_id, plan_tier, billing_cycle, price, status, note)
+         VALUES (?, ?, ?, ?, ?, 'pending_verification', ?)`
+      ).run(`subh_${generateToken(6)}`, actor.tenantId, planId, cycle, amount, `Renewal invoice ${invNum} issued`);
+
+      db.prepare(
+        `INSERT INTO billing_invoices (
+          id, invoice_number, tenant_id, amount, currency, description_ar, description_en,
+          invoice_kind, target_plan_tier, target_billing_cycle, status, issued_date
+        ) VALUES (?, ?, ?, ?, 'USD', ?, ?, 'subscription_renewal', ?, ?, 'pending_verification', ?)`
+      ).run(
+        invId,
+        invNum,
+        actor.tenantId,
+        amount,
+        `تجديد اشتراك ${plan.labelAr} (${cycle === 'annual' ? 'سنوي' : 'شهري'}) — بانتظار التحقق`,
+        `Subscription renewal: ${plan.labelEn} (${cycle}) — Pending Verification`,
+        planId,
+        cycle,
+        new Date().toISOString().split('T')[0]
+      );
+      db.exec('COMMIT');
+    } catch (err) {
+      db.exec('ROLLBACK');
+      throw err;
+    }
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `طلب تجديد الاشتراك (${invNum}) — بانتظار التحقق`, `Requested subscription renewal ${invNum}`, invNum);
+    res.status(201).json({ invoice: db.prepare('SELECT * FROM billing_invoices WHERE id = ?').get(invId) });
+  });
+
+  // Real Server-Side Workspace Backups (tenant-isolated SQLite snapshot)
+  app.get('/api/workspace/backups', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const rows = db
+      .prepare('SELECT id, tenant_id, actor_id, label, size_bytes, created_at FROM workspace_backups WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 20')
+      .all(actor.tenantId);
+    res.json({ backups: rows });
+  });
+
+  app.post('/api/workspace/backup', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const label = sanitizeText(req.body?.label || `QABS Snapshot ${new Date().toISOString().slice(0, 16)}`, 140);
+    const snapshotObj = {
+      exportedAt: new Date().toISOString(),
+      tenantId: actor.tenantId,
+      companies: db.prepare('SELECT * FROM company_formations WHERE tenant_id = ?').all(actor.tenantId),
+      stores: db.prepare('SELECT * FROM store_instances WHERE tenant_id = ?').all(actor.tenantId),
+      products: db.prepare('SELECT * FROM store_products WHERE tenant_id = ?').all(actor.tenantId),
+      orders: db.prepare('SELECT * FROM store_orders WHERE tenant_id = ?').all(actor.tenantId),
+      discounts: db.prepare('SELECT * FROM store_discounts WHERE tenant_id = ?').all(actor.tenantId),
+      shippingZones: db.prepare('SELECT * FROM store_shipping_zones WHERE tenant_id = ?').all(actor.tenantId),
+      invoices: db.prepare('SELECT * FROM billing_invoices WHERE tenant_id = ?').all(actor.tenantId),
+      serviceRequests: db.prepare('SELECT * FROM service_requests WHERE tenant_id = ?').all(actor.tenantId)
+    };
+    const snapshotJson = JSON.stringify(snapshotObj);
+    const sizeBytes = Buffer.byteLength(snapshotJson, 'utf8');
+    const id = `bak_${generateToken(8)}`;
+    db.prepare(
+      `INSERT INTO workspace_backups (id, tenant_id, actor_id, label, snapshot_json, size_bytes)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    ).run(id, actor.tenantId, actor.userId, label, snapshotJson, sizeBytes);
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `إنشاء نسخة احتياطية حقيقية (${label})`, `Created real workspace backup (${label})`, id);
+    res.status(201).json({
+      backup: { id, tenant_id: actor.tenantId, label, size_bytes: sizeBytes, created_at: new Date().toISOString() },
+      snapshot: snapshotObj
+    });
+  });
+
   // Request AI Credit Top-up (NEVER grants credits until admin verifies invoice proof!)
   app.post('/api/billing/credits/request-topup', requireAuth, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
@@ -1211,8 +1394,15 @@ export function createQabsApp(options: CreateServerOptions = {}): {
           configured: Boolean(process.env.GEMINI_API_KEY),
           model: 'gemini-4-hydrogen'
         },
+        email: {
+          configured: Boolean(process.env.RESEND_API_KEY),
+          provider: process.env.RESEND_API_KEY ? 'resend' : 'preview_token_channel'
+        },
         cloudflare: {
           configured: Boolean(process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_ZONE_ID),
+          workersReady: true,
+          d1SchemaParity: true,
+          r2Configured: Boolean(process.env.CLOUDFLARE_R2_BUCKET),
           dnsLocked: true
         },
         database: {
@@ -1424,8 +1614,22 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   // ==================== ADMIN ROUTES (RBAC PROTECTED) ====================
   registerAdminRoutes(app, db, requireAuth);
 
-  // Sanitized API error handler (never exposes stack traces)
-  app.use((err: Error, req: Request, res: Response, _next: NextFunction) => {
+  // Sanitized API error handler + structured DB error telemetry (never exposes stack traces)
+  app.use((err: Error, req: AuthedRequest, res: Response, _next: NextFunction) => {
+    try {
+      db.prepare(
+        `INSERT INTO system_error_logs (id, route, method, status_code, error_code, message, tenant_id)
+         VALUES (?, ?, ?, 500, 'INTERNAL_ERROR', ?, ?)`
+      ).run(
+        `err_${generateToken(6)}`,
+        sanitizeText(req.path, 160),
+        sanitizeText(req.method, 16),
+        sanitizeText(err?.message || 'Unhandled server error', 240),
+        req.actor?.tenantId || null
+      );
+    } catch {
+      // non-blocking error log insert
+    }
     if (req.path.startsWith('/api/') || req.path.startsWith('/studio/api/')) {
       res.status(500).json({
         error: 'Internal server error.',

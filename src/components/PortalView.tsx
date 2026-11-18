@@ -200,7 +200,12 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     storeTeamMembers,
     addStoreTeamMember,
     previewVerifyToken,
-    confirmEmailVerification
+    confirmEmailVerification,
+    resendVerificationEmail,
+    importSupplierProduct,
+    workspaceBackups,
+    cancelSubscription,
+    renewSubscription
   } = useApp();
 
   const isAr = language === 'ar';
@@ -364,6 +369,9 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   const [prodType, setProdType] = useState<'physical' | 'digital'>('physical');
   const [prodWarehouse, setProdWarehouse] = useState('مستودع الرياض الرئيسي');
   const [prodVariantLabel, setProdVariantLabel] = useState('100 مل / إصدار ملكي');
+  const [supName, setSupName] = useState('Gulf Wholesale Network');
+  const [supTitleAr, setSupTitleAr] = useState('');
+  const [supPrice, setSupPrice] = useState('195');
 
   // Orders Filter, Details Modal & New Order Modal
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'paid' | 'shipped' | 'processing' | 'delivered' | 'refunded'>('all');
@@ -1478,6 +1486,16 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     >
                       {isAr ? 'تأكيد البريد ✓' : 'Verify Email ✓'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const tok = await resendVerificationEmail();
+                        if (tok) setVerifyTokenInput(tok);
+                      }}
+                      className="px-3 py-1.5 rounded-lg border border-[#D5B46B] text-[#14243E] dark:text-[#D5B46B] font-bold cursor-pointer"
+                    >
+                      {isAr ? 'إعادة إرسال الرمز' : 'Resend Token'}
+                    </button>
                   </div>
                 </div>
               )}
@@ -2530,6 +2548,54 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     </form>
                   </div>
                 )}
+
+                {hasRealStore && (
+                  <form
+                    onSubmit={async e => {
+                      e.preventDefault();
+                      if (!supTitleAr.trim()) return;
+                      const ok = await importSupplierProduct({
+                        storeId: currentStore.id,
+                        supplierName: supName.trim() || 'Gulf Wholesale Network',
+                        titleAr: supTitleAr.trim(),
+                        titleEn: supTitleAr.trim(),
+                        retailPrice: Number(supPrice) || 150,
+                        stock: 40
+                      });
+                      if (ok) setSupTitleAr('');
+                    }}
+                    className="pt-3 border-t border-[#EAE6DC] dark:border-slate-800 grid grid-cols-1 sm:grid-cols-4 gap-2 text-xs"
+                  >
+                    <input
+                      type="text"
+                      value={supName}
+                      onChange={e => setSupName(e.target.value)}
+                      placeholder={isAr ? 'اسم المورد' : 'Supplier Name'}
+                      className="rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-slate-900 px-2.5 py-1.5"
+                    />
+                    <input
+                      type="text"
+                      value={supTitleAr}
+                      onChange={e => setSupTitleAr(e.target.value)}
+                      placeholder={isAr ? 'استيراد منتج من مورد (الاسم)...' : 'Import product from supplier...'}
+                      className="rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-slate-900 px-2.5 py-1.5"
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      value={supPrice}
+                      onChange={e => setSupPrice(e.target.value)}
+                      placeholder={isAr ? 'سعر البيع' : 'Retail Price'}
+                      className="rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-[#F8F7F2] dark:bg-slate-900 px-2.5 py-1.5 font-mono"
+                    />
+                    <button
+                      type="submit"
+                      className="px-3 py-1.5 rounded-lg bg-[#D5B46B] hover:bg-[#c9a65d] text-slate-950 font-black cursor-pointer"
+                    >
+                      {isAr ? 'استيراد من المورد ✓' : 'Import Supplier Product ✓'}
+                    </button>
+                  </form>
+                )}
               </div>
 
               {/* Isolated Products Table */}
@@ -3427,9 +3493,27 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     className="py-3 px-4 rounded-xl border border-[#EAE6DC] bg-white dark:bg-slate-900 hover:border-[#D5B46B] text-[#14243E] dark:text-white text-xs font-black flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Database className="w-4 h-4 text-[#92743A]" />
-                    <span>{isAr ? 'حفظ نقطة استعادة في السجل' : 'Save Audit Snapshot'}</span>
+                    <span>{isAr ? 'إنشاء نسخة احتياطية على الخادم' : 'Create Server Backup'}</span>
                   </button>
                 </div>
+
+                {workspaceBackups.length > 0 && (
+                  <div className="pt-3 border-t border-[#EAE6DC] dark:border-slate-800 space-y-2 text-xs">
+                    <div className="font-black text-[#14243E] dark:text-white">
+                      {isAr ? `النسخ الاحتياطية المحفوظة على الخادم (${workspaceBackups.length})` : `Server Backup Snapshots (${workspaceBackups.length})`}
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {workspaceBackups.slice(0, 4).map(bak => (
+                        <div key={bak.id} className="p-2.5 rounded-xl bg-[#FBFAF6] dark:bg-slate-900 border border-[#EAE6DC] dark:border-slate-800 flex items-center justify-between font-mono text-[11px]">
+                          <span className="truncate font-bold">{bak.label}</span>
+                          <span className="text-slate-500 shrink-0 ms-2">
+                            {Math.max(1, Math.round(bak.sizeBytes / 1024))} KB • {bak.createdAt}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Separate Sole Owner (Anwar Al-Ghazali) & Client Role Permissions */}
@@ -4097,6 +4181,22 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 self-start">
+                    <button
+                      type="button"
+                      onClick={() => void renewSubscription(subscription.planId, billingCycle)}
+                      className="px-3.5 py-2.5 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white text-xs font-black cursor-pointer"
+                    >
+                      {isAr ? 'تجديد الاشتراك (فاتورة)' : 'Renew Plan'}
+                    </button>
+                    {subscription.status !== 'cancelled' && subscription.status !== 'canceled' && (
+                      <button
+                        type="button"
+                        onClick={() => void cancelSubscription('Requested via Portal Billing')}
+                        className="px-3.5 py-2.5 rounded-xl border border-rose-300 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black cursor-pointer"
+                      >
+                        {isAr ? 'إلغاء التجديد' : 'Cancel Renewal'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => navigateToTab('billing_settings')}

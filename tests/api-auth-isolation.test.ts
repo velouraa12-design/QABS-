@@ -464,4 +464,166 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(adminReview.status, 200);
     assert.equal(adminReview.json.store.payment_connected, 0);
   });
+
+  it('persists discounts, shipping zones, store pages, supplier imports, resend verification, subscription lifecycle, server backups, public CMS, and error telemetry with tenant & RBAC isolation', async () => {
+    const tenantA = new TestClient(baseUrl);
+    await tenantA.req('POST', '/api/auth/login', {
+      email: 'client@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const tenantB = new TestClient(baseUrl);
+    await tenantB.req('POST', '/api/auth/login', {
+      email: 'merchant2@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const admin = new TestClient(baseUrl);
+    await admin.req('POST', '/api/auth/login', {
+      email: 'admin@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    // 1. Authenticated resend verification issues preview token & verifies
+    const resendReg = new TestClient(baseUrl);
+    await resendReg.req('POST', '/api/auth/register', {
+      name: 'Resend Tester',
+      email: 'resend.tester@example.com',
+      password: 'StrongPassword!2026',
+      companyName: 'Resend LLC'
+    });
+    const resendRes = await resendReg.req('POST', '/api/auth/resend-verification', {});
+    assert.equal(resendRes.status, 200);
+    assert.ok(resendRes.json.previewEmailVerifyToken);
+    const verifyRes = await resendReg.req('POST', '/api/auth/verify-email', {
+      token: resendRes.json.previewEmailVerifyToken
+    });
+    assert.equal(verifyRes.status, 200);
+    assert.equal(verifyRes.json.emailVerified, true);
+
+    // 2. Store-scoped Discounts, Shipping Zones, Store Pages & Supplier Import + Tenant B 403 isolation
+    const storeRes = await tenantA.req('POST', '/api/stores', { name: 'GCC Flagship', currency: 'SAR' });
+    assert.equal(storeRes.status, 201);
+    const storeId = storeRes.json.store.id;
+
+    const dscCreate = await tenantA.req('POST', `/api/stores/${storeId}/discounts`, {
+      code: 'GCC25',
+      type: 'percentage',
+      value: 25,
+      usageLimit: 50
+    });
+    assert.equal(dscCreate.status, 201);
+    const dscId = dscCreate.json.discount.id;
+    assert.equal(dscCreate.json.discount.code, 'GCC25');
+
+    const dscToggle = await tenantA.req('PATCH', `/api/stores/${storeId}/discounts/${dscId}`, {});
+    assert.equal(dscToggle.status, 200);
+    assert.equal(dscToggle.json.discount.status, 'expired');
+
+    const shpCreate = await tenantA.req('POST', `/api/stores/${storeId}/shipping-zones`, {
+      regionNameAr: 'المنطقة الوسطى - الرياض',
+      regionNameEn: 'Central Region - Riyadh',
+      carrier: 'Aramex',
+      rate: 22
+    });
+    assert.equal(shpCreate.status, 201);
+    assert.equal(shpCreate.json.shippingZone.carrier, 'Aramex');
+
+    const pgCreate = await tenantA.req('POST', `/api/stores/${storeId}/pages`, {
+      slug: 'shipping-policy',
+      titleAr: 'سياسة الشحن',
+      titleEn: 'Shipping Policy',
+      contentAr: 'شحن خلال يومين',
+      contentEn: '2-day delivery',
+      published: true
+    });
+    assert.equal(pgCreate.status, 201);
+    const pgId = pgCreate.json.page.id;
+
+    const supImport = await tenantA.req('POST', `/api/stores/${storeId}/supplier-import`, {
+      supplierName: 'CJ Dropshipping',
+      titleAr: 'سماعة ذكية مستوردة',
+      titleEn: 'Imported Smart Buds',
+      retailPrice: 180,
+      costPrice: 70,
+      stock: 40
+    });
+    assert.equal(supImport.status, 201);
+    assert.equal(supImport.json.product.title_ar, 'سماعة ذكية مستوردة');
+
+    // Cross-tenant blocking on all new store sub-routes
+    assert.equal((await tenantB.req('GET', `/api/stores/${storeId}/discounts`)).status, 403);
+    assert.equal((await tenantB.req('POST', `/api/stores/${storeId}/discounts`, { code: 'HACK', value: 90 })).status, 403);
+    assert.equal((await tenantB.req('PATCH', `/api/stores/${storeId}/discounts/${dscId}`, { status: 'active' })).status, 403);
+    assert.equal((await tenantB.req('GET', `/api/stores/${storeId}/shipping-zones`)).status, 403);
+    assert.equal((await tenantB.req('POST', `/api/stores/${storeId}/shipping-zones`, { regionNameAr: 'Hack', rate: 0 })).status, 403);
+    assert.equal((await tenantB.req('GET', `/api/stores/${storeId}/pages`)).status, 403);
+    assert.equal((await tenantB.req('DELETE', `/api/stores/${storeId}/pages/${pgId}`)).status, 403);
+    assert.equal((await tenantB.req('POST', `/api/stores/${storeId}/supplier-import`, { titleAr: 'Hack', retailPrice: 10 })).status, 403);
+
+    // Bootstrap includes newly persisted items
+    const bootA = await tenantA.req('GET', '/api/workspace/bootstrap');
+    assert.equal(bootA.status, 200);
+    assert.ok(bootA.json.discounts.some((d: any) => d.id === dscId));
+    assert.ok(bootA.json.shippingZones.some((z: any) => z.carrier === 'Aramex'));
+    assert.ok(bootA.json.storePages.some((p: any) => p.id === pgId));
+
+    // Owner delete page cleans up
+    assert.equal((await tenantA.req('DELETE', `/api/stores/${storeId}/pages/${pgId}`)).status, 200);
+
+    // 3. Subscription renew (always pending_verification) & cancel
+    const renewRes = await tenantA.req('POST', '/api/billing/subscription-renew', {
+      planId: 'growth',
+      billingCycle: 'monthly'
+    });
+    assert.equal(renewRes.status, 201);
+    assert.equal(renewRes.json.invoice.status, 'pending_verification');
+    assert.equal(renewRes.json.invoice.invoice_kind, 'subscription_renewal');
+
+    const cancelRes = await tenantA.req('POST', '/api/billing/subscription-cancel', {
+      reason: 'Testing pause'
+    });
+    assert.equal(cancelRes.status, 200);
+    assert.equal(cancelRes.json.subscription.status, 'cancelled');
+
+    // 4. Server-side Workspace Backup + cross-tenant isolation
+    const bakRes = await tenantA.req('POST', '/api/workspace/backup', { label: 'Tenant A Snap' });
+    assert.equal(bakRes.status, 201);
+    const bakId = bakRes.json.backup.id;
+    assert.ok(bakRes.json.backup.size_bytes > 20);
+
+    const listBakA = await tenantA.req('GET', '/api/workspace/backups');
+    assert.equal(listBakA.status, 200);
+    assert.ok(listBakA.json.backups.some((b: any) => b.id === bakId));
+
+    const listBakB = await tenantB.req('GET', '/api/workspace/backups');
+    assert.equal(listBakB.status, 200);
+    assert.ok(!listBakB.json.backups.some((b: any) => b.id === bakId));
+
+    // 5. Public CMS site-content read & Admin-only write
+    assert.equal(
+      (await tenantA.req('PATCH', '/api/admin/site-content', { siteContent: { heroTitleAr: 'اختراق' } })).status,
+      403
+    );
+    const cmsWrite = await admin.req('PATCH', '/api/admin/site-content', {
+      siteContent: { heroTitleAr: 'منصة قبس المحدثة', heroTitleEn: 'QABS Updated Platform' }
+    });
+    assert.equal(cmsWrite.status, 200);
+    const cmsPublic = await new TestClient(baseUrl).req('GET', '/api/site-content');
+    assert.equal(cmsPublic.status, 200);
+    assert.equal(cmsPublic.json.siteContent.heroTitleEn, 'QABS Updated Platform');
+
+    // 6. Admin error logs RBAC & integrations cloudflare/email metadata
+    assert.equal((await tenantA.req('GET', '/api/admin/error-logs')).status, 403);
+    const errLogsRes = await admin.req('GET', '/api/admin/error-logs');
+    assert.equal(errLogsRes.status, 200);
+    assert.ok(Array.isArray(errLogsRes.json.errorLogs));
+
+    const integRes = await tenantA.req('GET', '/api/integrations/status');
+    assert.equal(integRes.status, 200);
+    assert.equal(integRes.json.paymentsEnabled, false);
+    assert.equal(integRes.json.integrations.cloudflare.workersReady, true);
+    assert.ok(typeof integRes.json.integrations.email.provider === 'string');
+  });
 });
+

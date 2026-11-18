@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { qabsApi } from '../services/qabsApi.ts';
 
 export interface CustomPage {
   id: string;
@@ -102,7 +103,7 @@ export const CustomizerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [siteContent, setSiteContent] = useState<SiteContent>(() => {
     try {
       const saved = localStorage.getItem('qabs_site_content');
-      if (saved) return JSON.parse(saved);
+      if (saved) return { ...DEFAULT_SITE_CONTENT, ...JSON.parse(saved) };
     } catch {}
     return DEFAULT_SITE_CONTENT;
   });
@@ -110,36 +111,76 @@ export const CustomizerProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [editorOpen, setEditorOpen] = useState(false);
 
   useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const res = await qabsApi.getSiteContent();
+        if (active && res.siteContent && typeof res.siteContent === 'object') {
+          setSiteContent(prev => ({ ...prev, ...(res.siteContent as Partial<SiteContent>) }));
+        }
+      } catch {
+        // Keep local fallback when backend is unreachable in static preview
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
     try {
       localStorage.setItem('qabs_site_content', JSON.stringify(siteContent));
     } catch {}
   }, [siteContent]);
 
+  const persistServerContent = useCallback((nextContent: SiteContent) => {
+    void qabsApi.adminUpdateSiteContent(nextContent as unknown as Record<string, unknown>).catch(() => {
+      // Non-blocking: only admins can persist CMS content to DB
+    });
+  }, []);
+
   const updateSiteContent = (updates: Partial<SiteContent>) => {
-    setSiteContent(prev => ({ ...prev, ...updates }));
+    setSiteContent(prev => {
+      const next = { ...prev, ...updates };
+      persistServerContent(next);
+      return next;
+    });
   };
 
   const resetToDefault = () => {
     setSiteContent(DEFAULT_SITE_CONTENT);
+    persistServerContent(DEFAULT_SITE_CONTENT);
   };
 
   const addCustomPage = (page: Omit<CustomPage, 'id'>) => {
     const newPage: CustomPage = { ...page, id: `page_${Date.now()}` };
-    setSiteContent(prev => ({ ...prev, customPages: [...prev.customPages, newPage] }));
+    setSiteContent(prev => {
+      const next = { ...prev, customPages: [...prev.customPages, newPage] };
+      persistServerContent(next);
+      return next;
+    });
   };
 
   const updateCustomPage = (id: string, updates: Partial<CustomPage>) => {
-    setSiteContent(prev => ({
-      ...prev,
-      customPages: prev.customPages.map(p => (p.id === id ? { ...p, ...updates } : p))
-    }));
+    setSiteContent(prev => {
+      const next = {
+        ...prev,
+        customPages: prev.customPages.map(p => (p.id === id ? { ...p, ...updates } : p))
+      };
+      persistServerContent(next);
+      return next;
+    });
   };
 
   const deleteCustomPage = (id: string) => {
-    setSiteContent(prev => ({
-      ...prev,
-      customPages: prev.customPages.filter(p => p.id !== id)
-    }));
+    setSiteContent(prev => {
+      const next = {
+        ...prev,
+        customPages: prev.customPages.filter(p => p.id !== id)
+      };
+      persistServerContent(next);
+      return next;
+    });
   };
 
   return (

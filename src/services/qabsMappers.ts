@@ -7,15 +7,19 @@ import {
   RequestDocumentMeta,
   StoreCategoryItem,
   StoreCustomer,
+  StoreDiscount,
   StoreInstance,
   StoreOrder,
+  StorePageItem,
   StoreProduct,
+  StoreShippingZone,
   StoreTeamMemberItem,
   SubscriptionHistoryItem,
   SupportTicket,
   UserProfile,
   UserRole,
-  UserSubscription
+  UserSubscription,
+  WorkspaceBackupItem
 } from '../types/index.ts';
 import { ServiceOrderStatus, SubmittedServiceOrder } from '../types/pages.ts';
 import { DEFAULT_STORE_SECTIONS } from '../data/mockData.ts';
@@ -355,5 +359,61 @@ export function mapDbAuditLog(row: Record<string, unknown>): AuditLogItem {
     actionEn: String(row.action_en || ''),
     target: String(row.target_entity || ''),
     status: (String(row.status || 'info') as AuditLogItem['status'])
+  };
+}
+
+export function mapDbDiscount(row: Record<string, unknown>): StoreDiscount {
+  return {
+    id: String(row.id),
+    storeId: String(row.store_id),
+    code: String(row.code || ''),
+    type: row.discount_type === 'fixed' ? 'fixed' : 'percentage',
+    value: Number(row.value || 0),
+    minOrderAmount: 0,
+    usedCount: Number(row.used_count || 0),
+    usageCount: Number(row.used_count || 0),
+    maxUses: Number(row.usage_limit || 100),
+    expiresAt: '2026-12-31',
+    status: row.status === 'expired' ? 'expired' : 'active'
+  };
+}
+
+export function mapDbShippingZone(row: Record<string, unknown>): StoreShippingZone {
+  return {
+    id: String(row.id),
+    storeId: String(row.store_id),
+    regionNameAr: String(row.region_name_ar || ''),
+    regionNameEn: String(row.region_name_en || row.region_name_ar || ''),
+    carrier: String(row.carrier || 'DHL Express'),
+    rate: Number(row.rate || 0),
+    deliveryTimeAr: String(row.delivery_time_ar || '2 - 5 أيام عمل'),
+    deliveryTimeEn: String(row.delivery_time_en || '2 - 5 Business Days'),
+    active: Boolean(row.active ?? 1),
+    status: row.active === 0 ? 'paused' : 'active'
+  };
+}
+
+export function mapDbStorePage(row: Record<string, unknown>): StorePageItem {
+  return {
+    id: String(row.id),
+    storeId: String(row.store_id),
+    slug: String(row.slug || 'custom'),
+    titleAr: String(row.title_ar || ''),
+    titleEn: String(row.title_en || row.title_ar || ''),
+    type: 'custom',
+    contentAr: String(row.content_ar || ''),
+    contentEn: String(row.content_en || row.content_ar || ''),
+    published: Boolean(row.published ?? 1),
+    updatedAt: String(row.updated_at || '').slice(0, 10)
+  };
+}
+
+export function mapDbWorkspaceBackup(row: Record<string, unknown>): WorkspaceBackupItem {
+  return {
+    id: String(row.id),
+    tenantId: String(row.tenant_id || ''),
+    label: String(row.label || 'Workspace Backup'),
+    sizeBytes: Number(row.size_bytes || 0),
+    createdAt: String(row.created_at || '').replace('T', ' ').slice(0, 16)
   };
 }

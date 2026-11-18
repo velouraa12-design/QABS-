@@ -24,6 +24,8 @@ export const BillingSubscriptionView: React.FC = () => {
     subscriptionHistory,
     creditLedger,
     changeSubscriptionPlan,
+    cancelSubscription,
+    renewSubscription,
     invoices,
     refunds,
     issueRefund,
@@ -116,26 +118,44 @@ export const BillingSubscriptionView: React.FC = () => {
               </p>
             </div>
 
-            <div className="flex items-center p-1 bg-[#082030] border border-cyan-950 rounded-lg text-xs self-start">
+            <div className="flex flex-wrap items-center gap-2 self-start">
               <button
                 type="button"
-                onClick={() => setBillingCycle('monthly')}
-                className={`px-4 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${
-                  billingCycle === 'monthly' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
-                }`}
+                onClick={() => void renewSubscription(subscription.planId, billingCycle)}
+                className="px-3 py-1.5 rounded-lg bg-[#D4AF37]/20 border border-[#D4AF37]/50 text-[#F3E5AB] text-xs font-bold hover:bg-[#D4AF37]/30 cursor-pointer"
               >
-                {isAr ? 'شهري' : 'Monthly'}
+                {isAr ? 'تجديد الاشتراك (إصدار فاتورة)' : 'Renew Plan (Issue Invoice)'}
               </button>
-              <button
-                type="button"
-                onClick={() => setBillingCycle('annual')}
-                className={`px-4 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                  billingCycle === 'annual' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
-                }`}
-              >
-                <span>{isAr ? 'سنوي' : 'Annual'}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-950 text-[#D4AF37]">-20%</span>
-              </button>
+              {subscription.status !== 'cancelled' && subscription.status !== 'canceled' && (
+                <button
+                  type="button"
+                  onClick={() => void cancelSubscription('Requested via Billing Hub')}
+                  className="px-3 py-1.5 rounded-lg bg-rose-950/60 border border-rose-800 text-rose-200 text-xs font-bold hover:bg-rose-900/70 cursor-pointer"
+                >
+                  {isAr ? 'إلغاء التجديد' : 'Cancel Renewal'}
+                </button>
+              )}
+              <div className="flex items-center p-1 bg-[#082030] border border-cyan-950 rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-4 py-1.5 rounded-md font-semibold transition-all cursor-pointer ${
+                    billingCycle === 'monthly' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  {isAr ? 'شهري' : 'Monthly'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('annual')}
+                  className={`px-4 py-1.5 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    billingCycle === 'annual' ? 'bg-[#D4AF37] text-slate-950' : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <span>{isAr ? 'سنوي' : 'Annual'}</span>
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-950 text-[#D4AF37]">-20%</span>
+                </button>
+              </div>
             </div>
           </div>
 

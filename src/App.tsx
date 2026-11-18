@@ -95,6 +95,7 @@ const isWorkspaceLocation = (): boolean => {
 const MainLayout: React.FC = () => {
   const {
     language,
+    backendStatus,
     mode,
     setMode,
     toastMessage,
@@ -111,9 +112,10 @@ const MainLayout: React.FC = () => {
   const [storeModalOpen, setStoreModalOpen] = useState(false);
   const [aiModalOpen, setAiModalOpen] = useState(false);
 
-  // Browse First, Auth on Action: guard workspace hashes & /workspace path without hijacking public routes like /support
+  // Browse First, Auth on Action: guard workspace hashes & /workspace path without hijacking public routes or breaking F5 reload
   useEffect(() => {
     const syncWorkspaceRoute = () => {
+      if (backendStatus === 'checking') return;
       if (isWorkspaceLocation()) {
         if (isAuthenticated) {
           setMode('portal');
@@ -131,9 +133,10 @@ const MainLayout: React.FC = () => {
       window.removeEventListener('hashchange', syncWorkspaceRoute);
       window.removeEventListener('popstate', syncWorkspaceRoute);
     };
-  }, [isAuthenticated, setMode, openClientAuth]);
+  }, [backendStatus, isAuthenticated, setMode, openClientAuth]);
 
   useEffect(() => {
+    if (backendStatus === 'checking') return;
     if (!isAuthenticated && mode !== 'landing') {
       setMode('landing');
       return;
@@ -142,10 +145,10 @@ const MainLayout: React.FC = () => {
       setMode(isAuthenticated ? 'portal' : 'landing');
       openOwnerAuth();
     }
-  }, [mode, isAuthenticated, isOwner, setMode, openOwnerAuth]);
+  }, [backendStatus, mode, isAuthenticated, isOwner, setMode, openOwnerAuth]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || backendStatus === 'checking') return;
     if (mode === 'portal' && isAuthenticated) {
       if (!isWorkspaceLocation()) {
         window.history.replaceState({ qabsWorkspace: 'overview' }, '', `${window.location.pathname}#/overview`);
@@ -153,7 +156,7 @@ const MainLayout: React.FC = () => {
     } else if (window.location.hash && WORKSPACE_HASH_PREFIXES.some(p => window.location.hash.startsWith(`#${p}`))) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-  }, [mode, isAuthenticated]);
+  }, [backendStatus, mode, isAuthenticated]);
 
   const handleOpenFormationWithState = (stateCode?: string) => {
     if (stateCode) {

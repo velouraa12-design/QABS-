@@ -1,0 +1,20 @@
+# QABS Unified Platform — Cloudflare Pages / Staging Workers Template
+# Preview-only configuration template. Do NOT bind production DNS or live payment secrets here.
+
+name = "qabs-workspace-reference-preview"
+compatibility_date = "2026-11-01"
+pages_build_output_dir = "dist"
+
+[vars]
+QABS_ENV = "preview"
+PAYMENTS_ENABLED = "false"
+
+# Staging D1 / R2 bindings reference (values must remain environment-specific outside git)
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "qabs-stores-acceptance-preview"
+# database_id = "<SET_IN_CLOUDFLARE_DASHBOARD>"
+#
+# [[r2_buckets]]
+# binding = "VAULT_R2"
+# bucket_name = "qabs-private-vault-preview"

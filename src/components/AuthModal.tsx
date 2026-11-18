@@ -34,7 +34,11 @@ export const AuthModal: React.FC = () => {
     register,
     requestPasswordReset,
     confirmPasswordReset,
-    previewResetToken
+    previewResetToken,
+    confirmEmailVerification,
+    resendVerificationEmail,
+    previewVerifyToken,
+    isAuthenticated
   } = useApp();
 
   const isAr = language === 'ar';
@@ -45,6 +49,9 @@ export const AuthModal: React.FC = () => {
   const [companyName, setCompanyName] = useState('');
   const [resetTokenInput, setResetTokenInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [verifyTokenInput, setVerifyTokenInput] = useState('');
+  const [showVerifyPanel, setShowVerifyPanel] = useState(false);
+  const [verifyDone, setVerifyDone] = useState(false);
   const [recoveryStage, setRecoveryStage] = useState<'request' | 'confirm'>('request');
   const [resetDone, setResetDone] = useState(false);
 
@@ -187,10 +194,11 @@ export const AuthModal: React.FC = () => {
               type="button"
               onClick={() => {
                 setAuthError(null);
+                setShowVerifyPanel(false);
                 setAuthMode('login');
               }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
-                authMode === 'login'
+                !showVerifyPanel && authMode === 'login'
                   ? 'text-[#D5B46B] border-b-2 border-[#D5B46B] font-bold bg-[#082030]'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -201,10 +209,11 @@ export const AuthModal: React.FC = () => {
               type="button"
               onClick={() => {
                 setAuthError(null);
+                setShowVerifyPanel(false);
                 setAuthMode('register');
               }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
-                authMode === 'register'
+                !showVerifyPanel && authMode === 'register'
                   ? 'text-[#00A389] border-b-2 border-[#00A389] font-bold bg-[#082030]'
                   : 'text-slate-400 hover:text-white'
               }`}
@@ -215,16 +224,31 @@ export const AuthModal: React.FC = () => {
               type="button"
               onClick={() => {
                 setAuthError(null);
+                setShowVerifyPanel(false);
                 setRecoveryStage('request');
                 setAuthMode('recover');
               }}
               className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
-                authMode === 'recover'
+                !showVerifyPanel && authMode === 'recover'
                   ? 'text-cyan-400 border-b-2 border-cyan-400 font-bold bg-[#082030]'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
               {isAr ? 'استعادة' : 'Recover'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthError(null);
+                setShowVerifyPanel(true);
+              }}
+              className={`flex-1 py-2.5 font-medium transition-colors cursor-pointer text-center ${
+                showVerifyPanel
+                  ? 'text-emerald-400 border-b-2 border-emerald-400 font-bold bg-[#082030]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              {isAr ? 'تأكيد البريد' : 'Verify Email'}
             </button>
           </div>
         )}
@@ -327,7 +351,78 @@ export const AuthModal: React.FC = () => {
             </form>
           ) : (
             <>
-              {authMode === 'login' && (
+              {showVerifyPanel ? (
+                <form
+                  onSubmit={async e => {
+                    e.preventDefault();
+                    setAuthError(null);
+                    const tok = verifyTokenInput.trim() || previewVerifyToken || '';
+                    if (!tok) return;
+                    const ok = await confirmEmailVerification(tok);
+                    if (ok) {
+                      setVerifyDone(true);
+                      setTimeout(() => {
+                        setVerifyDone(false);
+                        setShowVerifyPanel(false);
+                        setAuthMode('login');
+                      }, 1200);
+                    }
+                  }}
+                  className="space-y-4"
+                >
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    {isAr
+                      ? 'أدخل رمز تأكيد البريد الإلكتروني الصادر لحسابك أو أعد إصداره بعد تسجيل الدخول.'
+                      : 'Enter your email verification token or resend it after signing in.'}
+                  </p>
+                  {previewVerifyToken && (
+                    <div className="p-2.5 rounded-lg bg-emerald-950/60 border border-emerald-800 text-[11px] font-mono text-emerald-200 break-all">
+                      Preview Verify Token: {previewVerifyToken}
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      {isAr ? 'رمز تأكيد البريد الإلكتروني' : 'Email Verification Token'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={verifyTokenInput || previewVerifyToken || ''}
+                      onChange={e => setVerifyTokenInput(e.target.value)}
+                      placeholder="verify token..."
+                      className="w-full bg-[#051724] border border-cyan-950 rounded-lg px-3 py-2 text-xs text-white font-mono"
+                    />
+                  </div>
+                  {verifyDone && (
+                    <div className="p-2.5 bg-emerald-950/60 border border-emerald-800 text-emerald-300 rounded-lg text-xs flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      <span>{isAr ? 'تم تأكيد البريد الإلكتروني بنجاح!' : 'Email verified!'}</span>
+                    </div>
+                  )}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs cursor-pointer"
+                    >
+                      {isAr ? 'تأكيد البريد الآن ✓' : 'Verify Email Now ✓'}
+                    </button>
+                    {isAuthenticated && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const tok = await resendVerificationEmail();
+                          if (tok) setVerifyTokenInput(tok);
+                        }}
+                        className="px-3 py-2.5 bg-[#051724] border border-cyan-900 text-cyan-300 rounded-xl text-xs font-bold cursor-pointer"
+                      >
+                        {isAr ? 'إعادة الإرسال' : 'Resend Token'}
+                      </button>
+                    )}
+                  </div>
+                </form>
+              ) : (
+                <>
+                  {authMode === 'login' && (
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1.5">
@@ -569,6 +664,8 @@ export const AuthModal: React.FC = () => {
                     </button>
                   </form>
                 )
+              )}
+                </>
               )}
             </>
           )}

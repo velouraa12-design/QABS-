@@ -73,6 +73,10 @@ export function registerAdminRoutes(
     const tickets = db.prepare('SELECT * FROM support_tickets ORDER BY created_at DESC').all();
     const notifications = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100').all();
     const auditLogs = db.prepare('SELECT * FROM security_audit_logs ORDER BY created_at DESC LIMIT 150').all();
+    const errorLogs = db.prepare('SELECT * FROM system_error_logs ORDER BY created_at DESC LIMIT 100').all();
+    const backups = db
+      .prepare('SELECT id, tenant_id, actor_id, label, size_bytes, created_at FROM workspace_backups ORDER BY created_at DESC LIMIT 50')
+      .all();
     const settingsRow = db.prepare("SELECT value_json FROM platform_settings WHERE key = 'global_governance'").get() as
       | { value_json: string }
       | undefined;
@@ -92,6 +96,8 @@ export function registerAdminRoutes(
       tickets,
       notifications,
       auditLogs,
+      errorLogs,
+      backups,
       platformSettings: settingsRow ? JSON.parse(settingsRow.value_json) : {}
     });
   });
@@ -451,5 +457,33 @@ export function registerAdminRoutes(
     ).run(JSON.stringify(next), actor.userId);
     logAudit(db, 'tenant_qabs_hq', actor.userId, actor.name, 'تحديث إعدادات المنصة العامة', 'Updated platform governance settings', 'global_governance');
     res.json({ platformSettings: next });
+  });
+
+  // Structured sanitized error logs for privileged diagnostics
+  router.get('/api/admin/error-logs', requirePrivileged, (_req: AuthedRequest, res: Response) => {
+    const errorLogs = db.prepare('SELECT * FROM system_error_logs ORDER BY created_at DESC LIMIT 100').all();
+    res.json({ errorLogs });
+  });
+
+  // Persist landing & CMS site content in DB
+  router.patch('/api/admin/site-content', requirePrivileged, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (!canManageStaff(actor.role)) {
+      res.status(403).json({ error: 'Admin role required.', code: 'FORBIDDEN_ROLE' });
+      return;
+    }
+    const content = req.body?.siteContent;
+    if (!content || typeof content !== 'object') {
+      res.status(400).json({ error: 'Invalid siteContent object.', code: 'INVALID_SITE_CONTENT' });
+      return;
+    }
+    const jsonText = JSON.stringify(content);
+    db.prepare(
+      `INSERT INTO platform_settings (key, value_json, updated_by, updated_at)
+       VALUES ('site_content', ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+    ).run(jsonText, actor.userId);
+    logAudit(db, 'tenant_qabs_hq', actor.userId, actor.name, 'تحديث محتوى الواجهة الرئيسية', 'Updated public site CMS content', 'site_content');
+    res.json({ siteContent: content });
   });
 }

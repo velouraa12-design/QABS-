@@ -139,8 +139,27 @@ export interface UserSubscription {
   planId: 'starter' | 'growth' | 'enterprise';
   billingCycle: 'monthly' | 'annual';
   renewalDate: string;
-  status: 'active' | 'past_due' | 'canceled' | 'trial' | 'pending_verification';
+  status: 'active' | 'past_due' | 'canceled' | 'cancelled' | 'trial' | 'pending_verification';
   currentPrice: number;
+}
+
+export interface WorkspaceBackupItem {
+  id: string;
+  tenantId: string;
+  label: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface SystemErrorLogItem {
+  id: string;
+  route: string;
+  method: string;
+  statusCode: number;
+  errorCode: string;
+  message: string;
+  tenantId?: string | null;
+  createdAt: string;
 }
 
 export interface Invoice {

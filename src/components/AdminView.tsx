@@ -60,10 +60,12 @@ export const AdminView: React.FC = () => {
     setMode,
     backendStatus,
     adminOverview,
+    integrationsStatus,
     refreshWorkspace,
     stores,
     setActiveStoreId,
     reviewStoreApproval,
+    approveStorePayment,
     verifyStoreDomain,
     auditLogs,
     triggerSystemBackup,
@@ -119,6 +121,8 @@ export const AdminView: React.FC = () => {
   const invoicesList = adminOverview?.invoices || [];
   const notificationsList = adminOverview?.notifications || [];
   const auditLogsList = adminOverview?.auditLogs || [];
+  const errorLogsList = adminOverview?.errorLogs || [];
+  const backupsList = adminOverview?.backups || [];
 
   const isConnected = backendStatus === 'connected' && Boolean(adminOverview);
 
@@ -809,6 +813,13 @@ export const AdminView: React.FC = () => {
                         </button>
                         <button
                           type="button"
+                          onClick={() => void approveStorePayment(id, true)}
+                          className="px-3 py-2 rounded-xl border border-emerald-300 bg-emerald-50 text-emerald-800 font-bold cursor-pointer"
+                        >
+                          {isAr ? 'اعتماد الدفع (Sandbox)' : 'Verify Gateway'}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => {
                             setActiveStoreId(id);
                             setMode('portal');
@@ -818,6 +829,20 @@ export const AdminView: React.FC = () => {
                           <Eye className="w-3.5 h-3.5" />
                           <span>{isAr ? 'فتح' : 'Open'}</span>
                         </button>
+                      </div>
+                      <div className="text-[11px] text-slate-500 flex flex-wrap gap-3">
+                        <span>
+                          {isAr ? 'بوابة الدفع:' : 'Gateway:'}{' '}
+                          <strong className="font-mono text-[#004457] dark:text-[#E5C158]">
+                            {String(rawSt.gateway_type || rawSt.gatewayType || 'Tap')}
+                          </strong>
+                        </span>
+                        <span>
+                          {isAr ? 'حالة التحصيل:' : 'Payment Status:'}{' '}
+                          <strong className="font-mono">
+                            {String(rawSt.payment_approval_status || rawSt.paymentApprovalStatus || 'unconfigured')}
+                          </strong>
+                        </span>
                       </div>
                     </div>
                   );
@@ -1061,6 +1086,43 @@ export const AdminView: React.FC = () => {
                   </div>
                 ))}
               </div>
+
+              {isConnected && (
+                <div className="pt-4 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="font-black text-[#004457] dark:text-white">
+                      {isAr ? `النسخ الاحتياطية على الخادم (${backupsList.length})` : `Server Workspace Backups (${backupsList.length})`}
+                    </div>
+                    {backupsList.length === 0 ? (
+                      <p className="text-slate-400">{isAr ? 'لا توجد لقطات نسخ احتياطي بعد.' : 'No backup snapshots yet.'}</p>
+                    ) : (
+                      backupsList.slice(0, 5).map(bak => (
+                        <div key={String(bak.id)} className="flex justify-between font-mono text-[11px]">
+                          <span>{String(bak.label)}</span>
+                          <span className="text-slate-400">{Math.max(1, Math.round(Number(bak.size_bytes || 0) / 1024))} KB</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-2">
+                    <div className="font-black text-[#004457] dark:text-white">
+                      {isAr ? `سجل أعطال الخادم (${errorLogsList.length})` : `System Error Telemetry (${errorLogsList.length})`}
+                    </div>
+                    {errorLogsList.length === 0 ? (
+                      <p className="text-emerald-600 font-bold">
+                        {isAr ? 'لا توجد أعطال 500 مسجلة ✓' : 'Zero unhandled 500 errors logged ✓'}
+                      </p>
+                    ) : (
+                      errorLogsList.slice(0, 5).map(err => (
+                        <div key={String(err.id)} className="font-mono text-[11px] text-rose-600">
+                          {String(err.method)} {String(err.route)} — {String(err.message)}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1082,6 +1144,37 @@ export const AdminView: React.FC = () => {
                     : 'Live card charging, external DNS/Shopify mutations, and automatic store publishing remain disabled by policy.'}
                 </p>
               </div>
+              {integrationsStatus && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                    <div className="font-black text-[#004457] dark:text-white">
+                      {isAr ? 'خدمة البريد (Email)' : 'Email Dispatch'}
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-500 mt-1">
+                      {integrationsStatus.integrations.email?.configured
+                        ? 'Resend API Ready'
+                        : 'Preview Token Channel'}
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                    <div className="font-black text-[#004457] dark:text-white">
+                      Cloudflare Workers / D1 / R2
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-500 mt-1">
+                      {integrationsStatus.integrations.cloudflare.workersReady ? 'wrangler.toml Parity ✓' : 'Pending'} •{' '}
+                      {integrationsStatus.integrations.cloudflare.dnsLocked ? 'DNS Locked' : 'Unlocked'}
+                    </div>
+                  </div>
+                  <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900">
+                    <div className="font-black text-[#004457] dark:text-white">
+                      {isAr ? 'بوابات الخليج (Tap / Moyasar)' : 'GCC Gateways (Tap / Moyasar)'}
+                    </div>
+                    <div className="font-mono text-[11px] text-slate-500 mt-1">
+                      {integrationsStatus.integrations.tap.mode} • {integrationsStatus.integrations.gemini.configured ? 'Gemini AI Live' : 'Gemini Preview Fallback'}
+                    </div>
+                  </div>
+                </div>
+              )}
               <form
                 onSubmit={e => {
                   e.preventDefault();

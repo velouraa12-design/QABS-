@@ -32,7 +32,8 @@ import {
   SubscriptionHistoryItem,
   RequestDocumentMeta,
   StoreCategoryItem,
-  StoreTeamMemberItem
+  StoreTeamMemberItem,
+  WorkspaceBackupItem
 } from '../types/index.ts';
 import { ServiceOrderStatus, SubmittedServiceOrder } from '../types/pages.ts';
 import {
@@ -67,17 +68,21 @@ import {
   mapDbCompany,
   mapDbCreditLedger,
   mapDbCustomer,
+  mapDbDiscount,
   mapDbDocument,
   mapDbInvoice,
   mapDbNotification,
   mapDbOrder,
   mapDbProduct,
   mapDbServiceRequest,
+  mapDbShippingZone,
   mapDbStore,
+  mapDbStorePage,
   mapDbStoreTeamMember,
   mapDbSubscription,
   mapDbSubscriptionHistory,
-  mapDbTicket
+  mapDbTicket,
+  mapDbWorkspaceBackup
 } from '../services/qabsMappers.ts';
 
 const PRIVILEGED_ROLES = new Set<UserRole>(['super_admin', 'admin', 'staff', 'support']);
@@ -164,6 +169,17 @@ interface AppContextType {
   toggleStoreApp: (appId: string, storeId: string) => void;
   storeTemplates: StoreTemplatePreset[];
   addStoreTemplate: (tpl: Omit<StoreTemplatePreset, 'id'>) => void;
+  importSupplierProduct: (input: {
+    storeId?: string;
+    supplierName: string;
+    titleAr: string;
+    titleEn?: string;
+    sku?: string;
+    retailPrice: number;
+    costPrice?: number;
+    stock?: number;
+  }) => Promise<boolean>;
+  workspaceBackups: WorkspaceBackupItem[];
   triggerSystemBackup: (targetLabel?: string) => void;
 
   // Support, Staff, Audit, Notifications & Subscriptions
@@ -195,6 +211,8 @@ interface AppContextType {
   subscriptionHistory: SubscriptionHistoryItem[];
   creditLedger: CreditLedgerItem[];
   changeSubscriptionPlan: (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => void;
+  cancelSubscription: (reason?: string) => Promise<boolean>;
+  renewSubscription: (planId?: 'starter' | 'growth' | 'enterprise', billingCycle?: 'monthly' | 'annual') => Promise<boolean>;
   invoices: Invoice[];
   verifyInvoiceWithProof: (invoiceId: string, paymentProofRef: string) => Promise<boolean>;
   commissions: CommissionRecord[];
@@ -264,6 +282,7 @@ interface AppContextType {
   requestPasswordReset: (email: string) => Promise<string | null>;
   confirmPasswordReset: (token: string, newPassword: string) => Promise<boolean>;
   confirmEmailVerification: (token: string) => Promise<boolean>;
+  resendVerificationEmail: () => Promise<string | null>;
   logout: () => Promise<void>;
   submittedServiceOrders: SubmittedServiceOrder[];
   submitServiceOrder: (
@@ -458,6 +477,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [requestDocuments, setRequestDocuments] = useState<RequestDocumentMeta[]>([]);
   const [creditLedger, setCreditLedger] = useState<CreditLedgerItem[]>([]);
   const [subscriptionHistory, setSubscriptionHistory] = useState<SubscriptionHistoryItem[]>([]);
+  const [workspaceBackups, setWorkspaceBackups] = useState<WorkspaceBackupItem[]>([]);
   const [adminOverview, setAdminOverview] = useState<AdminOverviewResponse | null>(null);
   const [integrationsStatus, setIntegrationsStatus] = useState<IntegrationsStatusResponse | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -538,6 +558,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(mappedProducts);
     setOrders(mappedOrders);
     setCustomers(boot.customers.map(mapDbCustomer));
+    setDiscounts((boot.discounts || []).map(mapDbDiscount));
+    setShippingZones((boot.shippingZones || []).map(mapDbShippingZone));
+    setStorePages((boot.storePages || []).map(mapDbStorePage));
+    setWorkspaceBackups((boot.backups || []).map(mapDbWorkspaceBackup));
     setSubmittedServiceOrders(mappedReqs);
     setSubscription(mapDbSubscription(boot.subscription));
     setSubscriptionHistory(boot.subscriptionHistory.map(mapDbSubscriptionHistory));
@@ -589,13 +613,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         await qabsApi.health();
         if (!active) return;
-        setBackendStatus('connected');
         const sess = await qabsApi.session();
         if (!active) return;
         if (sess.authenticated && sess.user) {
           const boot = await qabsApi.bootstrap();
           if (!active) return;
           applyBootstrapPayload(boot);
+          if (isWorkspaceUrl()) {
+            setMode(PRIVILEGED_ROLES.has(sess.user.role as UserRole) ? 'admin' : 'portal');
+          }
+          setBackendStatus('connected');
           try {
             const integ = await qabsApi.getIntegrationsStatus();
             if (active) setIntegrationsStatus(integ);
@@ -610,10 +637,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               // ignore
             }
           }
-          if (isWorkspaceUrl()) {
-            setMode(PRIVILEGED_ROLES.has(sess.user.role as UserRole) ? 'admin' : 'portal');
-          }
         } else {
+          setBackendStatus('connected');
           // Connected server without active session: start strictly clean (no fake auth!)
           setIsAuthenticated(false);
           setUser(INITIAL_USER);
@@ -622,6 +647,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setProducts([]);
           setOrders([]);
           setCustomers([]);
+          setDiscounts([]);
+          setShippingZones([]);
+          setStorePages([]);
+          setWorkspaceBackups([]);
           setInvoices([]);
           setTickets([]);
           setAuditLogs([]);
@@ -1385,15 +1414,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addDiscount = (d: Omit<StoreDiscount, 'id' | 'usedCount'>) => {
+    const targetStoreId = d.storeId || activeStoreId;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createDiscount(targetStoreId, {
+            code: d.code,
+            type: d.type,
+            value: d.value,
+            usageLimit: d.maxUses || 100
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? `تم حفظ كود الخصم ${d.code} في الخادم ✓` : `Coupon ${d.code} saved on server ✓`);
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ كود الخصم', 'Failed to create discount coupon');
+        }
+      })();
+      return;
+    }
     setDiscounts(prev => [{ ...d, id: `dsc_${Date.now()}`, usedCount: 0 }, ...prev]);
   };
   const toggleDiscountStatus = (id: string) => {
+    const existing = discounts.find(d => d.id === id);
+    if (backendStatus === 'connected' && existing) {
+      void (async () => {
+        try {
+          await qabsApi.toggleDiscount(existing.storeId, id);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم تحديث حالة الكوبون ✓' : 'Coupon status updated ✓');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر تحديث الكوبون', 'Failed to update coupon');
+        }
+      })();
+      return;
+    }
     setDiscounts(prev => prev.map(d => (d.id === id ? { ...d, status: d.status === 'active' ? 'expired' : 'active' } : d)));
   };
   const addShippingZone = (z: Omit<StoreShippingZone, 'id'>) => {
+    const targetStoreId = z.storeId || activeStoreId;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createShippingZone(targetStoreId, {
+            regionNameAr: z.regionNameAr,
+            regionNameEn: z.regionNameEn,
+            carrier: z.carrier,
+            rate: z.rate,
+            deliveryTimeAr: z.deliveryTimeAr,
+            deliveryTimeEn: z.deliveryTimeEn,
+            active: z.active
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? `تم حفظ منطقة الشحن "${z.regionNameAr}" في الخادم ✓` : `Shipping zone saved on server ✓`);
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ منطقة الشحن', 'Failed to add shipping zone');
+        }
+      })();
+      return;
+    }
     setShippingZones(prev => [{ ...z, id: `shp_${Date.now()}` }, ...prev]);
   };
   const saveStorePage = (page: Omit<StorePageItem, 'id' | 'updatedAt'> & { id?: string }) => {
+    const targetStoreId = page.storeId || activeStoreId;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.saveStorePage(targetStoreId, {
+            id: page.id,
+            slug: page.slug,
+            titleAr: page.titleAr,
+            titleEn: page.titleEn,
+            contentAr: page.contentAr,
+            contentEn: page.contentEn,
+            published: page.published
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? `تم حفظ صفحة "${page.titleAr}" في الخادم ✓` : `Store page saved on server ✓`);
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ صفحة المتجر', 'Failed to save store page');
+        }
+      })();
+      return;
+    }
     const today = new Date().toISOString().split('T')[0];
     if (page.id) {
       setStorePages(prev => prev.map(p => (p.id === page.id ? { ...p, ...page, id: page.id, updatedAt: today } : p)));
@@ -1401,7 +1503,65 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setStorePages(prev => [{ ...page, id: `pg_${Date.now()}`, updatedAt: today }, ...prev]);
     }
   };
-  const deleteStorePage = (id: string) => setStorePages(prev => prev.filter(p => p.id !== id));
+  const deleteStorePage = (id: string) => {
+    const existing = storePages.find(p => p.id === id);
+    if (backendStatus === 'connected' && existing) {
+      void (async () => {
+        try {
+          await qabsApi.deleteStorePage(existing.storeId, id);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حذف الصفحة من المتجر' : 'Store page deleted');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حذف الصفحة', 'Failed to delete page');
+        }
+      })();
+      return;
+    }
+    setStorePages(prev => prev.filter(p => p.id !== id));
+  };
+  const importSupplierProduct = async (input: {
+    storeId?: string;
+    supplierName: string;
+    titleAr: string;
+    titleEn?: string;
+    sku?: string;
+    retailPrice: number;
+    costPrice?: number;
+    stock?: number;
+  }): Promise<boolean> => {
+    const targetStoreId = input.storeId || activeStoreId;
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.importSupplierProduct(targetStoreId, input);
+        await refreshWorkspace();
+        showToast(
+          language === 'ar'
+            ? `تم استيراد "${input.titleAr}" من المورد إلى المتجر ✓`
+            : `Imported "${input.titleEn || input.titleAr}" from supplier ✓`
+        );
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر استيراد منتج المورد', 'Failed to import supplier product');
+        return false;
+      }
+    }
+    addProduct({
+      storeId: targetStoreId,
+      titleAr: input.titleAr,
+      titleEn: input.titleEn || input.titleAr,
+      nameAr: input.titleAr,
+      nameEn: input.titleEn || input.titleAr,
+      sku: input.sku || `SUP-${Date.now()}`,
+      productType: 'physical',
+      price: input.retailPrice,
+      cost: input.costPrice ?? Math.round(input.retailPrice * 0.55),
+      stock: input.stock ?? 50,
+      category: input.supplierName,
+      categoryAr: `مورد: ${input.supplierName}`,
+      status: 'active'
+    });
+    return true;
+  };
   const toggleStoreApp = (appId: string, storeId: string) => {
     setStoreApps(prev =>
       prev.map(app => {
@@ -1416,6 +1576,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
   };
   const triggerSystemBackup = (targetLabel?: string) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          const res = await qabsApi.createWorkspaceBackup(targetLabel || 'QABS Workspace Backup');
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم إنشاء نسخة احتياطية حقيقية على الخادم (${String(res.backup.id)}) ✓`
+              : `Server backup snapshot created (${String(res.backup.id)}) ✓`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إنشاء النسخة الاحتياطية على الخادم', 'Failed to create server backup');
+        }
+      })();
+      return;
+    }
     appendAudit(`نسخ احتياطي للبيانات (${targetLabel || 'المنصة'})`, `Triggered backup (${targetLabel || 'Platform'})`, targetLabel || 'QABS-Vault');
     showToast(language === 'ar' ? 'تم تسجيل عملية النسخ الاحتياطي في السجل' : 'Backup recorded in audit log');
   };
@@ -1580,6 +1756,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         ? `تم إصدار الفاتورة ${newInv.invoiceNumber} بحالة انتظار التحقق (لا يُفعّل الاشتراك قبل تأكيد السداد).`
         : `Invoice ${newInv.invoiceNumber} created as pending verification.`
     );
+  };
+
+  const cancelSubscription = async (reason?: string): Promise<boolean> => {
+    if (backendStatus === 'connected') {
+      try {
+        await qabsApi.cancelSubscription(reason);
+        await refreshWorkspace();
+        showToast(language === 'ar' ? 'تم إيقاف التجديد التلقائي للاشتراك وتوثيقه في السجل ✓' : 'Subscription renewal cancelled ✓');
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر إلغاء التجديد التلقائي', 'Failed to cancel subscription renewal');
+        return false;
+      }
+    }
+    setSubscription(prev => ({ ...prev, status: 'cancelled' }));
+    showToast(language === 'ar' ? 'تم إلغاء التجديد في وضع المعاينة' : 'Subscription cancelled in preview');
+    return true;
+  };
+
+  const renewSubscription = async (
+    planId?: 'starter' | 'growth' | 'enterprise',
+    billingCycle?: 'monthly' | 'annual'
+  ): Promise<boolean> => {
+    if (backendStatus === 'connected') {
+      try {
+        const res = await qabsApi.renewSubscription(planId || subscription.planId, billingCycle || subscription.billingCycle);
+        await refreshWorkspace();
+        showToast(
+          language === 'ar'
+            ? `تم إصدار فاتورة التجديد (${res.invoice.invoice_number}) بانتظار التحقق المرجعي ✓`
+            : `Renewal invoice (${res.invoice.invoice_number}) issued pending verification ✓`
+        );
+        return true;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر إصدار طلب التجديد', 'Failed to request subscription renewal');
+        return false;
+      }
+    }
+    changeSubscriptionPlan(planId || subscription.planId, billingCycle || subscription.billingCycle);
+    return true;
   };
 
   const verifyInvoiceWithProof = async (invoiceId: string, paymentProofRef: string): Promise<boolean> => {
@@ -1899,6 +2115,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         await qabsApi.login(email.trim(), password);
         const boot = await qabsApi.bootstrap();
         applyBootstrapPayload(boot);
+        try {
+          const integ = await qabsApi.getIntegrationsStatus();
+          setIntegrationsStatus(integ);
+        } catch {
+          // non-blocking
+        }
         if (PRIVILEGED_ROLES.has(boot.user.role as UserRole)) {
           try {
             const ov = await qabsApi.adminOverview();
@@ -1954,6 +2176,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (res.previewEmailVerifyToken) setPreviewVerifyToken(res.previewEmailVerifyToken);
         const boot = await qabsApi.bootstrap();
         applyBootstrapPayload(boot);
+        try {
+          const integ = await qabsApi.getIntegrationsStatus();
+          setIntegrationsStatus(integ);
+        } catch {
+          // non-blocking
+        }
         setAuthModalOpen(false);
         setMode(pendingServiceOrder ? 'landing' : 'portal');
         if (pendingServiceOrder) setCheckoutModalOpen(true);
@@ -2035,6 +2263,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
 
+  const resendVerificationEmail = async (): Promise<string | null> => {
+    if (backendStatus === 'connected') {
+      try {
+        const res = await qabsApi.resendVerification();
+        const tok = res.previewEmailVerifyToken || null;
+        if (tok) setPreviewVerifyToken(tok);
+        showToast(
+          language === 'ar'
+            ? 'تم إصدار رمز تأكيد البريد الإلكتروني بنجاح ✓'
+            : 'Email verification token issued ✓'
+        );
+        return tok;
+      } catch (err) {
+        handleApiFailure(err, 'تعذر إعادة إرسال رمز التحقق', 'Failed to resend verification token');
+        return null;
+      }
+    }
+    return 'preview-verify-token';
+  };
+
   const logout = async () => {
     if (backendStatus === 'connected') {
       try {
@@ -2047,6 +2295,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setProducts([]);
       setOrders([]);
       setCustomers([]);
+      setDiscounts([]);
+      setShippingZones([]);
+      setStorePages([]);
+      setWorkspaceBackups([]);
       setInvoices([]);
       setTickets([]);
       setAuditLogs([]);
@@ -2268,6 +2520,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleStoreApp,
         storeTemplates,
         addStoreTemplate,
+        importSupplierProduct,
+        workspaceBackups,
         triggerSystemBackup,
         banking,
         addBankAccount,
@@ -2289,6 +2543,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         subscriptionHistory,
         creditLedger,
         changeSubscriptionPlan,
+        cancelSubscription,
+        renewSubscription,
         invoices,
         verifyInvoiceWithProof,
         commissions,
@@ -2338,6 +2594,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestPasswordReset,
         confirmPasswordReset,
         confirmEmailVerification,
+        resendVerificationEmail,
         logout,
         submittedServiceOrders,
         submitServiceOrder,

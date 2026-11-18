@@ -581,4 +581,239 @@ export function registerStoreRoutes(
       totalCustomers: custAgg.totalCustomers
     });
   });
+
+  // ==================== DISCOUNTS, SHIPPING ZONES, STORE PAGES & SUPPLIER IMPORT ====================
+  router.get('/api/stores/:storeId/discounts', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const discounts = db.prepare('SELECT * FROM store_discounts WHERE store_id = ? ORDER BY created_at DESC').all(storeId);
+    res.json({ discounts });
+  });
+
+  router.post('/api/stores/:storeId/discounts', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const code = sanitizeText(req.body?.code, 40).toUpperCase().replace(/[^A-Z0-9_-]/g, '');
+    const discountType = req.body?.type === 'fixed' ? 'fixed' : 'percentage';
+    const value = Number(req.body?.value ?? 0);
+    const usageLimit = Math.max(1, Math.floor(Number(req.body?.usageLimit ?? 100)));
+    if (!code || !Number.isFinite(value) || value < 0) {
+      res.status(400).json({ error: 'Valid coupon code and non-negative value required.', code: 'INVALID_DISCOUNT' });
+      return;
+    }
+    const id = `dsc_${generateToken(6)}`;
+    db.prepare(
+      `INSERT INTO store_discounts (id, store_id, tenant_id, code, discount_type, value, used_count, usage_limit, status)
+       VALUES (?, ?, ?, ?, ?, ?, 0, ?, 'active')`
+    ).run(id, storeId, String(check.store.tenant_id), code, discountType, value, usageLimit);
+    logAudit(db, String(check.store.tenant_id), actor.userId, actor.name, `إنشاء كود خصم ${code}`, `Created store coupon ${code}`, id);
+    res.status(201).json({ discount: db.prepare('SELECT * FROM store_discounts WHERE id = ?').get(id) });
+  });
+
+  router.patch('/api/stores/:storeId/discounts/:discountId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const discountId = sanitizeId(req.params.discountId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const existing = db.prepare('SELECT * FROM store_discounts WHERE id = ? AND store_id = ?').get(discountId, storeId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Discount not found in this store.', code: 'DISCOUNT_NOT_FOUND' });
+      return;
+    }
+    const nextStatus =
+      req.body?.status === 'active' || req.body?.status === 'expired'
+        ? req.body.status
+        : existing.status === 'active'
+        ? 'expired'
+        : 'active';
+    db.prepare('UPDATE store_discounts SET status = ? WHERE id = ? AND store_id = ?').run(nextStatus, discountId, storeId);
+    res.json({ discount: db.prepare('SELECT * FROM store_discounts WHERE id = ?').get(discountId) });
+  });
+
+  router.get('/api/stores/:storeId/shipping-zones', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const shippingZones = db.prepare('SELECT * FROM store_shipping_zones WHERE store_id = ? ORDER BY created_at DESC').all(storeId);
+    res.json({ shippingZones });
+  });
+
+  router.post('/api/stores/:storeId/shipping-zones', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const regionNameAr = sanitizeText(req.body?.regionNameAr, 160);
+    const regionNameEn = sanitizeText(req.body?.regionNameEn || regionNameAr, 160);
+    const carrier = sanitizeText(req.body?.carrier || 'DHL Express', 120);
+    const rate = Number(req.body?.rate ?? 0);
+    if (!regionNameAr || !Number.isFinite(rate) || rate < 0) {
+      res.status(400).json({ error: 'Region name and non-negative shipping rate required.', code: 'INVALID_SHIPPING_ZONE' });
+      return;
+    }
+    const id = `shp_${generateToken(6)}`;
+    db.prepare(
+      `INSERT INTO store_shipping_zones (
+        id, store_id, tenant_id, region_name_ar, region_name_en, carrier, rate, delivery_time_ar, delivery_time_en, active
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(
+      id,
+      storeId,
+      String(check.store.tenant_id),
+      regionNameAr,
+      regionNameEn,
+      carrier,
+      rate,
+      sanitizeText(req.body?.deliveryTimeAr || '2 - 5 أيام عمل', 80),
+      sanitizeText(req.body?.deliveryTimeEn || '2 - 5 Business Days', 80),
+      req.body?.active === false ? 0 : 1
+    );
+    logAudit(db, String(check.store.tenant_id), actor.userId, actor.name, `إضافة منطقة شحن (${regionNameAr})`, `Added shipping zone (${regionNameEn})`, id);
+    res.status(201).json({ shippingZone: db.prepare('SELECT * FROM store_shipping_zones WHERE id = ?').get(id) });
+  });
+
+  router.get('/api/stores/:storeId/pages', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const pages = db.prepare('SELECT * FROM store_pages WHERE store_id = ? ORDER BY updated_at DESC').all(storeId);
+    res.json({ pages });
+  });
+
+  router.post('/api/stores/:storeId/pages', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const titleAr = sanitizeText(req.body?.titleAr, 160);
+    const titleEn = sanitizeText(req.body?.titleEn || titleAr, 160);
+    const slug = (sanitizeText(req.body?.slug || titleEn, 80) || generateToken(3))
+      .toLowerCase()
+      .replace(/[^a-z0-9-]/g, '-');
+    if (!titleAr) {
+      res.status(400).json({ error: 'Page titleAr is required.', code: 'INVALID_PAGE' });
+      return;
+    }
+    const pageId = req.body?.id ? sanitizeId(req.body.id) : `pg_${generateToken(6)}`;
+    const existing = req.body?.id
+      ? db.prepare('SELECT id FROM store_pages WHERE id = ? AND store_id = ?').get(pageId, storeId)
+      : null;
+
+    if (existing) {
+      db.prepare(
+        `UPDATE store_pages
+         SET slug = ?, title_ar = ?, title_en = ?, content_ar = ?, content_en = ?, published = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND store_id = ?`
+      ).run(
+        slug,
+        titleAr,
+        titleEn,
+        sanitizeText(req.body?.contentAr || '', 4000),
+        sanitizeText(req.body?.contentEn || '', 4000),
+        req.body?.published === false ? 0 : 1,
+        pageId,
+        storeId
+      );
+    } else {
+      db.prepare(
+        `INSERT INTO store_pages (id, store_id, tenant_id, slug, title_ar, title_en, content_ar, content_en, published)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        pageId,
+        storeId,
+        String(check.store.tenant_id),
+        slug,
+        titleAr,
+        titleEn,
+        sanitizeText(req.body?.contentAr || '', 4000),
+        sanitizeText(req.body?.contentEn || '', 4000),
+        req.body?.published === false ? 0 : 1
+      );
+    }
+    res.status(existing ? 200 : 201).json({ page: db.prepare('SELECT * FROM store_pages WHERE id = ?').get(pageId) });
+  });
+
+  router.delete('/api/stores/:storeId/pages/:pageId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const pageId = sanitizeId(req.params.pageId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const result = db.prepare('DELETE FROM store_pages WHERE id = ? AND store_id = ?').run(pageId, storeId);
+    if (result.changes === 0) {
+      res.status(404).json({ error: 'Page not found in this store.', code: 'PAGE_NOT_FOUND' });
+      return;
+    }
+    res.json({ ok: true });
+  });
+
+  router.post('/api/stores/:storeId/supplier-import', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const supplierName = sanitizeText(req.body?.supplierName || 'Verified Supplier Feed', 120);
+    const titleAr = sanitizeText(req.body?.titleAr || req.body?.nameAr, 200);
+    const titleEn = sanitizeText(req.body?.titleEn || req.body?.nameEn || titleAr, 200);
+    const retailPrice = Number(req.body?.retailPrice ?? req.body?.price ?? 0);
+    const costPrice = Number(req.body?.costPrice ?? Math.round(retailPrice * 0.55));
+    const stock = Math.max(0, Math.floor(Number(req.body?.stock ?? 50)));
+    if (!titleAr || !Number.isFinite(retailPrice) || retailPrice <= 0) {
+      res.status(400).json({ error: 'Valid supplier product title and positive retailPrice required.', code: 'INVALID_SUPPLIER_ITEM' });
+      return;
+    }
+    const prodId = `prod_${generateToken(6)}`;
+    const sku = sanitizeText(req.body?.sku || `SUP-${generateToken(3).toUpperCase()}`, 64);
+    db.prepare(
+      `INSERT INTO store_products (
+        id, store_id, tenant_id, category_id, title_ar, title_en, sku, product_type,
+        retail_price, cost_price, stock_quantity, category_ar, category_en, status, sales_count
+      ) VALUES (?, ?, ?, NULL, ?, ?, ?, 'physical', ?, ?, ?, ?, ?, 'active', 0)`
+    ).run(
+      prodId,
+      storeId,
+      String(check.store.tenant_id),
+      titleAr,
+      titleEn,
+      sku,
+      retailPrice,
+      Math.max(0, costPrice),
+      stock,
+      `مورد: ${supplierName}`,
+      `Supplier: ${supplierName}`
+    );
+    logAudit(db, String(check.store.tenant_id), actor.userId, actor.name, `استيراد منتج مورد (${titleAr})`, `Imported supplier product (${titleEn}) from ${supplierName}`, prodId);
+    res.status(201).json({ product: db.prepare('SELECT * FROM store_products WHERE id = ?').get(prodId) });
+  });
 }
