@@ -7,7 +7,7 @@ ENV NODE_ENV=production \
 
 WORKDIR /app
 COPY package.json ./
-RUN npm install --include=dev --no-audit --no-fund
+RUN npm install --include=dev --legacy-peer-deps --no-audit --no-fund
 COPY . .
 RUN npm run build && npx esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.js && npm prune --omit=dev
 
