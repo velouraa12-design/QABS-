@@ -1572,8 +1572,20 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       res.status(409).json({ error: 'This invoice cannot accept another payment attempt.', code: 'INVOICE_NOT_PAYABLE' });
       return;
     }
-    if (String(invoice.payment_proof_ref || '').startsWith('tap:')) {
-      res.status(409).json({ error: 'A Tap payment attempt already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
+    if (String(invoice.payment_proof_ref || '').trim()) {
+      res.status(409).json({ error: 'A payment reference already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
+      return;
+    }
+    // Atomic reservation prevents two concurrent requests from creating duplicate charges
+    // and preserves any manual/bank-transfer proof already attached to the invoice.
+    const reservation = `tap:pending:${generateToken(8)}`;
+    const reserved = db.prepare(
+      `UPDATE billing_invoices SET payment_proof_ref = ?
+       WHERE id = ? AND tenant_id = ? AND status NOT IN ('paid', 'cancelled')
+       AND (payment_proof_ref IS NULL OR payment_proof_ref = '')`
+    ).run(reservation, invoiceId, actor.tenantId);
+    if (Number(reserved.changes || 0) !== 1) {
+      res.status(409).json({ error: 'A payment attempt already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
       return;
     }
 
@@ -1581,10 +1593,14 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     try {
       appOrigin = new URL(process.env.APP_ORIGIN || '');
     } catch {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
       res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
       return;
     }
     if (appOrigin.protocol !== 'https:' || appOrigin.username || appOrigin.password) {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
       res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
       return;
     }
@@ -1605,8 +1621,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       db.prepare(
         `UPDATE billing_invoices
          SET status = 'pending_verification', payment_proof_ref = ?
-         WHERE id = ? AND tenant_id = ? AND status != 'paid'`
-      ).run(`tap:${charge.id}`, invoiceId, actor.tenantId);
+         WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+      ).run(`tap:${charge.id}`, invoiceId, actor.tenantId, reservation);
       logAudit(
         db,
         actor.tenantId,
@@ -1626,6 +1642,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
         paymentConfirmed: false
       });
     } catch (error) {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
       const code = error instanceof Error ? error.message : 'TAP_SANDBOX_REQUEST_FAILED';
       const safeCode = [
         'TAP_SANDBOX_KEY_REQUIRED',
