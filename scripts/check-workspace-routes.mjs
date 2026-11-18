@@ -34,13 +34,14 @@ const formationSource = readFileSync('src/pages/services/CompanyFormationPage.ts
 const llcSource = readFileSync('src/pages/services/UsLlcPage.tsx', 'utf8');
 const formationDataSource = readFileSync('src/data/pages/formationServices.ts', 'utf8');
 const customizerSource = readFileSync('src/context/CustomizerContext.tsx', 'utf8');
+const serviceTemplateSource = readFileSync('src/components/pages/ServicePageTemplate.tsx', 'utf8');
 const companyFormationStart = formationDataSource.indexOf("slug: 'company-formation'");
 const nextFormationRecord = formationDataSource.indexOf("slug:", companyFormationStart + 5);
 const companyFormationCopy = companyFormationStart >= 0 && nextFormationRecord > companyFormationStart
   ? formationDataSource.slice(companyFormationStart, nextFormationRecord)
   : '';
 if (!companyFormationCopy) errors.push('Could not inspect the company-formation marketing record.');
-const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, customizerSource].join('\n');
+const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, customizerSource, serviceTemplateSource].join('\n');
 const forbiddenUnverifiedClaims = [
   '+1,450',
   'EIN Issuance Success',
@@ -60,7 +61,10 @@ const forbiddenUnverifiedClaims = [
   'أرشفة دائمة لجميع شهادات التأسيس',
   'بوابتك المعتمدة نحو التجارة العالمية',
   'Turnkey Stripe & PayPal Integration',
-  'Official US LLC Formation'
+  'Official US LLC Formation',
+  'Verified tracking inside your QABS Workspace',
+  'Approved Packages & Pricing',
+  'الأسعار والباقات المعتمدة'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -76,7 +80,9 @@ const requiredTruthfulCopy = [
   'لا تضمن قبس إصدار EIN أو فتح حساب أو موافقة أي مزود',
   'QABS does not guarantee EIN issuance, account opening, or provider approval',
   'لا نضمن إصدار EIN أو فتح حساب أو قبول بوابة دفع',
-  'EIN issuance, bank-account opening, and payment-provider approval are not guaranteed'
+  'EIN issuance, bank-account opening, and payment-provider approval are not guaranteed',
+  'Requests are reviewed for eligibility and scope before work begins',
+  'الأسعار والباقات الإرشادية'
 ];
 for (const phrase of requiredTruthfulCopy) {
   const hasTruthfulCopy = [landingSource, companyFormationCopy]
