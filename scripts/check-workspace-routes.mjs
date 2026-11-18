@@ -114,7 +114,13 @@ const forbiddenUnverifiedClaims = [
   'within 24 hours',
   'تفعيل فوري خلال 24 ساعة',
   '0% state income tax in top states',
-  '0% ضريبة ولاية'
+  '0% ضريبة ولاية',
+  'State Filing & EIN Issuance',
+  'All 50 US States Supported',
+  'Verified physical addresses in Wyoming',
+  'Activated within 24 hours',
+  'Unlimited commercial mail PDF scans',
+  'لا توجد ولاية هي الأفضل لكل الشركات'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -144,7 +150,10 @@ const requiredTruthfulCopy = [
   'لا يمكن ضمان عدد محدد من الأيام',
   'a fixed number of days cannot be guaranteed',
   'لا يعني ذلك قبول البنوك أو بوابات الدفع',
-  'does not imply bank or payment-provider approval'
+  'does not imply bank or payment-provider approval',
+  'No state is best for every company',
+  'لا يُفترض وجود ربط تلقائي بلوحة قبس',
+  'does not guarantee Good Standing'
 ];
 for (const phrase of requiredTruthfulCopy) {
   const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, registeredAgentCopy, usLlcCopy, customizerSource, serviceTemplateSource]
