@@ -305,48 +305,48 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   },
   orders: {
     orderPrefix: 'QBS-',
-    autoDeductInventory: true,
+    autoDeductInventory: false,
     defaultCarrier: 'DHL Express / SMSA',
     defaultShippingRate: 25,
     enabledStatuses: ['paid', 'processing', 'shipped', 'delivered', 'refunded']
   },
   documents: {
     officialTemplateStyle: 'executive_gold',
-    companyStampText: 'معتمد رسمياً — منصة قبس الرقمية QABS',
+    companyStampText: '',
     logoDataUrl: '',
     stampDataUrl: '',
     allowedExportFormats: ['PDF', 'JSON', 'CSV'],
-    autoArchiveIssuedInvoices: true
+    autoArchiveIssuedInvoices: false
   },
   billing: {
-    taxNumber: '310492819400003',
+    taxNumber: '',
     enableStripe: false,
     enablePayPal: false,
-    enableBankTransfer: true,
+    enableBankTransfer: false,
     enableMoyasarTap: false,
-    bankIban: 'SA4480000492608010492811'
+    bankIban: ''
   },
   qabsAi: {
-    autoExecuteEnabled: true,
-    allowPriceModification: true,
-    allowOrderFulfillment: true,
-    monthlyCreditLimit: 500,
+    autoExecuteEnabled: false,
+    allowPriceModification: false,
+    allowOrderFulfillment: false,
+    monthlyCreditLimit: 0,
     lowCreditAlertThreshold: 25
   },
   crypto: {
-    usdtTrc20Address: 'CONFIGURE_TRC20_ADDRESS_IN_ADMIN',
-    usdtErc20Address: 'CONFIGURE_ERC20_ADDRESS_IN_ADMIN',
-    btcAddress: 'CONFIGURE_BTC_ADDRESS_IN_ADMIN',
-    enabledNetworks: ['TRC20', 'ERC20', 'BTC'],
+    usdtTrc20Address: '',
+    usdtErc20Address: '',
+    btcAddress: '',
+    enabledNetworks: [],
     minTransferUsd: 50
   },
   support: {
-    officialPhone: '+966 11 510 8890',
-    officialEmail: 'support@qabs1.store',
-    workingHoursAr: 'الأحد - الخميس | 9:00 صباحاً - 6:00 مساءً (GMT+3)',
-    workingHoursEn: 'Sun - Thu | 9:00 AM - 6:00 PM (GMT+3)',
-    autoReplyEnabled: true,
-    autoReplyMessageAr: 'تم استلام تذكرتك بنجاح، سيتواصل معك فريق دعم قبس خلال أقل من ساعتين.'
+    officialPhone: '',
+    officialEmail: '',
+    workingHoursAr: 'تُحدد بعد اعتماد قنوات الدعم الرسمية',
+    workingHoursEn: 'To be configured after official support channels are approved',
+    autoReplyEnabled: false,
+    autoReplyMessageAr: ''
   },
   companyFormation: {
     baseServiceFeeUsd: 199,
@@ -360,13 +360,13 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
     einFeeUsd: 70,
     registeredAgentFeeUsd: 99,
     annualRenewalAlertDays: 30,
-    autoAnnualReportReminder: true,
-    autoAgentRenewalReminder: true,
+    autoAnnualReportReminder: false,
+    autoAgentRenewalReminder: false,
     requiredDocuments: ['passport'],
     operatingAgreementTemplate:
       'اتفاقية التشغيل القياسية لقبس (Operating Agreement): يقر المؤسس والأعضاء بتوزيع الحصص والصلاحيات الكاملة لإدارة الحسابات البنكية والتجارة الإلكترونية وفق أنظمة الولاية المعتمدة.',
-    autoCreateStoreOnCompletion: true,
-    autoCreateDocsFolderOnCompletion: true
+    autoCreateStoreOnCompletion: false,
+    autoCreateDocsFolderOnCompletion: false
   }
 };
 
