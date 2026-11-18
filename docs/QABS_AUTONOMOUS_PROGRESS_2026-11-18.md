@@ -197,3 +197,32 @@ Code/schema inspection:
 - Project membership roles are constrained to owner/admin/editor/viewer; project rows have a composite foreign key to the creator's workspace membership.
 
 Important status distinction: these endpoint probes PASS as negative/closed-gate security tests. They do NOT mean email login, Google login, password recovery, or document upload are operational; those capabilities are deliberately BLOCKED by configuration.
+
+
+## 13. Cloudflare Worker/API topology expansion
+
+Read-only inventory returned 22 Worker scripts. Key binding graph (only resource names/types; no secret values):
+- `qabs-digital-portal-staging` -> D1 `qabs-digital-portal-staging-db` (`cb88d911-8b7f-45d3-b361-37d88f402333`), R2 `qabs-formation-private-staging`, AI binding, and Service Binding `COMMERCE -> qabs-stores`. Its `APP_ORIGIN` is `https://portal.qabs1.store`.
+- `qabs-stores` -> D1 `qabs-stores-db` (`26464e53-52d2-45e1-8fa8-c3fd64dab074`), R2 `qabs-stores-images`, formation Service Binding, and Service Binding `STUDIO -> qabs-digital-portal-staging`. Its `APP_ORIGIN` is also `https://portal.qabs1.store`.
+- These two Workers form a bidirectional Service Binding relationship. This can be an intentional proxy arrangement, but it is a circular cross-service topology that needs route-by-route invocation tracing and must not be mistaken for isolated staging.
+- `qabs-auth-staging-20261115` -> separate D1 `qabs-auth-staging-20261115` (`3c377d25-40c6-423c-8efb-6073e242547f`), separate auth implementation, `APP_ENV=staging`, `APP_ORIGIN=https://preview.qabs1.store`, Resend secret binding, and no service binding. It is not wired into either portal or commerce Worker.
+- `qabs-stores-acceptance-preview` -> only its own acceptance D1 and secret binding; no service binding.
+- `qabs-unified-workspace-staging` -> service binding to `qabs-stores-acceptance-preview`.
+- `qabs-isolated-staging-worker-staging` -> its own staging D1 and R2 artifacts bucket.
+- Recovered commerce/dashboard Workers use separate D1/R2 resources and have payment/Shopify flags false in the recovered commerce Worker.
+
+Live zone route inventory for `qabs1.store`:
+- `portal.qabs1.store/studio*` -> `qabs-digital-portal-staging`.
+- More-specific `portal.qabs1.store/studio/formation*` -> `qabs-company-formation-page`.
+- `portal.qabs1.store/reference-store*` -> `qabs-reference-public`.
+- `portal.qabs1.store/` -> `qabs-portal-home-20261111`.
+- `staging.qabs1.store/*` -> `qabs-isolated-staging-worker-staging`, with more-specific recovered formation/dashboard/commerce paths mapped to their corresponding recovered Workers.
+
+Standalone auth Worker endpoint smoke checks (workers.dev; no signup, login, email, or state-changing request was sent):
+- `GET /healthz`: HTTP 200, JSON `service=qabs-worker-api, status=ok, environment=staging, version=0.2.0`.
+- `GET /api/v1/health`: same HTTP 200 health response.
+- `GET /api/v1/auth/me`: HTTP 401 `UNAUTHENTICATED`.
+- `GET /api/v1/requests`: HTTP 401 `UNAUTHENTICATED`.
+- Earlier `/api/me` and `/api/health` probes returned 404 because this Worker uses the `/api/v1/*` contract, not the portal Worker contract.
+
+Architecture finding: there are at least two distinct authentication implementations and databases: the portal Worker implements `/api/auth/*` with `__Host-qdp_session` and its own D1, while the standalone auth Worker implements `/api/v1/auth/*` with `__Host-qabs_session` and its own D1. The standalone auth Worker currently has no Service Binding or zone route. Do not select it as the canonical auth service or migrate accounts until a compatibility design, data ownership, session migration, email verification, and complete authorization contract are proven. This is currently BLOCKED as an architecture decision, not a reason to connect them by guesswork.
