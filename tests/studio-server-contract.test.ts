@@ -41,6 +41,24 @@ class StudioClient {
 
 describe('QABS Studio server contract (isolated SQLite)', () => {
   it('authenticates through Studio aliases and enforces workspace tenant boundaries', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalEnv = {
+      registration: process.env.QABS_REGISTRATION_ENABLED,
+      verification: process.env.QABS_EMAIL_VERIFICATION_ENABLED,
+      resend: process.env.RESEND_API_KEY
+    };
+    process.env.QABS_REGISTRATION_ENABLED = 'true';
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED = 'true';
+    process.env.RESEND_API_KEY = 're_synthetic_test_only';
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === 'https://api.resend.com/emails') {
+        return new Response(JSON.stringify({ id: 'synthetic-email' }), {
+          status: 200, headers: { 'content-type': 'application/json' }
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
     const { app } = createQabsApp({ dbPath: ':memory:', exposePreviewTokens: true, rateLimitMax: 100 });
     const server = app.listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', resolve));
@@ -54,7 +72,7 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       const config = await alpha.request('GET', '/studio/api/config');
       assert.equal(config.status, 200);
       assert.equal(config.json.payments, false);
-      assert.equal(config.json.emailVerification, false);
+      assert.equal(config.json.registration, true);\n      assert.equal(config.json.emailVerification, true);
       assert.equal(config.json.passwordRecovery, false);
       assert.equal(config.json.formationDetails, false);
       assert.equal(config.json.documents, false);
@@ -149,6 +167,13 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       await new Promise<void>((resolve, reject) =>
         server.close(error => error ? reject(error) : resolve())
       );
+      globalThis.fetch = originalFetch;
+      if (originalEnv.registration === undefined) delete process.env.QABS_REGISTRATION_ENABLED;
+      else process.env.QABS_REGISTRATION_ENABLED = originalEnv.registration;
+      if (originalEnv.verification === undefined) delete process.env.QABS_EMAIL_VERIFICATION_ENABLED;
+      else process.env.QABS_EMAIL_VERIFICATION_ENABLED = originalEnv.verification;
+      if (originalEnv.resend === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalEnv.resend;
     }
   });
 
@@ -164,6 +189,14 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       assert.equal(response.status, 200);
       assert.equal(config.payments, false);
       assert.equal(config.googleSignIn, false);
+      const blockedRegistration = await fetch(`http://127.0.0.1:${address.port}/studio/api/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'blocked@example.test', password: 'SyntheticStrong!2026' })
+      });
+      assert.equal(blockedRegistration.status, 503);
+      const blockedPayload = await blockedRegistration.json() as Json;
+      assert.equal(blockedPayload.code, 'REGISTRATION_DISABLED');
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close(error => error ? reject(error) : resolve())
