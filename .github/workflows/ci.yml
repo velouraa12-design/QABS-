@@ -31,7 +31,12 @@ jobs:
           const vulnerabilities = Object.entries(report.vulnerabilities || {});
           console.log("npm audit summary:", JSON.stringify(report.metadata?.vulnerabilities || {}));
           for (const [name, item] of vulnerabilities) {
-            console.log(`AUDIT ${item.severity}: ${name}; range=${item.range}; fixAvailable=${JSON.stringify(item.fixAvailable)}`);
+            const via = (item.via || []).map(advisory =>
+              typeof advisory === "string"
+                ? advisory
+                : `${advisory.title} [${advisory.url || "no advisory URL"}; affected=${advisory.range || "see advisory"}]`
+            ).join("; ");
+            console.log(`AUDIT ${item.severity}: ${name}; range=${item.range}; fixAvailable=${JSON.stringify(item.fixAvailable)}; advisories=${via}`);
           }
           if (!vulnerabilities.length) console.log("npm audit: no package advisories reported.");
         '
