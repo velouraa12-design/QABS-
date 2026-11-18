@@ -140,3 +140,32 @@ On the same Pages preview:
 - `/api/health` returned HTTP 200 with `text/html` containing the application's not-found page, not JSON health output.
 - `/studio/api/config` returned HTTP 200 with `text/html` containing the application's not-found page, not a Studio API response.
 This is consistent with the Cloudflare Pages project reporting `uses_functions=false`: the preview is static-only and has no deployed backend Functions/API. Do not wire this Pages origin to real customer operations or treat HTTP 200 on these fallback pages as API success.
+
+
+## 11. Isolated two-user security exercise — 2026-11-18
+
+Target: `qabs-stores-acceptance-preview` Worker + its dedicated D1 `qabs-stores-acceptance-preview`. Worker settings showed no service binding to the commerce/production Worker; the only database binding was the acceptance-preview D1. No emails, payments, DNS, customer services, or production endpoints were invoked.
+
+Synthetic fixtures created (not cleaned up, because destructive cleanup is outside the authorized scope):
+- Accounts: `qabs.audit.alpha.20261118@qabs.invalid` and `qabs.audit.beta.20261118@qabs.invalid`.
+- Workspaces: `Synthetic Alpha Workspace` and `Synthetic Beta Workspace`.
+- One draft only: `Synthetic Alpha Isolated Draft` using the preview catalog template `qabs-fashion`.
+- No passwords or session cookies were saved in this repository/log.
+
+Observed test results:
+| Test | Result |
+|---|---|
+| Register Alpha and Beta | PASS — both returned HTTP 201; sessions established. |
+| Read own session/profile | PASS — both returned HTTP 200, role `client`, CSRF value present. |
+| Create separate personal workspaces | PASS — both returned HTTP 201. |
+| List personal workspaces | PASS — each account saw exactly one workspace. |
+| Beta reads Alpha workspace stores by substituting Alpha workspace ID | PASS — HTTP 404 `workspace_not_found`. |
+| Beta reads Alpha projects by substituting Alpha workspace ID | PASS — HTTP 404 `workspace_not_found`. |
+| Beta reads own workspace stores/projects | PASS — HTTP 200, empty lists. |
+| Create Alpha store draft | PASS — HTTP 201. |
+| Alpha vs Beta store-draft lists | PASS — Alpha saw 1 draft; Beta saw 0. |
+| Alpha logout then reuse old session | PASS — logout HTTP 200; subsequent `/api/me` HTTP 401 `authentication_required`. |
+
+Scope limitation: this proves the tested workspace membership gates and owner-filtered draft listing for two synthetic users in this one acceptance Worker. It does NOT prove every store/product/order/customer/document/domain endpoint is isolated, nor does it prove the separate auth Worker and live `qabs-stores` service are safe. Email verification is disabled in this acceptance preview, so this registration test is not an approval to onboard real users.
+
+A subsequent cross-tenant project-creation attempt was not executed because the browser tool's safety layer blocked that request. No result is claimed for cross-tenant write attempts on the project API.
