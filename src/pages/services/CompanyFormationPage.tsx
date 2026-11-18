@@ -13,50 +13,50 @@ export const CompanyFormationPage: React.FC = () => {
     {
       jurAr: 'وايومنغ (Wyoming LLC)',
       jurEn: 'Wyoming LLC (WY)',
-      taxAr: '0% ضريبة دخل ولاية',
-      taxEn: '0% State Income Tax',
-      privacyAr: 'سرية تامة للملاك',
-      privacyEn: 'Full Member Privacy',
-      annualAr: '$60 / سنوياً',
-      annualEn: '$60 / year',
-      fitAr: 'التجارة الإلكترونية والأنشطة الرقمية',
-      fitEn: 'E-Commerce & Digital Agencies'
+      taxAr: 'لا ضريبة دخل شخصية أو شركات على مستوى الولاية؛ قد تنطبق ضرائب أخرى',
+      taxEn: 'No state personal or corporate income tax; other taxes may apply',
+      privacyAr: 'تخضع لإفصاحات السجلات المطلوبة',
+      privacyEn: 'Subject to required public-record disclosures',
+      annualAr: 'تقرير سنوي ورسوم حكومية حالية',
+      annualEn: 'Annual report; current state fees apply',
+      fitAr: 'قد تناسب بعض الأنشطة الرقمية بعد مراجعة الالتزامات',
+      fitEn: 'May suit some digital businesses after reviewing obligations'
     },
     {
       jurAr: 'ديلاوير (Delaware LLC)',
       jurEn: 'Delaware LLC (DE)',
-      taxAr: '0% خارج الولاية',
-      taxEn: '0% Out-of-State',
-      privacyAr: 'حماية قانونية متقدمة',
-      privacyEn: 'Court of Chancery',
-      annualAr: '$300 / سنوياً',
-      annualEn: '$300 / year',
-      fitAr: 'الشركات الناشئة وجذب الاستثمار',
-      fitEn: 'Tech Startups & VC Scaling'
+      taxAr: 'تختلف الالتزامات بحسب النشاط ومكان ممارسة الأعمال ونوع الكيان',
+      taxEn: 'Obligations vary by activity, business location, and entity type',
+      privacyAr: 'تطبق متطلبات السجل والإفصاح الخاصة بالكيان',
+      privacyEn: 'Entity-specific public-record and disclosure rules apply',
+      annualAr: 'قد تنطبق ضريبة امتياز ورسوم بحسب الكيان',
+      annualEn: 'Franchise tax and entity-specific fees may apply',
+      fitAr: 'قد تناسب شركات تخطط لجذب استثمار',
+      fitEn: 'May suit companies planning to seek investment'
     },
     {
       jurAr: 'نيو مكسيكو (New Mexico LLC)',
       jurEn: 'New Mexico LLC (NM)',
-      taxAr: '0% للأعمال الخارجية',
-      taxEn: '0% Foreign-Sourced',
-      privacyAr: 'سرية مطلقة',
-      privacyEn: 'Full Anonymity',
-      annualAr: '$0 تقرير سنوي',
-      annualEn: '$0 Annual Report',
-      fitAr: 'أقل تكلفة سنوية ممكنة',
-      fitEn: 'Lowest Annual Maintenance'
+      taxAr: 'تُحدد وفق مصدر الدخل والالتزامات المحلية والفيدرالية',
+      taxEn: 'Depends on income source and applicable state and federal obligations',
+      privacyAr: 'تطبق متطلبات الإفصاح والسجل القانوني',
+      privacyEn: 'Required disclosures and public-record rules apply',
+      annualAr: 'تُراجع المتطلبات والرسوم الحالية للكيان',
+      annualEn: 'Check current entity requirements and fees',
+      fitAr: 'قد تناسب من يوازن التكلفة مع المتطلبات',
+      fitEn: 'May suit founders balancing cost and requirements'
     },
     {
       jurAr: 'المملكة المتحدة (UK LTD)',
       jurEn: 'United Kingdom (UK LTD)',
-      taxAr: 'ضريبة شركات بريطانية',
-      taxEn: 'UK Corporation Tax',
-      privacyAr: 'سجل Companies House',
-      privacyEn: 'Companies House Registry',
-      annualAr: '£13 بيان تأكيد',
-      annualEn: '£13 Confirmation Statement',
-      fitAr: 'الأسواق الأوروبية والـ GBP',
-      fitEn: 'UK/EU Trade & GBP Gateways'
+      taxAr: 'ضريبة الشركات وفق الأرباح والقواعد البريطانية',
+      taxEn: 'Corporation tax under applicable UK rules',
+      privacyAr: 'بيانات الشركة متاحة وفق قواعد Companies House',
+      privacyEn: 'Company details are public under Companies House rules',
+      annualAr: 'رسوم الإيداع الحالية لدى Companies House',
+      annualEn: 'Current Companies House filing fees',
+      fitAr: 'قد تناسب نشاطاً يستهدف المملكة المتحدة',
+      fitEn: 'May suit businesses targeting the UK market'
     }
   ];
 
@@ -72,8 +72,8 @@ export const CompanyFormationPage: React.FC = () => {
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {isAr
-                  ? 'قارن الضرائب والتكاليف السنوية لتحديد الأنسب لنشاطك التجاري.'
-                  : 'Compare state tax treatment, privacy rules, and annual maintenance costs.'}
+                  ? 'مقارنة إرشادية عامة؛ تختلف الضرائب والرسوم والإفصاحات بحسب الكيان والنشاط ومكان ممارسة الأعمال.'
+                  : 'General guidance only; taxes, fees, and disclosures vary by entity, activity, and where business is conducted.'}
               </p>
             </div>
             <AppLink
