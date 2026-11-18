@@ -16,16 +16,16 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     seoTitleAr: 'تأسيس الشركات الأمريكية والبريطانية | منصة قبس QABS',
     seoTitleEn: 'US & UK Company Formation Services | QABS Digital Platform',
     seoDescriptionAr:
-      'خدمة تأسيس الشركات الأمريكية LLC و C-Corp والبريطانية LTD عبر منصة قبس مع استخراج الوثائق الرسمية والوكيل المسجل وتجهيز بوابات الدفع.',
+      'معلومات عن المساعدة في تأسيس بعض الكيانات الأمريكية والبريطانية، مع مراجعة الأهلية والرسوم والمتطلبات قبل قبول الطلب.',
     seoDescriptionEn:
-      'Form a US LLC, C-Corp, or UK LTD remotely with QABS. Full state filing, registered agent, operating agreement, and banking readiness.',
+      'Formation assistance for eligible US and UK entities, subject to jurisdictional requirements, provider availability, and confirmation of the service scope.',
     detailedDescriptionAr: [
-      'توفر منصة قبس الرقمية خدمة تأسيس الشركات الدولية عن بُعد لرواد الأعمال والتجار والمستقلين من جميع أنحاء العالم دون الحاجة إلى سفر أو إقامة في الولايات المتحدة أو بريطانيا.',
-      'تتولى قبس إعداد وتدقيق مسودة التأسيس، والتحقق من توفر الاسم التجاري، وإيداع عقد التأسيس (Articles of Organization / Incorporation) لدى سكرتير الولاية أو سجل Companies House، مع تسليم كافة المستندات الرسمية داخل خزينة الوثائق في حسابك.'
+      'توفر منصة قبس الرقمية خدمة مساعدة في تأسيس الشركات الدولية عن بُعد للمتقدمين المؤهلين. تختلف متطلبات الإقامة والتحقق والحضور بحسب الاختصاص ونوع الكيان والنشاط.',
+      'تساعد قبس في إعداد المستندات ومراجعتها وتجهيز الإيداع لدى الجهة المختصة بعد قبول الطلب وتأكيد نطاق الخدمة. يصدر السجل الحكومي المستندات الرسمية، ويُحدد وقتها وإمكانية تسليمها بحسب الجهة وتفعيل قناة الوثائق.'
     ],
     detailedDescriptionEn: [
-      'QABS provides end-to-end remote company formation for global founders, e-commerce merchants, and agencies without requiring US or UK residency or physical travel.',
-      'Our specialists handle name availability screening, statutory document drafting, Secretary of State or UK Companies House filing, and digital delivery of your certified corporate kit directly into your QABS Document Vault.'
+      'QABS provides remote formation assistance for eligible applicants. Residency, identity verification, and in-person requirements vary by jurisdiction, entity type, and activity.',
+      'QABS can assist with document preparation and filing coordination after eligibility review and service-scope confirmation. The relevant registry issues official records and controls processing times and document delivery.'
     ],
     deliveryTimeAr: 'المدة تقديرية وتتغير حسب الجهة الحكومية واكتمال المستندات',
     deliveryTimeEn: 'Estimated timing varies by registry and document completeness',
@@ -59,13 +59,13 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       }
     ],
     benefitsAr: [
-      'فصل الذمة المالية والشخصية وحماية الأصول القانونية.',
+      'قد يوفر الكيان فصلاً قانونياً بين أصول الشركة والأصول الشخصية عند الالتزام بالقوانين والإدارة السليمة؛ لا يُعد ذلك حماية مطلقة.',
       'إمكانية التقديم على بوابات الدفع العالمية مثل Stripe و PayPal.',
       'البيع في الأسواق الأمريكية والأوروبية ومنصات أمازون وشوبيفاي باسم شركة رسمية.',
       'إدارة التأسيس والمتاجر والفوترة من لوحة تحكم موحدة.'
     ],
     benefitsEn: [
-      'Limited liability protection separating personal and business assets.',
+      'An entity may provide legal separation between business and personal assets when properly maintained; this is not absolute protection.',
       'Eligibility to apply for global payment processors like Stripe and PayPal.',
       'Sell on Amazon US, Shopify, and B2B global contracts under a registered entity.',
       'Unified QABS workspace linking corporate compliance with online store operations.'
