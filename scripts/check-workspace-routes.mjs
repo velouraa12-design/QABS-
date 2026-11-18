@@ -237,7 +237,7 @@ const requiredRouteContracts = [
   ["Studio route mounts its own API-backed workspace", "normalizePath(currentPath) === '/studio'"],
   ["Studio view is mounted as a standalone API-backed workspace", "StudioWorkspaceView"],
   ["login route mounts Studio", "['/account', '/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(normalizePath(currentPath))"],
-  ["login route bypasses legacy auth modal", "if (studioAuthPaths.has(path)) return;"],
+  ["login route bypasses legacy auth modal", "if (studioAuthPaths.has(path)) {"],
   ["signup route", "'/signup': 'register'"],
   ["password recovery route", "'/forgot-password': 'recover'"],
   ["email verification route", "'/verify-email': 'verify'"],
