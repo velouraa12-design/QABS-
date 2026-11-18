@@ -1,13 +1,13 @@
 /**
  * QABS Studio API client for the deployed /studio route.
- * Studio uses the same-origin HttpOnly qabs_session cookie and CSRF token
- * issued by the preview server. It does not use the legacy qabsApi client.
+ * The Cloudflare Studio worker uses an HttpOnly __Host-qdp_session cookie
+ * and CSRF token. The local Express candidate currently uses qabs_session;
+ * those session contracts are not interchangeable.
  *
- * IMPORTANT: use only behind the matching same-origin /studio proxy. The
- * public Pages preview is a separate origin and is not an authenticated
- * customer workspace.
- * This client is not wired into AppContext until authenticated ownership and
- * tenant-isolation tests pass. No financial or irreversible writes are exposed.
+ * IMPORTANT: the public Pages preview is a different origin and cannot use
+ * the portal's SameSite=Strict cookie. Use only behind the matching
+ * same-origin portal /studio proxy. This client is not wired into AppContext
+ * until deployed-worker parity and authenticated tenant-isolation tests pass.
  */
 export type StudioApiError = Error & { status?: number; code?: string };
 
