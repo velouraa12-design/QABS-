@@ -6,6 +6,7 @@ on:
       - unified-template-preview-20261116
       - chore/qabs-123-unified-completion
       - integration/qabs-unified-preview-20261118
+      - fix/cloudflare-preview-secret-condition-20261118
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,14 +44,24 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 3
+      - name: Detect Cloudflare deployment credential
+        id: cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Deploy to isolated Cloudflare Pages project
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        if: steps.cloudflare.outputs.configured == 'true'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: d1c24135f8b8eb634e49ae26346090ea
         run: |
           npx wrangler pages deploy dist --project-name=qabs-workspace-reference-preview --branch=${GITHUB_REF_NAME}
       - name: Report missing Cloudflare token (non-blocking)
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN == '' }}
+        if: steps.cloudflare.outputs.configured == 'false'
         run: |
           echo "CLOUDFLARE_API_TOKEN is not configured in GitHub repository secrets; skipped remote Cloudflare Pages publish. Build artifact uploaded cleanly."
