@@ -34,6 +34,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
     language,
     user,
     isAuthenticated,
+    backendStatus,
     submitServiceOrder,
     requestServiceAction
   } = useApp();
@@ -138,6 +139,12 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
 
   const submitWithStatus = async (status: 'draft' | 'new') => {
     setErrorMsg(null);
+    if (backendStatus !== 'connected') {
+      setErrorMsg(isAr
+        ? 'المعاينة غير متصلة بخدمة الطلبات؛ يمكنك مراجعة النموذج فقط ولم يتم حفظ أي طلب.'
+        : 'The preview is not connected to the request service; you can review the form, but no request can be saved.');
+      return;
+    }
 
     if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
       setErrorMsg(
