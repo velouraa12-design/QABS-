@@ -10,11 +10,13 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       allow: process.env.QABS_ALLOW_SANDBOX_PAYMENTS,
       tap: process.env.TAP_SECRET_KEY,
       origin: process.env.APP_ORIGIN,
-      resend: process.env.RESEND_API_KEY
+      resend: process.env.RESEND_API_KEY,
+      webhook: process.env.TAP_WEBHOOK_URL
     };
     process.env.QABS_ALLOW_SANDBOX_PAYMENTS = 'true';
     process.env.TAP_SECRET_KEY = 'sk_test_qabs_fake_key';
     process.env.APP_ORIGIN = 'https://preview.qabs1.store';
+    process.env.TAP_WEBHOOK_URL = 'https://api-preview.example.test/api/payments/tap/webhook';
     delete process.env.RESEND_API_KEY;
 
     const { app, db } = createQabsApp({ dbPath: ':memory:', exposePreviewTokens: true, rateLimitMax: 100 });
@@ -105,7 +107,7 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       assert.equal(tapChargeRequest.current?.amount, 349, 'server must use invoice amount, not client amount');
       assert.equal(tapChargeRequest.current?.currency, 'USD');
       assert.equal(tapChargeRequest.current?.save_card, false);
-      assert.equal(tapChargeRequest.current?.post?.url, 'https://preview.qabs1.store/api/payments/tap/webhook');
+      assert.equal(tapChargeRequest.current?.post?.url, 'https://api-preview.example.test/api/payments/tap/webhook');
 
       const beforeVerify = db.prepare('SELECT status, payment_proof_ref FROM billing_invoices WHERE id = ?')
         .get('inv_tap_sandbox_1') as { status: string; payment_proof_ref: string };
@@ -172,6 +174,8 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       else process.env.APP_ORIGIN = originalEnv.origin;
       if (originalEnv.resend === undefined) delete process.env.RESEND_API_KEY;
       else process.env.RESEND_API_KEY = originalEnv.resend;
+      if (originalEnv.webhook === undefined) delete process.env.TAP_WEBHOOK_URL;
+      else process.env.TAP_WEBHOOK_URL = originalEnv.webhook;
       db.close();
     }
   });
