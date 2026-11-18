@@ -120,7 +120,7 @@ const forbiddenUnverifiedClaims = [
   'Verified physical addresses in Wyoming',
   'Activated within 24 hours',
   'Unlimited commercial mail PDF scans',
-  'لا توجد ولاية هي الأفضل لكل الشركات'
+  'لا يوجد ادعاء بأن ولاية واحدة مناسبة للجميع'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -153,7 +153,8 @@ const requiredTruthfulCopy = [
   'does not imply bank or payment-provider approval',
   'No state is best for every company',
   'لا يُفترض وجود ربط تلقائي بلوحة قبس',
-  'does not guarantee Good Standing'
+  'does not guarantee Good Standing',
+  'لا توجد ولاية هي الأفضل لكل الشركات'
 ];
 for (const phrase of requiredTruthfulCopy) {
   const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, registeredAgentCopy, usLlcCopy, customizerSource, serviceTemplateSource]
