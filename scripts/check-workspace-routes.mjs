@@ -21,6 +21,24 @@ for (const [tab, slug] of slugs) {
 }
 if (declared.length !== sidebar.length) errors.push(`Tab/sidebar count mismatch: ${declared.length}/${sidebar.length}`);
 
+
+const appSource = readFileSync('src/App.tsx', 'utf8');
+const authSource = readFileSync('src/components/AuthModal.tsx', 'utf8');
+const requiredRouteContracts = [
+  ["workspace deep links", "path.startsWith('/workspace/')"],
+  ["Studio entry alias", "path === '/studio'"],
+  ["login route", "'/login': 'login'"],
+  ["signup route", "'/signup': 'register'"],
+  ["password recovery route", "'/forgot-password': 'recover'"],
+  ["email verification route", "'/verify-email': 'verify'"],
+  ["workspace route renders landing/auth gate", "path === '/workspace' || path.startsWith('/workspace/')"],
+  ["email verification panel state", "setShowVerifyPanel(authMode === 'verify')"]
+];
+for (const [label, token] of requiredRouteContracts) {
+  const source = label === "email verification panel state" ? authSource : appSource;
+  if (!source.includes(token)) errors.push(`Missing direct route contract: ${label}`);
+}
+
 if (errors.length) {
   console.error('QABS workspace route check failed:');
   for (const error of errors) console.error(`- ${error}`);
