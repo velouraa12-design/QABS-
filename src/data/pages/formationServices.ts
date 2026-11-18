@@ -610,64 +610,64 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     titleAr: 'تأسيس شركة ذات مسؤولية محدودة أمريكية (US LLC)',
     titleEn: 'US Limited Liability Company (US LLC) Formation',
     subtitleAr:
-      'الكيان الأمثل للتجارة الإلكترونية، الوكالات الرقمية، والمتاجر العالمية — شفافية كاملة في أسعار جميع الولايات الخمسين ومزايا ضريبية مرنة.',
+      'معلومات ومساعدة في مراجعة خيار US LLC بحسب نشاطك ومكان ممارسة الأعمال ومتطلبات الولاية؛ لا يوجد اختصاص واحد مناسب للجميع وتخضع الرسوم والأهلية للتحقق.',
     subtitleEn:
-      'The optimal legal structure for e-commerce brands, digital agencies, and SaaS founders — transparent 50-state pricing with pass-through flexibility.',
+      'Information and assistance reviewing a US LLC option against business activity, operating location, and state requirements; no single jurisdiction fits every founder and fees and eligibility require verification.',
     seoTitleAr: 'تأسيس شركة US LLC أمريكية لغير المقيمين | أسعار الـ 50 ولاية — قبس',
     seoTitleEn: 'Form a US LLC for Non-Residents | All 50 States Pricing — QABS',
     seoDescriptionAr:
-      'تأسيس شركة US LLC في وايومنغ، ديلاوير، نيو مكسيكو وجميع الولايات الخمسين مع مقارنة الرسوم الحكومية واستخراج EIN وفتح الحسابات البنكية.',
+      'مساعدة في مراجعة خيارات US LLC وتجهيز طلب التأسيس في الاختصاصات المتاحة، مع توضيح الرسوم والمتطلبات قبل قبول نطاق الخدمة؛ لا نضمن إصدار EIN أو فتح حساب بنكي.',
     seoDescriptionEn:
-      'Incorporate your US LLC in Wyoming, Delaware, New Mexico, or any of the 50 states with transparent filing fees and turnkey compliance.',
+      'US LLC formation assistance in supported jurisdictions, with requirements and fees reviewed before the service scope is accepted; EIN issuance and bank-account opening are not guaranteed.',
     detailedDescriptionAr: [
-      'الشركة ذات المسؤولية المحدودة الأمريكية (LLC) هي الهيكل القانوني الأكثر مرونة وانتشاراً لرواد الأعمال الدوليين؛ إذ تجمع بين حماية الأصول الشخصية وسهولة الإدارة دون تعقيدات مجالس الإدارة.',
-      'تتيح لك قبس المقارنة الدقيقة بين جميع الولايات الأمريكية الخمسين (مثل وايومنغ ذات الخصوصية العالية و 0% ضريبة ولاية، وديلاوير المعيارية، ونيو مكسيكو بدون تقرير سنوي) واختيار الأنسب لنشاطك وميزانيتك.'
+      'الشركة ذات المسؤولية المحدودة (LLC) أحد الأشكال القانونية المتاحة في الولايات المتحدة. تختلف آثارها القانونية والضريبية بحسب الولاية والملكية والنشاط ومكان ممارسة الأعمال؛ لا تمثل حماية مطلقة أو استشارة قانونية أو ضريبية.',
+      'تساعد قبس في مراجعة بعض الاختصاصات المتاحة ومقارنة المتطلبات والرسوم المعلنة. الضرائب والتقارير والإفصاحات تختلف حسب الحالة وقد تتطلب التزامات في أكثر من ولاية؛ يجب التحقق من المصادر الرسمية قبل الاختيار.'
     ],
     detailedDescriptionEn: [
       'A US Limited Liability Company (LLC) is the most flexible, cost-effective entity for international founders, combining personal asset protection with streamlined governance.',
-      'QABS lets you compare filing fees and annual costs across all 50 US states—from privacy-focused zero-tax Wyoming to $0-annual-report New Mexico—and launch your LLC in days.'
+      'QABS can help review selected jurisdictions and published requirements and fees. Tax, reporting, and disclosure obligations vary by circumstances and may apply in more than one state; verify official sources before choosing.'
     ],
-    deliveryTimeAr: '1 – 3 أيام عمل في معظم الولايات',
-    deliveryTimeEn: '1 – 3 business days in most states',
+    deliveryTimeAr: 'المدة غير مضمونة وتختلف حسب الولاية واكتمال المستندات ومعالجة السجل',
+    deliveryTimeEn: 'Timing is not guaranteed and varies by state, document completeness, and registry processing',
     startingPriceUsd: 339,
-    pricingNoteAr: 'تشمل رسوم الخدمة + الرسوم الحكومية (تبدأ من $339 شاملة كنتاكي أو $349 نيو مكسيكو)',
-    pricingNoteEn: 'Total package including state filing fees (starts at $339 KY / $349 NM)',
+    pricingNoteAr: 'الأسعار إرشادية وتخضع لمراجعة الأهلية والتوفر؛ تُحدد الرسوم الحكومية ورسوم الوكيل وأي خدمات إضافية في عرض مكتوب قبل التنفيذ.',
+    pricingNoteEn: 'Prices are indicative and subject to eligibility and availability review; state filing, agent, and optional service fees are confirmed in a written quote before work begins.',
     features: [
       {
-        titleAr: 'تغطية شاملة لجميع الولايات الـ 50',
-        titleEn: 'All 50 US States Supported',
-        descriptionAr: 'رسوم حكومية واضحة بدون تكاليف مخفية من وايومنغ حتى نيويورك.',
-        descriptionEn: 'Upfront state filing fees across all 50 states with zero hidden charges.'
+        titleAr: 'مراجعة الاختصاصات المتاحة',
+        titleEn: 'Supported Jurisdictions Review',
+        descriptionAr: 'تُراجع الرسوم الحكومية ومتطلبات الولاية المختارة من المصدر الرسمي قبل اعتماد عرض الخدمة.',
+        descriptionEn: 'Government fees and requirements for the selected state are checked against official sources before the service quote is confirmed.'
       },
       {
-        titleAr: 'ضرائب مرنة لغير المقيمين',
-        titleEn: 'Pass-Through Tax Efficiency',
-        descriptionAr: 'هيكل ضريبي مرن مع إعفاء ضريبة الولاية في ولايات مثل وايومنغ.',
-        descriptionEn: 'Flexible pass-through taxation with 0% state income tax in top states.'
+        titleAr: 'مراجعة الآثار الضريبية حسب الحالة',
+        titleEn: 'Tax Treatment Depends on Circumstances',
+        descriptionAr: 'المعاملة الضريبية تعتمد على نوع الكيان والمالك ومصدر الدخل ومكان ممارسة النشاط؛ لا يعني اختيار الولاية الإعفاء من الضرائب.',
+        descriptionEn: 'Tax treatment depends on entity type, owner, income source, and operating locations; selecting a state does not eliminate tax obligations.'
       },
       {
-        titleAr: 'مناسب لـ Shopify و Stripe و Amazon',
-        titleEn: 'Built for Commerce Platforms',
-        descriptionAr: 'جاهزية كاملة لتوثيق حسابات التجار على بوابات الدفع العالمية.',
-        descriptionEn: 'Structured to pass merchant onboarding on Stripe, PayPal, and Amazon.'
+        titleAr: 'مراجعة متطلبات المنصات ومزودي الدفع',
+        titleEn: 'Marketplace and Payment Provider Requirements',
+        descriptionAr: 'قد تساعد وثائق الشركة في تجهيز بعض الطلبات؛ لكل منصة ومزود شروطه وقراره المستقل ولا نضمن القبول.',
+        descriptionEn: 'Company documents may help prepare some applications; each platform and provider applies independent requirements and decisions, with no approval guarantee.'
       },
       {
-        titleAr: 'متابعة امتثال سنوية تلقائية',
-        titleEn: 'Automated Compliance Calendar',
-        descriptionAr: 'تذكير آلي بمواعيد التقرير السنوي وإقرار 5472 السنوي للشركات المملوكة أجنبياً.',
-        descriptionEn: 'Automated alerts for state annual reports and Form 5472 compliance.'
+        titleAr: 'مراجعة التزامات الامتثال السنوية',
+        titleEn: 'Annual Compliance Requirements Review',
+        descriptionAr: 'تُراجع مواعيد التقارير والنماذج التي قد تنطبق على الشركة؛ لا توجد متابعة أو تنبيهات آلية ما لم تُفعّل خدمة مستقلة وتُؤكد.',
+        descriptionEn: 'Applicable report and form deadlines are reviewed; automated tracking or alerts are not provided unless a separate service is activated and confirmed.'
       }
     ],
     benefitsAr: [
-      'حماية قانونية كاملة لأموالك الشخصية عن التزامات الشركة.',
-      'تأسيس سريع خلال أيام مع استلام رقم الملف الحكومي File Number.',
-      'توسيع نشاطك التجاري بفتح حسابات بنكية أمريكية بالدولار.',
+      'قد يوفر الكيان فصلاً قانونياً بين الأصول عند الالتزام بالقوانين والإدارة السليمة؛ لا يمثل ذلك حماية مطلقة.',
+      'يصدر رقم الملف أو السجل من الجهة المختصة بعد قبول الإيداع؛ لا يمكن ضمان مدة الإصدار.',
+      'قد تساعد مستندات الكيان في تجهيز طلب حساب تجاري؛ قرار فتح الحساب يعود للمزود ولا نضمنه.',
       'مرونة إضافة أو تعديل الشركاء عبر اتفاقية التشغيل.'
     ],
     benefitsEn: [
-      'Full liability shield separating personal wealth from business risk.',
-      'Fast state filing with verified Secretary of State File Number.',
-      'Unlock USD commercial banking and global vendor payouts.',
+      'An entity may provide legal separation of assets when properly maintained; this is not absolute protection.',
+      'The relevant registry issues a filing or record number after accepting the submission; timing is not guaranteed.',
+      'Entity documents may support a business-account application; the provider decides approval and QABS does not guarantee it.',
       'Simple governance without rigid corporate board formalities.'
     ],
     steps: [
@@ -693,8 +693,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '03',
         titleAr: 'التأسيس وإصدار الوثائق',
         titleEn: 'State Filing & EIN Issuance',
-        descriptionAr: 'تودع قبس المستندات رسمياً وتستخرج شهادة التأسيس والـ EIN واتفاقية التشغيل.',
-        descriptionEn: 'We complete state filing, issue your Operating Agreement, and obtain your IRS EIN.',
+        descriptionAr: 'تُنسّق قبس تجهيز طلب الإيداع بعد قبول الأهلية والنطاق وتوفر جهة التنفيذ؛ السجل الحكومي يصدر شهادة التأسيس، ويخضع طلب EIN لمتطلبات IRS.',
+        descriptionEn: 'QABS coordinates filing preparation after eligibility and scope acceptance and service availability; the registry issues formation records, and any EIN request is subject to IRS requirements.',
         durationAr: '3 – 10 أيام عمل',
         durationEn: '3 – 10 business days'
       }
@@ -705,22 +705,22 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة وايومنغ LLC المتكاملة',
         nameEn: 'Wyoming LLC Complete',
         priceUsd: 399,
-        billingNoteAr: 'شاملة $100 رسوم ولاية وايومنغ',
-        billingNoteEn: 'Includes $100 WY state fee',
-        descriptionAr: 'الخيار الأول للتجارة الإلكترونية: سرية تامة، 0% ضريبة ولاية، تأسيس + EIN + وكيل.',
-        descriptionEn: '#1 choice for e-commerce: privacy, 0% state tax, formation + EIN + Registered Agent.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة أهلية التأسيس في وايومنغ؛ الضرائب والإفصاحات والوكيل وطلب EIN تخضع لمتطلبات مستقلة وتأكيد النطاق.',
+        descriptionEn: 'An indicative option for reviewing Wyoming formation eligibility; tax, disclosure, agent, and EIN requirements are separate and subject to scope confirmation.',
         recommended: true,
         featuresAr: [
-          'تأسيس LLC في ولاية وايومنغ ($100 رسوم حكومية مشمولة)',
-          'استخراج الرقم الضريبي EIN من IRS',
-          'اتفاقية التشغيل + قرار البنك',
-          'وكيل مسجل وعنوان رسمي لمدة شهرين مجاناً'
+          'مساعدة في تجهيز طلب LLC في وايومنغ بعد مراجعة الأهلية والرسوم',
+          'مساعدة في إعداد طلب EIN وفق متطلبات IRS دون ضمان الإصدار',
+          'مسودة اتفاقية تشغيل أو قرار بنكي إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومدته وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'Wyoming LLC formation ($100 state fee included)',
-          'Federal IRS EIN Tax ID',
-          'Operating Agreement & Banking Resolution',
-          'Registered Agent & street address (2 months free)'
+          'Assistance preparing a Wyoming LLC application subject to eligibility and fee review',
+          'EIN application assistance subject to IRS requirements; issuance is not guaranteed',
+          'Operating Agreement or banking-resolution draft if included in the quote',
+          'Confirm agent availability, term, and cost before ordering'
         ]
       },
       {
@@ -728,21 +728,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة نيو مكسيكو LLC الاقتصادية',
         nameEn: 'New Mexico LLC Value',
         priceUsd: 349,
-        billingNoteAr: 'شاملة $50 رسوم ولاية نيو مكسيكو',
-        billingNoteEn: 'Includes $50 NM state fee',
-        descriptionAr: 'أقل تكلفة سنوية ($0 تقرير سنوي) مع سرية ملاك تامة وتأسيس متكامل.',
-        descriptionEn: 'Lowest maintenance ($0 annual report) with owner privacy and full formation.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة متطلبات نيو مكسيكو؛ تختلف التقارير والإفصاحات والضرائب حسب النشاط والمالك والجهات الأخرى.',
+        descriptionEn: 'An indicative option for reviewing New Mexico requirements; reporting, disclosure, and tax obligations vary by activity, owner, and other jurisdictions.',
         featuresAr: [
-          'تأسيس LLC في نيو مكسيكو ($50 رسوم حكومية مشمولة)',
-          'لا يوجد تقرير سنوي إلزامي للولاية ($0)',
-          'استخراج EIN واتفاقية التشغيل',
-          'وكيل مسجل مجاني لشهرين'
+          'مساعدة في تجهيز طلب LLC في نيو مكسيكو بعد مراجعة الأهلية والرسوم',
+          'مراجعة التقارير والالتزامات التي تنطبق على الشركة',
+          'مساعدة في طلب EIN ومسودة اتفاقية تشغيل إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومدته وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'New Mexico LLC formation ($50 state fee included)',
-          '$0 state annual report requirement',
-          'IRS EIN & Operating Agreement included',
-          '2 months free Registered Agent'
+          'Assistance preparing a New Mexico LLC application subject to eligibility and fee review',
+          'Review reporting obligations that apply to the company',
+          'EIN application assistance and Operating Agreement draft if included in the quote',
+          'Confirm agent availability, term, and cost before ordering'
         ]
       },
       {
@@ -750,21 +750,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة ديلاوير LLC الاستثمارية',
         nameEn: 'Delaware LLC Standard',
         priceUsd: 389,
-        billingNoteAr: 'شاملة $90 رسوم ولاية ديلاوير',
-        billingNoteEn: 'Includes $90 DE state fee',
-        descriptionAr: 'المعيار القانوني المفضل للشركات التقنية والمستثمرين والبنوك الدولية.',
-        descriptionEn: 'Premier corporate jurisdiction trusted by institutional partners and banks.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة ملاءمة ديلاوير وفق نوع الكيان والنشاط وخطة العمل؛ لا يضمن قبول المستثمرين أو البنوك.',
+        descriptionEn: 'An indicative option to review Delaware suitability against entity type and business plans; investor or bank acceptance is not guaranteed.',
         featuresAr: [
-          'تأسيس LLC في ديلاوير ($90 رسوم حكومية مشمولة)',
+          'مساعدة في تجهيز طلب LLC في ديلاوير بعد مراجعة الأهلية والرسوم',
           'الاستفادة من محاكم Chancery المتخصصة',
-          'استخراج EIN واتفاقية التشغيل',
-          'وكيل مسجل في ويلمنجتون ديلاوير'
+          'مساعدة في طلب EIN ومسودة اتفاقية تشغيل إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومتطلبات العنوان وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'Delaware LLC formation ($90 state fee included)',
-          'Access to Delaware Court of Chancery framework',
-          'IRS EIN & Operating Agreement included',
-          'Registered Agent in Wilmington, DE'
+          'Assistance preparing a Delaware LLC application subject to eligibility and fee review',
+          'Review jurisdiction-specific legal framework with a qualified adviser',
+          'EIN application assistance and Operating Agreement draft if included in the quote',
+          'Confirm agent availability, address requirements, and cost before ordering'
         ]
       }
     ],
@@ -772,8 +772,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'ما هي أفضل ولاية أمريكية لتأسيس شركة تجارة إلكترونية؟',
         questionEn: 'Which US state is best for an e-commerce LLC?',
-        answerAr: 'ولاية وايومنغ (Wyoming) هي الأفضل لغالبية المتاجر الإلكترونية بسبب 0% ضريبة دخل، وسرية أسماء الملاك، ورسوم تجديد سنوي منخفضة ($60 فقط).',
-        answerEn: 'Wyoming is the top choice for most e-commerce founders thanks to 0% state income tax, owner privacy, and a low $60 annual report fee.'
+        answerAr: 'لا توجد ولاية هي الأفضل لكل الشركات. يعتمد الاختيار على مكان النشاط والعملاء والمالك والضرائب والرسوم والتقارير؛ ينبغي مراجعة المصادر الرسمية ومستشار مختص قبل القرار.',
+        answerEn: 'No state is best for every company. Selection depends on operations, customers, owners, taxes, fees, and reporting; review official sources and consult a qualified adviser before deciding.'
       },
       {
         questionAr: 'هل يمكن تأسيس LLC بشريك واحد (Single-Member) أم أكثر؟',
