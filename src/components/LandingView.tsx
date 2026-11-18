@@ -111,6 +111,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const { language, setMode, isAuthenticated, requestServiceAction, openClientAuth, sectionSettings } = useApp();
   const { siteContent } = useCustomizer();
   const isAr = language === 'ar';
+  const isPagesPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.pages.dev');
 
   usePageSeo({
     titleAr: 'قبس الرقمية QABS | تأسيس الشركات الأمريكية والبريطانية والمتاجر وبوابات الدفع',
@@ -127,8 +128,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [calcJurisdiction, setCalcJurisdiction] = useState<CalcJurisdiction>('US_WYOMING');
   const [calcCompanyName, setCalcCompanyName] = useState('');
   const [calcAddons, setCalcAddons] = useState({
-    ein: true,
-    physicalAddressAgent: true,
+    ein: false,
+    physicalAddressAgent: false,
     businessBank: false,
     stripePayPal: false
   });
@@ -167,6 +168,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleFormationAction = (stateCode?: string) => {
+    if (isPagesPreview) return;
     if (isAuthenticated) {
       onOpenFormationModal(stateCode || selectedCalcJur.stateCode);
       return;
@@ -177,13 +179,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
       serviceType: 'company_formation',
       titleAr: `تأسيس شركة ${foundJur.labelAr}`,
       titleEn: `Form ${foundJur.labelEn}`,
-      subtitleAr: 'تشمل تجهيز ملف التأسيس الرسمي، الوكيل المسجل، والمتابعة حتى الإصدار',
-      subtitleEn: 'Includes official filing package, registered agent & full workspace tracking',
+      subtitleAr: 'طلب مراجعة أهلية وتجهيز مستندات التأسيس؛ الإيداع والإصدار والوكيل تخضع للتوفر والجهات المختصة.',
+      subtitleEn: 'Request eligibility review and formation-document preparation; filing, issuance, and agent services depend on availability and the relevant authorities.'
       priceUsd: foundJur.baseUsd + einFee + agentFee,
       details: {
         jurisdiction: foundJur.id,
         companyName: calcCompanyName.trim() || undefined,
         entityType: foundJur.entityType,
+        indicativeOnly: true,
+        quoteReviewOnly: true,
         addons: {
           ein: true,
           physicalAddressAgent: true,
@@ -195,37 +199,41 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleCalculatorOrder = () => {
+    if (isPagesPreview) return;
     const enabledLabelsAr: string[] = [];
     const enabledLabelsEn: string[] = [];
     if (calcAddons.ein) {
-      enabledLabelsAr.push('الرقم الضريبي EIN');
-      enabledLabelsEn.push('IRS EIN');
+      enabledLabelsAr.push('مساعدة في طلب EIN');
+      enabledLabelsEn.push('EIN application assistance');
     }
     if (calcAddons.physicalAddressAgent) {
-      enabledLabelsAr.push('وكيل مسجل وعنوان رسمي');
-      enabledLabelsEn.push('Registered Agent & Address');
+      enabledLabelsAr.push('مراجعة متطلبات الوكيل المسجل');
+      enabledLabelsEn.push('Registered-agent requirements review');
     }
     if (calcAddons.businessBank) {
-      enabledLabelsAr.push('تجهيز البنك التجاري');
-      enabledLabelsEn.push('Mercury/Relay Bank Setup');
+      enabledLabelsAr.push('مراجعة متطلبات حساب الأعمال');
+      enabledLabelsEn.push('Business-account requirements review');
     }
     if (calcAddons.stripePayPal) {
-      enabledLabelsAr.push('ربط Stripe و PayPal');
-      enabledLabelsEn.push('Stripe & PayPal Setup');
+      enabledLabelsAr.push('مراجعة متطلبات مزودي الدفع');
+      enabledLabelsEn.push('Payment-provider requirements review');
     }
 
     requestServiceAction({
       id: `svc_calc_${Date.now()}`,
       serviceType: 'company_formation',
-      titleAr: `طلب تأسيس: ${selectedCalcJur.labelAr}`,
-      titleEn: `Formation Order: ${selectedCalcJur.labelEn}`,
-      subtitleAr: enabledLabelsAr.length > 0 ? `الخدمات المضافة: ${enabledLabelsAr.join(' + ')}` : selectedCalcJur.noteAr,
-      subtitleEn: enabledLabelsEn.length > 0 ? `Add-ons: ${enabledLabelsEn.join(' + ')}` : selectedCalcJur.noteEn,
+      titleAr: `طلب مراجعة أهلية وتكلفة: ${selectedCalcJur.labelAr}`,
+      titleEn: `Eligibility and Quote Review: ${selectedCalcJur.labelEn}`,
+      subtitleAr: `تقدير إرشادي للمراجعة فقط. ${enabledLabelsAr.length > 0 ? `الخدمات المطلوبة: ${enabledLabelsAr.join(' + ')}. ` : ''}لا يعني الطلب إيداعاً حكومياً أو إصدار EIN أو فتح حساب أو قبول مزود.`,
+      subtitleEn: `Indicative estimate for review only. ${enabledLabelsEn.length > 0 ? `Requested services: ${enabledLabelsEn.join(' + ')}. ` : ''}This request does not mean a government filing, EIN issuance, account opening, or provider approval.`,
       priceUsd: calcTotalUsd,
       details: {
         jurisdiction: selectedCalcJur.id,
         companyName: calcCompanyName.trim() || undefined,
         entityType: selectedCalcJur.entityType,
+        indicativeOnly: true,
+        quoteReviewOnly: true,
+        governmentFeesMayBeAdditional: true,
         addons: { ...calcAddons }
       }
     });
@@ -464,8 +472,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h2>
               <p className="text-xs sm:text-sm text-slate-500">
                 {isAr
-                  ? 'اختر الولاية والخدمات الإضافية لمعرفة التكلفة الإجمالية بالدولار والريال، ثم اضغط "اطلب الخدمة الآن" لإتمام الطلب.'
-                  : 'Select your jurisdiction and optional services for instant pricing, then proceed to checkout.'}
+                  ? 'اختر الاختصاص والخدمات التي ترغب بمراجعتها للحصول على تقدير مبدئي. السعر النهائي والرسوم الحكومية والتوفر تُؤكد بعد مراجعة الأهلية؛ لا يوجد دفع في هذه المعاينة.'
+                  : 'Select a jurisdiction and services to review for an indicative estimate. Final pricing, government fees, and availability are confirmed after eligibility review; this preview does not collect payment.'}
               </p>
             </div>
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#14243E] text-white shrink-0">
@@ -544,26 +552,26 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 {[
                   {
                     key: 'ein' as const,
-                    titleAr: 'استخراج الرقم الضريبي الفيدرالي (EIN)',
-                    titleEn: 'Federal IRS EIN Tax ID',
+                    titleAr: 'مساعدة في إعداد طلب EIN (حسب الأهلية)',
+                    titleEn: 'EIN Application Assistance (subject to eligibility)',
                     price: einFee
                   },
                   {
                     key: 'physicalAddressAgent' as const,
-                    titleAr: 'الوكيل المسجل وعنوان أمريكي/بريطاني معتمد',
-                    titleEn: 'Registered Agent & Business Address',
+                    titleAr: 'مراجعة متطلبات الوكيل المسجل والتوفر',
+                    titleEn: 'Registered-Agent Requirements and Availability Review',
                     price: agentFee
                   },
                   {
                     key: 'businessBank' as const,
-                    titleAr: 'ملف وتجهيز الحساب البنكي التجاري (Mercury / Relay)',
-                    titleEn: 'Business Bank Account Prep (Mercury / Relay)',
+                    titleAr: 'مراجعة متطلبات حساب الأعمال ومستندات التقديم',
+                    titleEn: 'Business-Account Requirements and Application Documents',
                     price: bankFee
                   },
                   {
                     key: 'stripePayPal' as const,
-                    titleAr: 'تجهيز وربط بوابات الدفع (Stripe & PayPal)',
-                    titleEn: 'Stripe & PayPal Gateway Onboarding',
+                    titleAr: 'مراجعة متطلبات مزودي الدفع ومستندات التقديم',
+                    titleEn: 'Payment-Provider Requirements and Application Documents',
                     price: gatewayFee
                   }
                 ].map(item => (
@@ -594,16 +602,21 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 ))}
               </div>
 
+              <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+                {isAr ? 'الأسعار المعروضة تقديرية، وقد تُضاف رسوم حكومية أو رسوم مزودين. اختيار الإضافات لا يعني تفعيلها أو ضمان قبولها.' : 'Displayed amounts are indicative; government or provider fees may be additional. Selecting an add-on does not activate it or guarantee approval.'}
+              </p>
               <button
                 type="button"
                 onClick={handleCalculatorOrder}
-                className="w-full py-3.5 px-5 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                disabled={isPagesPreview}
+                aria-disabled={isPagesPreview}
+                className={`w-full py-3.5 px-5 rounded-xl text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#14243E] hover:bg-[#1d3559] cursor-pointer'}`} 
               >
                 <Lock className="w-4 h-4 text-[#D5B46B]" />
                 <span>
                   {isAr
-                    ? `اطلب الخدمة الآن — متابعة للدفع ($${calcTotalUsd})`
-                    : `Order Service Now — Checkout ($${calcTotalUsd})`}
+                    ? (isPagesPreview ? 'المعاينة فقط — الطلب والدفع غير مفعّلين' : `اطلب مراجعة الأهلية والتكلفة (تقدير ${calcTotalUsd})`)
+                    : (isPagesPreview ? 'Preview only — requests and payments are disabled' : `Request Eligibility & Quote Review (estimate ${calcTotalUsd})`)}
                 </span>
               </button>
             </div>
