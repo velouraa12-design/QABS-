@@ -70,8 +70,8 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
       slug: 'about-us',
       titleAr: 'عن قبس الرقمية',
       titleEn: 'About QABS',
-      contentAr: 'قبس الرقمية هي المنصة الرائدة في تمكين رواد الأعمال والتجار العرب من التوسع العالمي عبر تأسيس الكيانات القانونية وربط بوابات الدفع الدولية.',
-      contentEn: 'QABS is the premier sovereign digital operating platform enabling Arab entrepreneurs to establish global presence and process payments worldwide.',
+      contentAr: 'قبس منصة خدمات رقمية تساعد رواد الأعمال والتجار العرب في مراجعة خيارات تأسيس الأعمال وتجهيز الطلبات وخدمات المتاجر والحلول الرقمية وفق الأهلية والتوفر ونطاق العمل.',
+      contentEn: 'QABS is a digital services platform helping Arab entrepreneurs review business-formation options, prepare applications, and assess store and digital-service needs subject to eligibility, availability, and scope.',
       active: true
     },
     {
@@ -79,8 +79,8 @@ const DEFAULT_SITE_CONTENT: SiteContent = {
       slug: 'privacy-policy',
       titleAr: 'سياسة الخصوصية والأمان',
       titleEn: 'Privacy & Security Policy',
-      contentAr: 'نلتزم بأعلى معايير تشفير البيانات وعزل بيئات المستأجرين وفق أفضل ممارسات الامتثال الدولية.',
-      contentEn: 'We adhere to the highest standard of data encryption and strict multi-tenant isolation.',
+      contentAr: 'نطوّر ضوابط لحماية الحسابات والبيانات، وتخضع حدود العزل والتخزين والتكاملات للتحقق الفني قبل إتاحتها تشغيلياً.',
+      contentEn: 'We are developing account and data-protection controls; isolation, storage, and integration capabilities require technical verification before operational availability.',
       active: true
     }
   ]
