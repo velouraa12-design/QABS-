@@ -35,6 +35,36 @@ export interface CreateServerOptions {
 const SESSION_COOKIE_NAME = 'qabs_session';
 const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+async function sendTransactionalEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ dispatched: boolean; provider: 'resend' | 'preview_token_channel' }> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  if (!apiKey) {
+    return { dispatched: false, provider: 'preview_token_channel' };
+  }
+  const from = process.env.RESEND_FROM_EMAIL?.trim() || 'QABS Digital <noreply@qabs1.store>';
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from,
+        to: [params.to],
+        subject: params.subject,
+        html: params.html
+      })
+    });
+    return { dispatched: res.ok, provider: 'resend' };
+  } catch {
+    return { dispatched: false, provider: 'resend' };
+  }
+}
+
 export function createQabsApp(options: CreateServerOptions = {}): {
   app: Express;
   db: DatabaseSync;
@@ -258,7 +288,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     });
   });
 
-  const handleRegister = (req: Request, res: Response) => {
+  const handleRegister = async (req: Request, res: Response) => {
     const ipKey = `reg:${req.ip || 'local'}`;
     if (!checkRateLimit(ipKey)) {
       res.status(429).json({ error: 'Too many registration attempts.', code: 'RATE_LIMITED' });
@@ -337,11 +367,18 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     );
     logAudit(db, tenantId, userId, name, `تسجيل حساب عميل جديد (${email})`, `Registered new customer (${email})`, userId);
 
+    const emailDispatch = await sendTransactionalEmail({
+      to: email,
+      subject: 'QABS Digital | Verify Your Workspace Email',
+      html: `<p>Welcome ${name},</p><p>Your QABS email verification code is: <strong>${verifyToken}</strong></p>`
+    });
+
     res.status(201).json({
       ok: true,
       authenticated: true,
       user: loadSafeUserSnapshot(userId, tenantId),
       csrfToken,
+      emailProvider: emailDispatch.provider,
       ...(exposePreviewTokens ? { previewEmailVerifyToken: verifyToken } : {})
     });
   };
@@ -409,7 +446,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app.post('/api/auth/logout', handleLogout);
   app.post('/studio/api/auth/logout', handleLogout);
 
-  app.post('/api/auth/forgot-password', (req: Request, res: Response) => {
+  app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
     const email = sanitizeText(req.body?.email, 200).toLowerCase();
     if (!checkRateLimit(`forgot:${email || req.ip}`)) {
       res.status(429).json({ error: 'Too many recovery requests.', code: 'RATE_LIMITED' });
@@ -428,6 +465,11 @@ export function createQabsApp(options: CreateServerOptions = {}): {
          VALUES (?, ?, 'password_reset', ?, ?)`
       ).run(`tok_${generateToken(6)}`, userRow.id, sha256Hex(resetToken), expires);
       logAudit(db, userRow.tenant_id, userRow.id, userRow.name, 'طلب استعادة كلمة المرور', 'Requested password recovery token', userRow.id);
+      await sendTransactionalEmail({
+        to: email,
+        subject: 'QABS Digital | Password Recovery Token',
+        html: `<p>Hello ${userRow.name},</p><p>Your single-use password recovery token is: <strong>${resetToken}</strong></p>`
+      });
     }
 
     // Never leak whether email exists when exposePreviewTokens is false
@@ -522,7 +564,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ ok: true, emailVerified: true });
   });
 
-  app.post('/api/auth/resend-verification', requireAuth, (req: AuthedRequest, res: Response) => {
+  app.post('/api/auth/resend-verification', requireAuth, async (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
     if (!checkRateLimit(`verify_resend:${actor.userId}`)) {
       res.status(429).json({ error: 'Too many verification requests.', code: 'RATE_LIMITED' });
@@ -535,10 +577,18 @@ export function createQabsApp(options: CreateServerOptions = {}): {
        VALUES (?, ?, 'email_verify', ?, ?)`
     ).run(`tok_${generateToken(6)}`, actor.userId, sha256Hex(verifyToken), expires);
 
+    const emailDispatch = await sendTransactionalEmail({
+      to: actor.email,
+      subject: 'QABS Digital | Email Verification Token',
+      html: `<p>Hello ${actor.name},</p><p>Your verification token is: <strong>${verifyToken}</strong></p>`
+    });
+
     logAudit(db, actor.tenantId, actor.userId, actor.name, 'إعادة إرسال رمز تأكيد البريد الإلكتروني', 'Issued email verification token', actor.userId);
     res.json({
       ok: true,
       emailVerified: actor.emailVerified,
+      emailProvider: emailDispatch.provider,
+      emailDispatched: emailDispatch.dispatched,
       ...(exposePreviewTokens ? { previewEmailVerifyToken: verifyToken } : {})
     });
   });

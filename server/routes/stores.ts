@@ -519,6 +519,33 @@ export function registerStoreRoutes(
     res.json({ customers });
   });
 
+  router.post('/api/stores/:storeId/customers', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const name = sanitizeText(req.body?.name, 160);
+    const email = sanitizeText(req.body?.email, 160).toLowerCase();
+    const phone = sanitizeText(req.body?.phone || '', 64);
+    const country = sanitizeText(req.body?.country || 'SA', 32);
+    if (!name || !email) {
+      res.status(400).json({ error: 'Customer name and email are required.', code: 'INVALID_CUSTOMER' });
+      return;
+    }
+    const custId = `scust_${generateToken(6)}`;
+    const today = new Date().toISOString().split('T')[0];
+    db.prepare(
+      `INSERT INTO store_customers (id, store_id, tenant_id, name, email, phone, country, orders_count, total_spent, last_order_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`
+    ).run(custId, storeId, String(check.store.tenant_id), name, email, phone, country, today);
+
+    logAudit(db, String(check.store.tenant_id), actor.userId, actor.name, `إضافة عميل للمتجر (${name})`, `Added store customer (${email})`, custId);
+    res.status(201).json({ customer: db.prepare('SELECT * FROM store_customers WHERE id = ?').get(custId) });
+  });
+
   router.get('/api/stores/:storeId/team', requireAuth, (req: AuthedRequest, res: Response) => {
     const storeId = sanitizeId(req.params.storeId);
     const check = getOwnedStore(db, storeId, req.actor!);

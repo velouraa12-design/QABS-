@@ -1165,46 +1165,72 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const saveStoreSnapshot = (storeId: string, label: string) => {
-    setStores(prev =>
-      prev.map(s => {
-        if (s.id !== storeId) return s;
-        const newSnap = {
-          id: `ver_${Date.now()}`,
-          label: label || `نسخة (${new Date().toLocaleTimeString()})`,
-          savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-          theme: s.theme,
-          primaryColor: s.primaryColor || '#004457',
-          accentColor: s.accentColor || '#C8A24A',
-          fontFamily: s.fontFamily || 'Cairo',
-          sections: (s.sections || DEFAULT_STORE_SECTIONS).map(sec => ({ ...sec }))
-        };
-        return { ...s, designVersions: [newSnap, ...(s.designVersions || [])] };
-      })
-    );
+    const target = stores.find(s => s.id === storeId);
+    const newSnap = {
+      id: `ver_${Date.now()}`,
+      label: label || `نسخة (${new Date().toLocaleTimeString()})`,
+      savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
+      theme: target?.theme || 'gold_executive',
+      primaryColor: target?.primaryColor || '#004457',
+      accentColor: target?.accentColor || '#C8A24A',
+      fontFamily: target?.fontFamily || 'Cairo',
+      sections: (target?.sections || DEFAULT_STORE_SECTIONS).map(sec => ({ ...sec }))
+    };
+    const nextVersions = [newSnap, ...(target?.designVersions || [])];
+    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, designVersions: nextVersions } : s)));
+    if (backendStatus === 'connected' && target) {
+      void qabsApi
+        .updateStore(storeId, { settings: { designVersions: nextVersions } })
+        .then(() => refreshWorkspace())
+        .catch(() => {});
+    }
     showToast(language === 'ar' ? 'تم حفظ نسخة التصميم' : 'Design snapshot saved');
   };
 
   const restoreStoreSnapshot = (storeId: string, snapshotId: string) => {
+    const target = stores.find(s => s.id === storeId);
+    const snap = (target?.designVersions || []).find(v => v.id === snapshotId);
+    if (!snap) return;
+    const restoredSections = snap.sections.map(sec => ({ ...sec }));
     setStores(prev =>
-      prev.map(s => {
-        if (s.id !== storeId) return s;
-        const snap = (s.designVersions || []).find(v => v.id === snapshotId);
-        if (!snap) return s;
-        return {
-          ...s,
-          theme: snap.theme,
-          primaryColor: snap.primaryColor,
-          accentColor: snap.accentColor,
-          fontFamily: snap.fontFamily,
-          sections: snap.sections.map(sec => ({ ...sec }))
-        };
-      })
+      prev.map(s =>
+        s.id === storeId
+          ? {
+              ...s,
+              theme: snap.theme,
+              primaryColor: snap.primaryColor,
+              accentColor: snap.accentColor,
+              fontFamily: snap.fontFamily,
+              sections: restoredSections
+            }
+          : s
+      )
     );
+    if (backendStatus === 'connected') {
+      void qabsApi
+        .updateStore(storeId, {
+          theme: snap.theme,
+          settings: {
+            primaryColor: snap.primaryColor,
+            accentColor: snap.accentColor,
+            fontFamily: snap.fontFamily,
+            sections: restoredSections
+          }
+        })
+        .then(() => refreshWorkspace())
+        .catch(() => {});
+    }
     showToast(language === 'ar' ? 'تم استعادة نسخة التصميم' : 'Design restored');
   };
 
   const updateStoreSections = (storeId: string, sections: StoreSectionBlock[]) => {
     setStores(prev => prev.map(s => (s.id === storeId ? { ...s, sections } : s)));
+    if (backendStatus === 'connected') {
+      void qabsApi
+        .updateStore(storeId, { settings: { sections } })
+        .then(() => refreshWorkspace())
+        .catch(err => handleApiFailure(err, 'تعذر حفظ أقسام المتجر', 'Failed to persist store sections'));
+    }
   };
 
   const addStoreCategory = async (storeId: string, nameAr: string, nameEn?: string) => {
@@ -1403,6 +1429,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addCustomer = (c: Omit<StoreCustomer, 'id' | 'ordersCount' | 'totalSpent' | 'lastOrderDate'>) => {
+    const targetStoreId = c.storeId || activeStoreId;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createCustomer(targetStoreId, {
+            name: c.name,
+            email: c.email,
+            phone: c.phone,
+            country: c.country
+          });
+          await refreshWorkspace();
+          showToast(language === 'ar' ? `تم حفظ العميل "${c.name}" في قاعدة بيانات المتجر ✓` : `Customer "${c.name}" saved ✓`);
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ بيانات العميل', 'Failed to save customer');
+        }
+      })();
+      return;
+    }
     const newCustomer: StoreCustomer = {
       ...c,
       id: `cust_${Date.now()}`,
@@ -2357,16 +2401,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSetupStep = (storeId: string, stepId: string) => {
+    const target = stores.find(s => s.id === storeId);
+    const current = target?.setupStepsCompleted || [];
+    const nextSteps = current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId];
     setStores(prev =>
-      prev.map(s => {
-        if (s.id !== storeId) return s;
-        const current = s.setupStepsCompleted || [];
-        return {
-          ...s,
-          setupStepsCompleted: current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId]
-        };
-      })
+      prev.map(s => (s.id === storeId ? { ...s, setupStepsCompleted: nextSteps } : s))
     );
+    if (backendStatus === 'connected') {
+      void qabsApi
+        .updateStore(storeId, { settings: { setupStepsCompleted: nextSteps } })
+        .then(() => refreshWorkspace())
+        .catch(() => {});
+    }
   };
 
   const addCompanyDocument = (

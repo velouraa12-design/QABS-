@@ -625,5 +625,97 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(integRes.json.integrations.cloudflare.workersReady, true);
     assert.ok(typeof integRes.json.integrations.email.provider === 'string');
   });
+
+  it('persists store customers, design sections/checklist settings, support tickets, and dispatches Resend emails when RESEND_API_KEY is set', async () => {
+    const tenantA = new TestClient(baseUrl);
+    await tenantA.req('POST', '/api/auth/login', {
+      email: 'client@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const tenantB = new TestClient(baseUrl);
+    await tenantB.req('POST', '/api/auth/login', {
+      email: 'merchant2@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    // 1. Store customers creation & tenant isolation
+    const storeRes = await tenantA.req('POST', '/api/stores', { name: 'Saudi Heritage Atelier', currency: 'SAR' });
+    assert.equal(storeRes.status, 201);
+    const storeId = storeRes.json.store.id;
+
+    const custRes = await tenantA.req('POST', `/api/stores/${storeId}/customers`, {
+      name: 'سلطان العتيبي',
+      email: 'sultan.customer@example.com',
+      phone: '+966550011223',
+      country: 'SA'
+    });
+    assert.equal(custRes.status, 201);
+    assert.equal(custRes.json.customer.email, 'sultan.customer@example.com');
+    assert.equal(
+      (await tenantB.req('POST', `/api/stores/${storeId}/customers`, { name: 'Intruder', email: 'hack@example.com' })).status,
+      403
+    );
+
+    // 2. Store design sections & setupStepsCompleted persistence
+    const patchStore = await tenantA.req('PATCH', `/api/stores/${storeId}`, {
+      settings: {
+        setupStepsCompleted: ['brand_identity', 'first_product'],
+        sections: [{ id: 'sec_hero', type: 'hero', titleAr: 'رئيسية مخصصة', titleEn: 'Custom Hero', visible: true }]
+      }
+    });
+    assert.equal(patchStore.status, 200);
+    const parsedSettings = JSON.parse(String(patchStore.json.store.settings_json || '{}'));
+    assert.deepEqual(parsedSettings.setupStepsCompleted, ['brand_identity', 'first_product']);
+    assert.equal(parsedSettings.sections[0].titleEn, 'Custom Hero');
+
+    // 3. Support ticket creation, resolution & cross-tenant block
+    const tktRes = await tenantA.req('POST', '/api/tickets', {
+      subject: 'استفسار ربط الدفع الخليجي',
+      category: 'billing',
+      priority: 'high',
+      lastMessage: 'يرجى تأكيد إعدادات Tap'
+    });
+    assert.equal(tktRes.status, 201);
+    const tktId = tktRes.json.ticket.id;
+    assert.equal((await tenantB.req('PATCH', `/api/tickets/${tktId}`, { status: 'resolved' })).status, 403);
+    const tktResolve = await tenantA.req('PATCH', `/api/tickets/${tktId}`, { status: 'resolved' });
+    assert.equal(tktResolve.status, 200);
+    assert.equal(tktResolve.json.ticket.status, 'resolved');
+
+    // 4. Resend email dispatch when RESEND_API_KEY is configured
+    const origFetch = globalThis.fetch;
+    const origResendKey = process.env.RESEND_API_KEY;
+    const resendCalls: { url: string; auth?: string; body: any }[] = [];
+    try {
+      process.env.RESEND_API_KEY = 're_test_sandbox_verification_stub';
+      globalThis.fetch = (async (input: any, init?: any) => {
+        const url = typeof input === 'string' ? input : input?.url || '';
+        if (url === 'https://api.resend.com/emails') {
+          resendCalls.push({
+            url,
+            auth: init?.headers?.Authorization || init?.headers?.authorization,
+            body: JSON.parse(String(init?.body || '{}'))
+          });
+          return new Response(JSON.stringify({ id: 'email_test_123' }), {
+            status: 200,
+            headers: { 'content-type': 'application/json' }
+          });
+        }
+        return origFetch(input, init);
+      }) as typeof fetch;
+
+      const resendDispatch = await tenantA.req('POST', '/api/auth/resend-verification', {});
+      assert.equal(resendDispatch.status, 200);
+      assert.equal(resendDispatch.json.emailProvider, 'resend');
+      assert.equal(resendDispatch.json.emailDispatched, true);
+      assert.equal(resendCalls.length, 1);
+      assert.equal(resendCalls[0].body.to[0], 'client@qabs1.store');
+    } finally {
+      globalThis.fetch = origFetch;
+      if (origResendKey === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = origResendKey;
+    }
+  });
 });
 

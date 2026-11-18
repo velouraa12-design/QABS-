@@ -106,9 +106,9 @@ export function mapDbStore(
     currency: String(row.currency || 'SAR'),
     theme: (String(row.theme_preset || 'gold_executive') as StoreInstance['theme']),
     templateId: 'tpl_luxury_gold',
-    primaryColor: '#14243E',
-    accentColor: '#D5B46B',
-    fontFamily: 'Cairo',
+    primaryColor: typeof settings.primaryColor === 'string' ? settings.primaryColor : '#14243E',
+    accentColor: typeof settings.accentColor === 'string' ? settings.accentColor : '#D5B46B',
+    fontFamily: typeof settings.fontFamily === 'string' ? settings.fontFamily : 'Cairo',
     productsCount,
     ordersCount,
     totalRevenue: Number(row.total_revenue || 0),
@@ -122,7 +122,15 @@ export function mapDbStore(
     shopifyDomain: typeof settings.shopifyDomain === 'string' ? settings.shopifyDomain : undefined,
     shopifyWebhooksConnected: Boolean(settings.shopifyWebhooksConnected),
     taxRate: Number(settings.taxRate ?? 15),
-    sections: DEFAULT_STORE_SECTIONS.map(s => ({ ...s })),
+    setupStepsCompleted: Array.isArray(settings.setupStepsCompleted)
+      ? (settings.setupStepsCompleted as string[])
+      : [],
+    designVersions: Array.isArray(settings.designVersions)
+      ? (settings.designVersions as StoreInstance['designVersions'])
+      : [],
+    sections: Array.isArray(settings.sections) && settings.sections.length > 0
+      ? (settings.sections as StoreInstance['sections'])
+      : DEFAULT_STORE_SECTIONS.map(s => ({ ...s })),
     createdAt: String(row.created_at || '').slice(0, 10)
   };
 }

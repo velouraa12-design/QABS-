@@ -374,6 +374,12 @@ export const qabsApi = {
         body: JSON.stringify(input)
       }
     ),
+  createCustomer: (storeId: string, input: { name: string; email: string; phone?: string; country?: string }) =>
+    apiRequest<{ customer: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/customers`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
   listStoreTeam: (storeId: string) =>
     apiRequest<{ members: Record<string, unknown>[] }>(`/api/stores/${encodeURIComponent(storeId)}/team`),
   addStoreTeamMember: (

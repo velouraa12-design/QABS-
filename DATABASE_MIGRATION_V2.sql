@@ -196,12 +196,79 @@ CREATE TABLE IF NOT EXISTS platform_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. Non-Destructive Tenant & Integrity Indexes
+-- 10. Store Discounts, Shipping Zones, Store Pages, Server Backups & Error Telemetry
+CREATE TABLE IF NOT EXISTS store_discounts (
+    id VARCHAR(64) PRIMARY KEY,
+    store_id VARCHAR(64) NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    code VARCHAR(64) NOT NULL,
+    discount_type VARCHAR(16) NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+    value NUMERIC(10, 2) NOT NULL CHECK (value >= 0),
+    used_count INT NOT NULL DEFAULT 0,
+    usage_limit INT NOT NULL DEFAULT 100,
+    status VARCHAR(16) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'expired')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS store_shipping_zones (
+    id VARCHAR(64) PRIMARY KEY,
+    store_id VARCHAR(64) NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    region_name_ar VARCHAR(160) NOT NULL,
+    region_name_en VARCHAR(160) NOT NULL,
+    carrier VARCHAR(120) NOT NULL,
+    rate NUMERIC(10, 2) NOT NULL CHECK (rate >= 0),
+    delivery_time_ar VARCHAR(80) NOT NULL,
+    delivery_time_en VARCHAR(80) NOT NULL,
+    active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS store_pages (
+    id VARCHAR(64) PRIMARY KEY,
+    store_id VARCHAR(64) NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    slug VARCHAR(128) NOT NULL,
+    title_ar VARCHAR(255) NOT NULL,
+    title_en VARCHAR(255) NOT NULL,
+    content_ar TEXT NOT NULL,
+    content_en TEXT NOT NULL,
+    published BOOLEAN NOT NULL DEFAULT TRUE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS workspace_backups (
+    id VARCHAR(64) PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    actor_id VARCHAR(64) REFERENCES users(id) ON DELETE SET NULL,
+    label VARCHAR(160) NOT NULL,
+    snapshot_json JSONB NOT NULL,
+    size_bytes INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS system_error_logs (
+    id VARCHAR(64) PRIMARY KEY,
+    route VARCHAR(160) NOT NULL,
+    method VARCHAR(16) NOT NULL,
+    status_code INT NOT NULL,
+    error_code VARCHAR(64) NOT NULL,
+    message TEXT NOT NULL,
+    tenant_id VARCHAR(64),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 11. Non-Destructive Tenant & Integrity Indexes
 ALTER TABLE billing_invoices ALTER COLUMN status SET DEFAULT 'unpaid';
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_service_requests_tenant ON service_requests(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_request_documents_tenant ON request_documents(tenant_id, request_id);
+CREATE INDEX IF NOT EXISTS idx_discounts_store ON store_discounts(store_id, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_shipping_store ON store_shipping_zones(store_id, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_pages_store ON store_pages(store_id, tenant_id);
+CREATE INDEX IF NOT EXISTS idx_backups_tenant ON workspace_backups(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_tenant ON credit_ledger(tenant_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_tickets_tenant ON support_tickets(tenant_id, status);
+
