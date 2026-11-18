@@ -134,7 +134,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
   });
 
   // Store Package Cycle & Name
-  const [storeBillingCycle, setStoreBillingCycle] = useState<'monthly' | 'annual'>('monthly');
   const [showcaseStoreName, setShowcaseStoreName] = useState('');
 
   // Collapsible states pricing
@@ -615,95 +614,61 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       {/* 3. INDEPENDENT STORE PACKAGES & PAYMENT GATEWAYS (STRIPE / PAYPAL / CRYPTO) */}
       <section id="store-packages" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <span className="text-xs font-black text-[#92743A] uppercase">
-              {isAr ? 'المتاجر الإلكترونية وبوابات الدفع' : 'Independent Stores & Payment Gateways'}
-            </span>
-            <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
-              {isAr
-                ? 'باقات إنشاء المتاجر الإلكترونية المستقلة وربط Stripe / PayPal / Crypto'
-                : 'Standalone Store Packages with Stripe, PayPal & Crypto Gateways'}
-            </h2>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              value={showcaseStoreName}
-              onChange={e => setShowcaseStoreName(e.target.value)}
-              placeholder={isAr ? 'اسم متجرك المقترح (اختياري)...' : 'Store name (optional)...'}
-              className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
-            />
-            <div className="inline-flex rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 p-1 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setStoreBillingCycle('monthly')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${
-                  storeBillingCycle === 'monthly' ? 'bg-[#14243E] text-white' : 'text-slate-500'
-                }`}
-              >
-                {isAr ? 'شهري' : 'Monthly'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreBillingCycle('annual')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${
-                  storeBillingCycle === 'annual' ? 'bg-[#14243E] text-white' : 'text-slate-500'
-                }`}
-              >
-                {isAr ? 'سنوي' : 'Annual'}
-              </button>
-            </div>
-          </div>
+        <div className="space-y-3">
+          <span className="text-xs font-black text-[#92743A] uppercase">
+            {isAr ? 'إعداد المتاجر — حسب نطاق العمل' : 'Store setup — scoped engagement'}
+          </span>
+          <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
+            {isAr ? 'خيارات إعداد المتاجر المستقلة' : 'Independent store setup options'}
+          </h2>
+          <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {isAr
+              ? 'هذه خيارات أولية لطلب تقييم الاحتياج وليست اشتراكات مفعّلة. لا يتم من هذه الصفحة تحصيل رسوم أو تفعيل بوابات دفع أو نطاقات أو نشر متجر تلقائياً. نراجع المتطلبات والتوفر ونطاق العمل ثم نؤكد العرض قبل أي تنفيذ.'
+              : 'These are preliminary options for a needs assessment, not active subscriptions. This page does not collect payment or automatically activate gateways, domains, or store publication. Requirements, availability, and scope are reviewed before a quote or work is confirmed.'}
+          </p>
+          <input
+            type="text"
+            value={showcaseStoreName}
+            onChange={e => setShowcaseStoreName(e.target.value)}
+            placeholder={isAr ? 'اسم المتجر المقترح (اختياري)...' : 'Proposed store name (optional)...'}
+            className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
+          />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {SUBSCRIPTION_PLANS.map(plan => {
-            const unitPrice = storeBillingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-            const totalCharge = storeBillingCycle === 'annual' ? unitPrice * 12 : unitPrice;
+            const scopeAr = plan.id === 'starter'
+              ? 'مراجعة احتياجات متجر واحد والقالب والمنتجات الأولية قبل تحديد نطاق الإعداد.'
+              : plan.id === 'growth'
+                ? 'مراجعة احتياجات عدة متاجر وسير العمل وحدود الإدارة المطلوبة قبل تقديم عرض.'
+                : 'تقييم متطلبات التشغيل الموسع والتكاملات وعزل البيانات قبل إعداد تصور تقني مستقل.';
+            const scopeEn = plan.id === 'starter'
+              ? 'Review one store, its template, and initial product needs before defining setup scope.'
+              : plan.id === 'growth'
+                ? 'Review multi-store and workflow needs and management boundaries before quoting.'
+                : 'Assess extended operations, integrations, and data-isolation requirements before a separate technical proposal.';
             return (
               <div
                 key={plan.id}
                 className={`rounded-3xl bg-white dark:bg-[#071D2B] p-6 border-2 flex flex-col justify-between space-y-5 shadow-sm ${
-                  plan.popular
-                    ? 'border-[#D5B46B] shadow-lg'
-                    : 'border-[#EAE6DC] dark:border-slate-800'
+                  plan.popular ? 'border-[#D5B46B] shadow-lg' : 'border-[#EAE6DC] dark:border-slate-800'
                 }`}
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#F8F7F2] dark:bg-slate-900 border border-[#D5B46B]/50 text-[#92743A] text-[10px] font-black">
-                      {isAr ? plan.badgeAr : plan.badgeEn}
-                    </span>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                      <span>Stripe</span>
-                      <span>•</span>
-                      <span>PayPal</span>
-                      <span>•</span>
-                      <span>Crypto</span>
-                    </div>
-                  </div>
-
+                  <span className="inline-flex px-2.5 py-1 rounded-lg bg-[#F8F7F2] dark:bg-slate-900 border border-[#D5B46B]/50 text-[#92743A] text-[10px] font-black">
+                    {isAr ? 'طلب تقييم — غير متاح كاشتراك' : 'Assessment only — not an active subscription'}
+                  </span>
                   <h3 className="text-lg font-black text-[#14243E] dark:text-white">
                     {isAr ? plan.nameAr : plan.nameEn}
                   </h3>
-
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-black font-mono text-[#14243E] dark:text-[#D5B46B]">
-                      ${unitPrice}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      / {isAr ? 'شهرياً' : 'month'}
-                    </span>
-                  </div>
-
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {isAr ? plan.descriptionAr : plan.descriptionEn}
+                    {isAr ? scopeAr : scopeEn}
                   </p>
-
                   <ul className="space-y-2 pt-2 border-t border-[#EAE6DC] dark:border-slate-800">
-                    {(isAr ? plan.featuresAr : plan.featuresEn).slice(0, 4).map((feat, idx) => (
+                    {(isAr
+                      ? ['تحديد المتطلبات والوظائف المطلوبة', 'مراجعة التوفر والاعتماديات الخارجية', 'عرض نطاق العمل والتكلفة قبل التنفيذ', 'لا نشر أو تحصيل أو تفعيل تلقائي']
+                      : ['Define required features and requirements', 'Review availability and external dependencies', 'Confirm scope and pricing before work begins', 'No automatic publication, collection, or activation']
+                    ).map((feat, idx) => (
                       <li key={idx} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#00A896] shrink-0" />
                         <span>{feat}</span>
@@ -711,28 +676,23 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     ))}
                   </ul>
                 </div>
-
                 <button
                   type="button"
                   onClick={() =>
                     requestServiceAction({
-                      id: `svc_store_${plan.id}_${Date.now()}`,
-                      serviceType: 'store_package',
+                      id: `svc_store_assessment_${plan.id}_${Date.now()}`,
+                      serviceType: 'store_assessment',
                       titleAr: isAr ? plan.nameAr : plan.nameEn,
                       titleEn: plan.nameEn,
-                      subtitleAr: `إنشاء متجر مستقل مع بوابات Stripe / PayPal / Crypto (${storeBillingCycle === 'annual' ? 'اشتراك سنوي' : 'اشتراك شهري'})`,
-                      subtitleEn: `Standalone Store + Stripe / PayPal / Crypto (${storeBillingCycle})`,
-                      priceUsd: totalCharge,
-                      details: {
-                        planId: plan.id,
-                        billingCycle: storeBillingCycle,
-                        storeName: showcaseStoreName.trim() || undefined
-                      }
+                      subtitleAr: 'طلب تقييم احتياجات المتجر والتوفر ونطاق العمل؛ دون اشتراك أو تحصيل رسوم.',
+                      subtitleEn: 'Request a store needs, availability, and scope assessment; no subscription or payment is activated.',
+                      priceUsd: 0,
+                      details: { planId: plan.id, storeName: showcaseStoreName.trim() || undefined, assessmentOnly: true }
                     })
                   }
                   className="w-full py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs cursor-pointer transition-colors"
                 >
-                  {isAr ? `اطلب الباقة الآن ($${totalCharge})` : `Order Plan Now ($${totalCharge})`}
+                  {isAr ? 'اطلب تقييم التوفر' : 'Request availability review'}
                 </button>
               </div>
             );
@@ -742,90 +702,81 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       {/* 4. QABS AI TOOLS & DIGITAL SERVICES SHOWCASE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div>
+        <div className="space-y-3">
           <span className="text-xs font-black text-[#00A896] uppercase">
-            {isAr ? 'أدوات قبس AI والخدمات الرقمية' : 'QABS AI Tools & Digital Services'}
+            {isAr ? 'أدوات قبس AI — قيد الإعداد' : 'QABS AI — In preparation'}
           </span>
           <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
-            {isAr
-              ? 'باقات قبس AI للأتمتة الذكية وإدارة المنتجات والطلبات'
-              : 'QABS AI Smart Automation & Digital Credit Packs'}
+            {isAr ? 'مساعدات الذكاء الاصطناعي للأعمال' : 'AI assistance for business workflows'}
           </h2>
+          <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {isAr
+              ? 'نموذج الاشتراكات والرصيد المضمّن وشراء الأرصدة الإضافية ما زال قيد التطوير والاختبار. لا توجد أرصدة قابلة للشراء أو عمليات آلية مفعّلة حالياً، ولن يتم تحصيل أي رسوم من هذا القسم.'
+              : 'The subscription model, included usage credits, and prepaid top-ups are still under development and testing. No credits are currently purchasable and no automated operations are activated; this section does not collect payment.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
             {
-              id: 'ai_500',
-              credits: 500,
-              priceUsd: 29,
-              titleAr: 'باقة قبس AI الأساسية (500 رصيد)',
-              titleEn: 'QABS AI Starter (500 Credits)',
-              descAr: 'أوامر ذكية لتسعير المنتجات، صياغة الأوصاف الاحترافية، وإنشاء كوبونات الخصم تلقائياً.',
-              descEn: 'Smart commands for product pricing, copywriting, and automated discount generation.',
-              icon: Bot
+              id: 'ai_content_interest',
+              icon: Bot,
+              titleAr: 'مساعدة في المحتوى والمنتجات',
+              titleEn: 'Content and product assistance',
+              descAr: 'تقييم احتياجك لصياغة أوصاف المنتجات والأفكار التسويقية؛ لا يتم تنفيذ مهام آلية في هذه المرحلة.',
+              descEn: 'Assess needs for product descriptions and marketing ideas; automated tasks are not available in this phase.'
             },
             {
-              id: 'ai_1500',
-              credits: 1500,
-              priceUsd: 69,
-              titleAr: 'باقة قبس AI الاحترافية (1,500 رصيد)',
-              titleEn: 'QABS AI Pro (1,500 Credits)',
-              descAr: 'تجهيز الطلبات الآلي، تحليل المبيعات المباشر، ومساعد إدارة المخزون والربط البنكي.',
-              descEn: 'Automated fulfillment, live analytics reports, and inventory assistant.',
-              icon: Sparkles
+              id: 'ai_catalog_interest',
+              icon: Sparkles,
+              titleAr: 'مساندة إدارة الكتالوج',
+              titleEn: 'Catalog workflow assistance',
+              descAr: 'تحديد فرص تحسين بيانات المنتجات والتصنيفات قبل اعتماد أي تكامل أو تنفيذ.',
+              descEn: 'Identify opportunities to improve product data and categories before any integration or execution is approved.'
             },
             {
-              id: 'ai_5000',
-              credits: 5000,
-              priceUsd: 149,
-              titleAr: 'باقة قبس AI المؤسسية (5,000 رصيد + أتمتة)',
-              titleEn: 'QABS AI Enterprise (5,000 Credits)',
-              descAr: 'سقف عمليات موسع، مزامنة Shopify Admin API بالذكاء الاصطناعي، ودعم التسوية بالعملات الرقمية.',
-              descEn: 'High-volume automation, Shopify API AI sync, and multi-currency crypto tools.',
-              icon: Coins
+              id: 'ai_automation_interest',
+              icon: Coins,
+              titleAr: 'تقييم الأتمتة',
+              titleEn: 'Automation assessment',
+              descAr: 'مراجعة سير العمل والأنظمة المطلوبة وتحديد الاعتماديات والتكلفة بصورة مستقلة.',
+              descEn: 'Review workflows and required systems, then identify dependencies and costs separately.'
             }
-          ].map(pack => {
-            const PackIcon = pack.icon;
+          ].map(item => {
+            const ItemIcon = item.icon;
             return (
               <div
-                key={pack.id}
-                className="p-6 rounded-3xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 hover:border-[#D5B46B] shadow-sm flex flex-col justify-between space-y-4"
+                key={item.id}
+                className="p-6 rounded-3xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-[#14243E] text-[#D5B46B] flex items-center justify-center">
-                      <PackIcon className="w-5 h-5" />
-                    </div>
-                    <span className="font-mono text-xl font-black text-[#14243E] dark:text-[#D5B46B]">
-                      ${pack.priceUsd}
-                    </span>
+                  <div className="w-11 h-11 rounded-xl bg-[#14243E] text-[#D5B46B] flex items-center justify-center">
+                    <ItemIcon className="w-5 h-5" />
                   </div>
                   <h3 className="text-base font-black text-[#14243E] dark:text-white">
-                    {isAr ? pack.titleAr : pack.titleEn}
+                    {isAr ? item.titleAr : item.titleEn}
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {isAr ? pack.descAr : pack.descEn}
+                    {isAr ? item.descAr : item.descEn}
                   </p>
                 </div>
-
                 <button
                   type="button"
                   onClick={() =>
                     requestServiceAction({
-                      id: `svc_${pack.id}_${Date.now()}`,
-                      serviceType: 'ai_credits',
-                      titleAr: pack.titleAr,
-                      titleEn: pack.titleEn,
-                      subtitleAr: `شحن فوري لرصيد ${pack.credits.toLocaleString()} وحدة تشغيل في قبس AI`,
-                      subtitleEn: `Instant recharge of ${pack.credits.toLocaleString()} QABS AI credits`,
-                      priceUsd: pack.priceUsd,
-                      details: { creditsAmount: pack.credits }
+                      id: `svc_${item.id}_${Date.now()}`,
+                      serviceType: 'ai_interest',
+                      titleAr: item.titleAr,
+                      titleEn: item.titleEn,
+                      subtitleAr: 'تسجيل اهتمام فقط؛ لا رصيد ولا اشتراك ولا تنفيذ آلي مفعّل.',
+                      subtitleEn: 'Interest only; no credits, subscription, or automated execution is activated.',
+                      priceUsd: 0,
+                      details: { interestOnly: true }
                     })
                   }
                   className="w-full py-2.5 px-4 rounded-xl border-2 border-[#14243E] dark:border-[#D5B46B] text-[#14243E] dark:text-[#D5B46B] hover:bg-[#14243E] hover:text-white font-black text-xs transition-colors cursor-pointer"
                 >
-                  {isAr ? 'اطلب الخدمة الآن' : 'Order AI Pack Now'}
+                  {isAr ? 'سجل اهتمامك' : 'Register interest'}
                 </button>
               </div>
             );
