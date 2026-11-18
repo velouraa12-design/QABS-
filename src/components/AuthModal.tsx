@@ -191,6 +191,8 @@ export const AuthModal: React.FC = () => {
                     : 'Server authentication with email verification and recovery enabled'
                   : authConfigLoading
                     ? isAr ? 'جارٍ التحقق من جاهزية المصادقة' : 'Checking authentication readiness'
+                    : authConfig && (authConfig.emailVerification !== true || authConfig.passwordRecovery !== true)
+                    ? isAr ? 'خدمة الخادم لم تفعّل التحقق والاستعادة' : 'Server email verification/recovery are disabled'
                     : isAr
                       ? 'المصادقة متوقفة حتى اكتمال متطلبات الأمان'
                       : 'Authentication disabled until security requirements are met'}
@@ -212,14 +214,18 @@ export const AuthModal: React.FC = () => {
             {isAr
               ? authConfigLoading
                 ? 'جارٍ التحقق من قدرات المصادقة... تبقى جميع إجراءات الحساب معطلة حتى اكتمال التحقق.'
-                : backendStatus !== 'connected'
-                  ? 'المعاينة غير متصلة بخدمة المصادقة. الدخول والتسجيل والتحقق والاستعادة معطلة؛ لن يتم إنشاء جلسة أو حساب أو إرسال رسالة.'
-                  : 'الخادم لا يفعّل حالياً التحقق من البريد واستعادة كلمة المرور معاً؛ لذلك تبقى المصادقة معطلة.'
+                : authConfig && (authConfig.emailVerification !== true || authConfig.passwordRecovery !== true)
+                  ? 'خدمة Studio API لا تفعّل حالياً التحقق من البريد واستعادة كلمة المرور معاً؛ لذلك تبقى المصادقة معطلة.'
+                  : backendStatus !== 'connected'
+                    ? 'المعاينة غير متصلة بخدمة المصادقة. الدخول والتسجيل والتحقق والاستعادة معطلة؛ لن يتم إنشاء جلسة أو حساب أو إرسال رسالة.'
+                    : 'تعذر إثبات جاهزية المصادقة؛ لذلك تبقى جميع الإجراءات معطلة.'
               : authConfigLoading
                 ? 'Checking authentication capabilities... account actions remain disabled until the check completes.'
-                : backendStatus !== 'connected'
-                  ? 'This preview is not connected to authentication. Sign-in, registration, verification, and recovery are disabled; no session, account, or email will be created.'
-                  : 'The server does not currently enable both email verification and password recovery; authentication therefore remains disabled.'}
+                : authConfig && (authConfig.emailVerification !== true || authConfig.passwordRecovery !== true)
+                  ? 'The Studio API does not currently enable both email verification and password recovery; authentication therefore remains disabled.'
+                  : backendStatus !== 'connected'
+                    ? 'This preview is not connected to authentication. Sign-in, registration, verification, and recovery are disabled; no session, account, or email will be created.'
+                    : 'Authentication readiness could not be verified; all account actions remain disabled.'}
           </div>
         )}
 
