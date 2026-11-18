@@ -43,7 +43,7 @@ export const StudioWorkspaceView: React.FC = () => {
   const [draftName, setDraftName] = useState('');
   const [templateKey, setTemplateKey] = useState('');
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (preferredWorkspaceId?: string) => {
     const results = await Promise.allSettled([
       studioApi.projectWorkspaces(),
       studioApi.projectCatalog(),
@@ -69,9 +69,10 @@ export const StudioWorkspaceView: React.FC = () => {
     if (results[0].status === 'fulfilled') {
       const available = results[0].value.workspaces || [];
       if (available.length) {
-        setSelectedWorkspaceId(current => current && available.some(item => item.id === current) ? current : available[0].id);
+        const activeWorkspace = available.find(item => item.id === preferredWorkspaceId) || available[0];
+        setSelectedWorkspaceId(activeWorkspace.id);
         try {
-          const listed = await studioApi.workspaceStores(available[0].id);
+          const listed = await studioApi.workspaceStores(activeWorkspace.id);
           setStores(listed.stores || []);
         } catch {
           setStores([]);
@@ -153,8 +154,8 @@ export const StudioWorkspaceView: React.FC = () => {
     setBusy(true);
     setError('');
     try {
-      await studioApi.createProjectWorkspace({ name: workspaceName.trim(), display_name: displayName.trim() });
-      await loadData();
+      const created = await studioApi.createProjectWorkspace({ name: workspaceName.trim(), display_name: displayName.trim() });
+      await loadData(created.workspace.id);
     } catch (createError) {
       setError(messageOf(createError));
     } finally {
@@ -287,7 +288,7 @@ export const StudioWorkspaceView: React.FC = () => {
               <select required value={storeTemplateKey} onChange={e => setStoreTemplateKey(e.target.value)} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="">اختر قالب المتجر</option>{availableStoreTemplates.map(template => <option key={template.key} value={template.key}>{template.ar || template.en}</option>)}</select>
               <select value={storeSetup.kind} onChange={e => setStoreSetup(current => ({ ...current, kind: e.target.value as StudioStoreSetup['kind'] }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="digital">منتجات رقمية</option><option value="physical">منتجات مادية</option><option value="mixed">مادي ورقمي</option></select>
               <select required value={storeSetup.country} onChange={e => setStoreSetup(current => ({ ...current, country: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="">بلد المتجر</option>{storeOptions.countries.map(country => <option key={country} value={country}>{country}</option>)}</select>
-              <select value={storeSetup.currency} onChange={e => setStoreSetup(current => ({ ...current, currency: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3">{storeOptions.currencies.filter(currency => ['USD','EUR','SAR','AED','GBP','TRY','YER'].includes(currency)).map(currency => <option key={currency} value={currency}>{currency}</option>)}</select>
+              <select value={storeSetup.currency} onChange={e => setStoreSetup(current => ({ ...current, currency: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3">{storeOptions.currencies.map(currency => <option key={currency} value={currency}>{currency}</option>)}</select>
               <select value={storeSetup.language} onChange={e => setStoreSetup(current => ({ ...current, language: e.target.value as 'ar' | 'en' }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="ar">العربية</option><option value="en">English</option></select>
               <select value={storeSetup.time_zone} onChange={e => setStoreSetup(current => ({ ...current, time_zone: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 md:col-span-2"><option value="UTC">UTC</option>{storeOptions.time_zones.filter(zone => zone !== 'UTC').slice(0, 200).map(zone => <option key={zone} value={zone}>{zone}</option>)}</select>
               <button disabled={busy || !selectedWorkspaceId || !availableStoreTemplates.length || !storeSetup.country} className="rounded-xl bg-[#D5B46B] px-4 py-3 font-black text-[#14243E] disabled:opacity-50">إنشاء متجر كمسودة</button>
