@@ -65,8 +65,27 @@ class TestClient {
 describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault API', () => {
   let server: http.Server;
   let baseUrl: string;
+  let originalFetch: typeof fetch;
+  const originalEnv: Record<string, string | undefined> = {};
 
   before(async () => {
+    originalFetch = globalThis.fetch;
+    for (const key of ['QABS_REGISTRATION_ENABLED', 'QABS_EMAIL_VERIFICATION_ENABLED', 'QABS_PASSWORD_RECOVERY_ENABLED', 'RESEND_API_KEY']) {
+      originalEnv[key] = process.env[key];
+    }
+    process.env.QABS_REGISTRATION_ENABLED = 'true';
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED = 'true';
+    process.env.QABS_PASSWORD_RECOVERY_ENABLED = 'true';
+    process.env.RESEND_API_KEY = 're_synthetic_test_only';
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === 'https://api.resend.com/emails') {
+        return new Response(JSON.stringify({ id: 'synthetic-email' }), {
+          status: 200, headers: { 'content-type': 'application/json' }
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
     const { app } = createQabsApp({
       dbPath: ':memory:',
       exposePreviewTokens: true,
@@ -87,6 +106,11 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     await new Promise<void>((resolve, reject) => {
       server.close(err => (err ? reject(err) : resolve()));
     });
+    globalThis.fetch = originalFetch;
+    for (const [key, value] of Object.entries(originalEnv)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
   });
 
   it('health endpoint reports payments disabled and sqlite preview environment', async () => {
