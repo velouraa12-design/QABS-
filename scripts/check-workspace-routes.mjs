@@ -64,7 +64,15 @@ const forbiddenUnverifiedClaims = [
   'Official US LLC Formation',
   'Verified tracking inside your QABS Workspace',
   'Approved Packages & Pricing',
-  'الأسعار والباقات المعتمدة'
+  'الأسعار والباقات المعتمدة',
+  'Stripe, PayPal & Crypto Gateways',
+  '500 Credits',
+  '1,500 Credits',
+  '5,000 Credits',
+  'Instant recharge of',
+  'with verified governance',
+  'full dashboard, visual QABS Studio, and strict isolation',
+  'Open Mercury or Wise accounts, connect Stripe payment gateway'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -82,7 +90,13 @@ const requiredTruthfulCopy = [
   'لا نضمن إصدار EIN أو فتح حساب أو قبول بوابة دفع',
   'EIN issuance, bank-account opening, and payment-provider approval are not guaranteed',
   'Requests are reviewed for eligibility and scope before work begins',
-  'الأسعار والباقات الإرشادية'
+  'الأسعار والباقات الإرشادية',
+  'These are preliminary options for a needs assessment, not active subscriptions.',
+  'هذه خيارات أولية لطلب تقييم الاحتياج وليست اشتراكات مفعّلة',
+  'No credits are currently purchasable',
+  'لا توجد أرصدة قابلة للشراء',
+  'does not collect payment',
+  'لا يتم من هذه الصفحة تحصيل رسوم'
 ];
 for (const phrase of requiredTruthfulCopy) {
   const hasTruthfulCopy = [landingSource, companyFormationCopy, serviceTemplateSource]
