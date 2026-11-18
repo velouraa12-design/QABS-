@@ -1221,13 +1221,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <div>
               <span className="text-xs font-black text-[#00A896]">
                 {isAr
-                  ? 'أسعار كافة الولايات الأمريكية بشفافية تامة — شاملة الرسوم الحكومية'
-                  : 'Transparent All 50 US States Formation Pricing — Including State Filing Fees'}
+                  ? 'تقديرات تأسيس الولايات الأمريكية — رسوم الولاية تُعرض بشكل منفصل'
+                  : 'Indicative US state formation estimates — state fees shown separately'}
               </span>
               <h3 className="text-lg sm:text-xl font-black text-[#003445] dark:text-white mt-0.5">
                 {isAr
-                  ? 'تشمل جميع الباقات: رسوم سكرتير الولاية الحكومية + تأسيس (50 ولاية أمريكية)'
-                  : 'All Packages Include: Secretary of State Filing Fee + Formation (All 50 US States)'}
+                  ? 'الإجمالي التقديري = سعر الباقة + رسوم إيداع الولاية المعروضة'
+                  : 'Estimated total = package price + displayed state filing fee'}
               </h3>
             </div>
 
@@ -1286,12 +1286,17 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   >
                     <option value="all">{isAr ? 'كل الولايات (50)' : 'All 50 States'}</option>
                     <option value="popular">{isAr ? 'الأكثر شعبية ⭐' : 'Most Popular'}</option>
-                    <option value="zero_tax">{isAr ? 'بدون ضريبة ولاية' : 'Zero State Tax'}</option>
+                    <option value="zero_tax">{isAr ? 'لا ضريبة دخل على مستوى الولاية' : 'No State-Level Income Tax'}</option>
                     <option value="low_fee">{isAr ? 'رسوم حكومية منخفضة' : 'Low Filing Fee'}</option>
                   </select>
                 </div>
               </div>
 
+              <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+                {isAr
+                  ? 'رسوم الولاية تقديرية وقد تتغير. لا تشمل بالضرورة الضرائب الفيدرالية أو الوكيل المسجل أو رسوم الجهات الخارجية. تحقّق من جدول الرسوم الرسمي عند التقديم؛ وغياب ضريبة دخل على مستوى الولاية لا يعني إعفاءً ضريبياً شاملاً.'
+                  : 'State fees are indicative and may change. They may exclude federal taxes, registered-agent fees, and third-party charges. Verify official fees before filing; no state-level income tax does not mean a full tax exemption.'}
+              </p>
               {/* States Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[520px] overflow-y-auto p-1">
                 {filteredStates.map(st => {
@@ -1312,9 +1317,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                               {isAr ? st.badgeAr : st.badgeEn}
                             </span>
                           )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          {isAr ? st.recommendedForAr : st.recommendedForEn}
                         </div>
                         <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs">
                           <span className="text-slate-500">
