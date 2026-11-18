@@ -12,7 +12,7 @@ export const UsLlcPage: React.FC = () => {
   const service = getServiceBySlug('us-llc')!;
 
   const [stateSearch, setStateSearch] = useState('');
-  const [stateFilter, setStateFilter] = useState<'all' | 'popular' | 'zero_tax' | 'low_fee'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'low_fee'>('all');
   const [tierId, setTierId] = useState<'starter' | 'complete' | 'premium'>('complete');
 
   const selectedTier = QABS_FORMATION_PKGS.find(p => p.id === tierId) || QABS_FORMATION_PKGS[1];
@@ -25,8 +25,6 @@ export const UsLlcPage: React.FC = () => {
       st.nameEn.toLowerCase().includes(q) ||
       st.code.toLowerCase().includes(q);
     if (!matches) return false;
-    if (stateFilter === 'popular') return st.tags.includes('popular');
-    if (stateFilter === 'zero_tax') return st.tags.includes('zero_tax');
     if (stateFilter === 'low_fee') return st.stateFilingFee <= 100;
     return true;
   });
@@ -82,8 +80,6 @@ export const UsLlcPage: React.FC = () => {
               {(
                 [
                   { id: 'all', ar: 'جميع الولايات', en: 'All States' },
-                  { id: 'popular', ar: 'الأكثر طلباً', en: 'Popular' },
-                  { id: 'zero_tax', ar: 'لا ضريبة دخل على مستوى الولاية', en: 'No State-Level Income Tax' },
                   { id: 'low_fee', ar: 'رسوم ≤ $100', en: 'Fee ≤ $100' }
                 ] as const
               ).map(f => (
