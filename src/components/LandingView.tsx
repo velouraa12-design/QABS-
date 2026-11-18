@@ -819,8 +819,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'استخراج خطاب EIN الرسمي من IRS، عنوان أمريكي معتمد، وإدارة التقارير والتجديدات السنوية.'
-                  : 'Official IRS CP575 EIN issuance, registered agent address, and annual state filings.'}
+                  ? 'مساعدة في مراجعة أهلية طلب EIN وتجهيز مستنداته، ومراجعة متطلبات الوكيل والالتزامات السنوية وفق الاختصاص؛ الإصدار والقبول والمدة تخضع للجهات المختصة.'
+                  : 'EIN application-preparation assistance, registered-agent requirements, and annual compliance review subject to eligibility and the relevant authorities.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
