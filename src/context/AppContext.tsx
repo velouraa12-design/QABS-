@@ -794,29 +794,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchRole = (newRole: UserRole) => {
-    if (backendStatus === 'connected') {
-      showToast(
-        language === 'ar'
-          ? 'تبديل الصلاحيات يتطلب تسجيل دخول فعلي بحساب يمتلك الدور المطلوب.'
-          : 'Role changes require authenticating with an account holding that role.'
-      );
-      if (newRole === 'super_admin') openOwnerAuth();
-      else openClientAuth('login');
-      return;
-    }
-    if (newRole === 'super_admin') {
-      setUser(OWNER_USER_PROFILE);
-      setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'وضع المعاينة غير المتصل: المالك (Super Admin)' : 'Offline preview: Super Admin');
-    } else {
-      setUser(prev => ({
-        ...prev,
-        id: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'usr_client_01' : prev.id,
-        role: 'customer',
-        name: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'عميل منصة قبس' : prev.name
-      }));
-      setIsAuthenticated(true);
-    }
+    setAuthError(
+      language === 'ar'
+        ? 'تبديل الأدوار غير متاح في المعاينة غير المتصلة. سجّل الدخول بحساب موثّق عندما تتصل خدمة المصادقة.'
+        : 'Role switching is disabled in offline preview. Sign in with a verified account when the authentication service is connected.'
+    );
+    if (newRole === 'super_admin') openOwnerAuth();
+    else openClientAuth('login');
   };
 
   // --- COMPANIES ---
@@ -2193,12 +2177,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const cleanEmail = email.trim() || 'client@qabs1.store';
-    setUser(role === 'super_admin' ? { ...OWNER_USER_PROFILE, email: cleanEmail } : { ...INITIAL_USER, id: `usr_${Date.now()}`, name: cleanEmail.split('@')[0], email: cleanEmail, role: 'customer', credits: 50 });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-    setMode(role === 'super_admin' ? 'admin' : 'portal');
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تسجيل الدخول: خدمة المصادقة غير متصلة. لم يتم إنشاء جلسة تجريبية.'
+      : 'Sign-in unavailable: the authentication service is disconnected. No demo session was created.';
+    setAuthError(unavailable);
+    showToast(unavailable);
+    return false;
   };
 
   const loginOwner = async (email?: string, password?: string): Promise<boolean> => {
@@ -2241,19 +2225,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    setUser({
-      id: `usr_client_${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role: 'customer',
-      avatar: '',
-      companyName: companyName.trim(),
-      credits: 50
-    });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-    setMode('portal');
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر إنشاء الحساب: خدمة المصادقة غير متصلة. لم يتم إنشاء حساب محلي وهمي.'
+      : 'Registration unavailable: the authentication service is disconnected. No local demo account was created.';
+    setAuthError(unavailable);
+    showToast(unavailable);
+    return false;
   };
 
   const requestPasswordReset = async (email: string): Promise<string | null> => {
@@ -2270,7 +2247,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       }
     }
-    return 'preview-offline-token';
+    const unavailable = language === 'ar'
+      ? 'استعادة كلمة المرور غير متاحة دون اتصال بخدمة المصادقة.'
+      : 'Password recovery is unavailable while the authentication service is disconnected.';
+    setAuthError(unavailable);
+    return null;
   };
 
   const confirmPasswordReset = async (token: string, newPassword: string): Promise<boolean> => {
@@ -2287,7 +2268,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
     }
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تأكيد كلمة المرور: لا يمكن التحقق من الرمز دون اتصال بالخادم.'
+      : 'Password reset could not be confirmed without the authentication server.';
+    setAuthError(unavailable);
+    return false;
   };
 
   const confirmEmailVerification = async (token: string): Promise<boolean> => {
@@ -2303,8 +2288,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
     }
-    setUser(prev => ({ ...prev, emailVerified: true }));
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تأكيد البريد: لم يتم التحقق من الرمز عبر الخادم.'
+      : 'Email verification failed: the token was not verified by the server.';
+    setAuthError(unavailable);
+    return false;
   };
 
   const resendVerificationEmail = async (): Promise<string | null> => {
@@ -2324,7 +2312,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return null;
       }
     }
-    return 'preview-verify-token';
+    const unavailable = language === 'ar'
+      ? 'إعادة إرسال التحقق غير متاحة دون اتصال بخدمة البريد والمصادقة.'
+      : 'Verification resend is unavailable while the mail and authentication services are disconnected.';
+    setAuthError(unavailable);
+    return null;
   };
 
   const logout = async () => {
