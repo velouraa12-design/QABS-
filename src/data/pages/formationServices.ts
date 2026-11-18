@@ -240,8 +240,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       'نساعد في مراجعة أهلية طلب رقم EIN وتجهيز نموذج SS-4 والمستندات المطلوبة عند انطباق متطلبات IRS؛ قرار الإصدار ووقت المعالجة يعودان إلى المصلحة.',
     subtitleEn:
       'We help review EIN eligibility and prepare Form SS-4 and supporting information where IRS requirements are met; the IRS controls issuance and processing time.',
-    seoTitleAr: 'استخراج الرقم الضريبي الأمريكي EIN لغير المقيمين | قبس',
-    seoTitleEn: 'Federal EIN Application for Non-US Residents | QABS',
+    seoTitleAr: 'مساعدة في طلب الرقم الضريبي الأمريكي EIN | قبس',
+    seoTitleEn: 'Federal EIN Application Assistance for Eligible Applicants | QABS',
     seoDescriptionAr:
       'مساعدة في إعداد طلب EIN للشركات الأمريكية وفق أهلية المتقدم ومتطلبات IRS، دون ضمان الإصدار أو فتح حساب بنكي أو قبول بوابة دفع.',
     seoDescriptionEn:
