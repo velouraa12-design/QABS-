@@ -184,6 +184,8 @@ const requiredTruthfulCopy = [
   'نطوّر ضوابط لحماية الحسابات والبيانات',
   'لا يمكن ضمان عدد محدد من الأيام',
   'a fixed number of days cannot be guaranteed',
+  'مساعدة في طلب الرقم الضريبي الأمريكي EIN',
+  'Federal EIN Application Assistance for Eligible Applicants',
   'لا يعني ذلك قبول البنوك أو بوابات الدفع',
   'does not imply bank or payment-provider approval',
   'No state is best for every company',
