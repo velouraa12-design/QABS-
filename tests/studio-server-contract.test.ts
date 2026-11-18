@@ -54,6 +54,12 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       const config = await alpha.request('GET', '/studio/api/config');
       assert.equal(config.status, 200);
       assert.equal(config.json.payments, false);
+      assert.equal(config.json.emailVerification, false);
+      assert.equal(config.json.passwordRecovery, false);
+      assert.equal(config.json.formationDetails, false);
+      assert.equal(config.json.documents, false);
+      assert.equal(config.json.privateDocuments, false);
+      assert.equal(config.json.googleSignIn, false);
 
       const alphaReg = await alpha.register('studio.alpha@example.test');
       assert.equal(alphaReg.status, 201);
