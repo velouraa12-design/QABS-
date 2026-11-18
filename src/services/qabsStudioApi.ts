@@ -58,6 +58,9 @@ export interface StudioProjectWorkspace {
 export interface StudioWorkspaceStore {
   id: string;
   name: string;
+  lifecycle?: 'setup_draft' | 'configured_draft' | 'archived';
+  status?: string;
+  store_setup?: Partial<StudioStoreSetup> | null;
   [key: string]: unknown;
 }
 export interface WorkspaceStoreFilters {
