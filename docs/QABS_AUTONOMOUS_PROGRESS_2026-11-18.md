@@ -359,3 +359,81 @@ Target: `qabs-unified-workspace-staging-v2.qabs1store.workers.dev`.
 - Browser UI no longer returns preview password-reset or email-verification tokens, even if a backend responds with them; recovery/verification instructions must be delivered by configured mail.
 - Logout always clears local UI state but now reports honestly if server-side session revocation could not be confirmed.
 - Latest commit includes these changes; CI on the latest commit must be confirmed separately before considering this exact commit validated.
+
+
+## 19. Fail-closed operational controls, authentication capability gate, and browser QA
+
+### Offline write paths hardened
+Added a shared `requireConnectedBackend()` guard and applied it to 44 workspace operations. The following now refuse to create synthetic local success while the backend is disconnected:
+- Formation and company status/stage changes.
+- Store creation, theme/details, approvals, payment activation, categories, team, products, orders, customers, discounts, shipping, pages, and sections.
+- Service orders, status changes, document metadata, support tickets, notifications, and staff changes.
+- Subscriptions, renewal, invoice proof verification, credit top-ups, and refunds.
+- Store snapshots/restores, app installation toggles, domain verification, and system backups.
+- Business-account creation and local-only formation documents.
+
+Some capabilities with no server API at all (staff provisioning, banking, refunds, invoice generation, snapshots, template persistence, and local domain verification) are explicitly blocked even if a legacy API status later reports connected; they need their own server contracts first.
+
+### Checkout and AI safety
+- Checkout is now hard-disabled: the preview cannot create a subscription, store, invoice, payment, or credit top-up by selecting a payment method.
+- Payment-method choices and the checkout action are disabled in the UI with an explicit no-charge/no-invoice notice.
+- Public service-order forms show a view-only/offline notice and disable both draft-save and submit buttons. The context throws rather than inventing a local order reference.
+- Formation wizard submission is disabled while the backend is disconnected; the form explicitly says no application or request is created.
+- QABS AI no longer claims a connected Gemini/SQLite engine in offline preview. It clearly says prompts are not executed and credits are not deducted. Credit top-up is blocked offline.
+
+### Auth capability gate
+The AuthModal now fetches the public same-origin Studio API config and enables account actions only when:
+- the legacy backend connection is healthy,
+- registration is enabled,
+- email verification is enabled,
+- password recovery is enabled,
+- and the capability check has completed.
+
+Live read-only `GET /studio/api/config` from the isolated Worker returned HTTP 200 with:
+- `registration=true`
+- `emailVerification=false`
+- `passwordRecovery=false`
+- `formationDetails=false`
+- `documents=false`
+- `privateDocuments=false`
+- `payments=false`
+- `stage=isolated-preview`
+- optional 2FA flag enabled for Studio account scope.
+
+Therefore sign-in, registration, verification, and recovery remain disabled. The UI does not infer readiness from a login page or a successful config fetch.
+
+### Service API client expansion
+Expanded `src/services/qabsStudioApi.ts` with typed contracts for:
+- services catalog and service requests,
+- store drafts,
+- project catalog and project workspaces,
+- workspace-store options, creation, detail, and activity,
+- settings read/update,
+- formation-selection drafts.
+
+Added `tests/studio-api-contract.test.ts` verifying same-origin `/studio/api` requests, `credentials: same-origin`, CSRF headers on writes, and the no-payment service-catalog contract. This client is still NOT wired into `AppContext`; partial auth-only wiring would be unsafe because the rest of the app still expects the incompatible legacy `qabsApi` contract.
+
+### Pricing, legal, and marketing accuracy
+- Removed unsupported formation volume/success/turnaround metrics from the landing page.
+- Qualified non-resident eligibility and IRS EIN timing language.
+- Removed claims that formation documents guarantee bank-account or payment-provider approval.
+- Replaced unqualified state tax, privacy, annual-fee, and UK confirmation-statement fee claims with jurisdiction-specific caveats and official-fee verification language.
+- Removed unverified "popular" and "zero-tax" state ranking filters.
+- Marked state filing fees as indicative and subject to change; added general legal/tax disclaimers.
+
+### CI and browser verification
+Latest commit validated: `b8621c7054ebf30adab1a69b659404b6e3b34da4`.
+- GitHub Actions CI run `44235198305`: SUCCESS — TypeScript/lint, API tests (12 tests, 0 failures), route/safety contract checks, build, secret scan.
+- Workspace preview run `44235191970`: SUCCESS — install, lint, tests, route/safety checks, build, artifact upload, isolated Cloudflare Pages deploy.
+- Pages deployment `bb437fd4-d85b-4dc2-ba3c-8de8c5811772` on branch `autonomous/qabs-baseline-audit-20261118`, alias `https://autonomous-qabs-baseline-aud.qabs-workspace-reference-preview.pages.dev`.
+- Browser checks on the deployed branch preview: `/login`, `/signup`, `/forgot-password`, `/verify-email`, `/workspace/overview`, `/workspace/requests`, `/studio#/home`, and `/order` returned without 404. Auth forms were disabled with an explicit offline/capability notice. Public service-order draft and submit buttons were disabled. No unverified stats remained on the landing page. At 390px viewport width, document width was 375px (no horizontal overflow).
+- Browser QA could not enter the authenticated workspace because auth is correctly gated; all post-login page interactions remain NOT VERIFIED.
+
+### Current blockers — do not bypass
+1. The frontend `qabsApi.ts` expects a legacy `/api/*` contract. The live isolated Studio Worker exposes `/studio/api/*`; the two are not yet unified. `qabsStudioApi.ts` covers only a subset of the total workspace operations.
+2. Email verification and password recovery are disabled on the Studio Worker; documents/private documents, formation details, and payments are also disabled.
+3. The acceptance Worker has no AI execution module/contract; QABS AI engine execution is NOT VERIFIED and remains disabled.
+4. No real payment provider transaction, customer email, file upload, production write, or DNS change was attempted.
+5. Cross-tenant tests passed in the local Express test harness, but a two-user/two-store authenticated penetration test against the Cloudflare Studio Worker remains NOT VERIFIED because no approved synthetic credentials are provisioned.
+
+No production environment, Shopify theme/checkout, DNS, payment keys, or customer data were changed.
