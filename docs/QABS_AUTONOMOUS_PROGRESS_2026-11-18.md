@@ -268,3 +268,21 @@ Desktop and mobile scrapes both returned HTTP 200. This is a content-level respo
 Attempted a synthetic authenticated end-to-end login through the new same-origin Worker using the already-created Alpha test account, but the browser tool's safety layer blocked the request. No login or logout result is claimed for v2. The previously completed two-user tests remain direct tests against the acceptance Worker, not the new proxy path.
 
 Important: the v2 preview now has a working API bridge, but its rendered workspace remains explicitly a disconnected demo shell. The React app's existing `qabsStudioApi.ts` adapter is not yet wired into `AppContext`; the API bridge repair alone does not connect the customer UI to authenticated backend data.
+
+
+## 15. Additional isolated commerce preview review
+
+Target: `qabs-commerce-tenant-isolation-preview-20261107`, its dedicated D1 `qabs-commerce-tenant-isolation-preview-20261107` (`2d25e890-671a-4a32-91da-69446f7fef27`), workers.dev only. No Service Binding is configured on this Worker; only `APP_ORIGIN` and its own D1 are present.
+
+Live read-only results:
+- `GET /health`: HTTP 200, release `staging-0.8`, `productionReady=false`.
+- `GET /api/auth/me` without a session: HTTP 401 `authentication_required`.
+- `GET /api/config`: HTTP 200; `authenticationReady=false`, `passwordLoginReady=true`, `uploadsReady=false`, `subscriptionPaymentReady=false`, `storefrontCheckoutReady=false`, `customDomainsReady=false`, `domainPurchaseReady=false`, `partnershipFinancialReady=false`. One synthetic plan and three templates are advertised.
+- `GET /api/identity-link`: HTTP 200 `enabled=false`, `linked=false`, `identity_link_not_enabled`.
+
+Source/schema observations:
+- Store ownership helper queries `qs_stores` with both store ID and authenticated `owner_id`; products reference a store ID. This is a positive source-level control but not a completed cross-tenant penetration test.
+- Identity-link module explicitly prohibits automatic email matching and requires an explicit link/confirmation flow. However this preview has no `STUDIO` Service Binding and identity linking is disabled, so the flow cannot be accepted as end-to-end tested here.
+- This commerce preview has its own D1, separate from the acceptance Studio D1 and the live commerce D1. Do not merge or copy account/store data between them.
+
+Conclusion: useful isolated commerce code/reference, not a production-ready commerce backend and not currently a unified auth+commerce staging environment.
