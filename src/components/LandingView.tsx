@@ -177,8 +177,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
     requestServiceAction({
       id: `svc_cf_${Date.now()}`,
       serviceType: 'company_formation',
-      titleAr: `تأسيس شركة ${foundJur.labelAr}`,
-      titleEn: `Form ${foundJur.labelEn}`,
+      titleAr: `مراجعة خيار تأسيس ${foundJur.labelAr}`,
+      titleEn: `Review formation option: ${foundJur.labelEn}`,
       subtitleAr: 'طلب مراجعة أهلية وتجهيز مستندات التأسيس؛ الإيداع والإصدار والوكيل تخضع للتوفر والجهات المختصة.',
       subtitleEn: 'Request eligibility review and formation-document preparation; filing, issuance, and agent services depend on availability and the relevant authorities.'
       priceUsd: foundJur.baseUsd + einFee + agentFee,
@@ -1283,8 +1283,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                             : requestServiceAction({
                                 id: `svc_state_${st.code}_${Date.now()}`,
                                 serviceType: 'company_formation',
-                                titleAr: `تأسيس شركة في ${st.nameAr} (${selectedPkg.nameAr})`,
-                                titleEn: `Form Company in ${st.nameEn} (${selectedPkg.nameEn})`,
+                                titleAr: `مراجعة خيار تأسيس في ${st.nameAr} (${selectedPkg.nameAr})`,
+                                titleEn: `Review formation option in ${st.nameEn} (${selectedPkg.nameEn})`,
                                 subtitleAr: `تقدير إرشادي يشمل رسوم الولاية المعروضة وباقة ${selectedPkg.nameAr}؛ الأهلية والتوفر والرسوم النهائية تحتاج تأكيداً.`,
                                 subtitleEn: `Indicative estimate including the displayed state fee and ${selectedPkg.nameEn}; eligibility, availability, and final fees require confirmation.`,
                                 priceUsd: totalWithPkg,
