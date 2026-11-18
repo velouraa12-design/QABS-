@@ -244,22 +244,23 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     });
   });
 
-  app.get('/studio/api/config', (_req: Request, res: Response) => {
-    // Capabilities are opt-in. Email-dependent flows stay disabled unless an
-    // operator explicitly enables them AND a Resend credential is present.
-    // This prevents the API from advertising flows that the runtime cannot deliver.
-    const emailProviderReady = Boolean(process.env.RESEND_API_KEY?.trim());
-    const emailVerificationEnabled =
-      process.env.QABS_EMAIL_VERIFICATION_ENABLED === 'true' && emailProviderReady;
-    const passwordRecoveryEnabled =
-      process.env.QABS_PASSWORD_RECOVERY_ENABLED === 'true' && emailProviderReady;
+  const emailProviderReady = () => Boolean(process.env.RESEND_API_KEY?.trim());
+  const emailVerificationEnabled = () =>
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED === 'true' && emailProviderReady();
+  const passwordRecoveryEnabled = () =>
+    process.env.QABS_PASSWORD_RECOVERY_ENABLED === 'true' && emailProviderReady();
+  const registrationEnabled = () =>
+    process.env.QABS_REGISTRATION_ENABLED === 'true' && emailVerificationEnabled();
 
+  app.get('/studio/api/config', (_req: Request, res: Response) => {
+    // Email-dependent capabilities are advertised only when the operator has
+    // explicitly enabled them and the transactional email provider is ready.
     res.json({
       stage: 'preview-isolated',
       payments: false,
-      registration: true,
-      emailVerification: emailVerificationEnabled,
-      passwordRecovery: passwordRecoveryEnabled,
+      registration: registrationEnabled(),
+      emailVerification: emailVerificationEnabled(),
+      passwordRecovery: passwordRecoveryEnabled(),
       formationDetails: false,
       documents: false,
       privateDocuments: false,
@@ -303,6 +304,14 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   const handleRegister = async (req: Request, res: Response) => {
+    // Never permit direct API registration to bypass the UI's email-verification gate.
+    if (!registrationEnabled()) {
+      res.status(503).json({
+        error: 'Registration is temporarily unavailable until verified email delivery is configured.',
+        code: 'REGISTRATION_DISABLED'
+      });
+      return;
+    }
     const ipKey = `reg:${req.ip || 'local'}`;
     if (!checkRateLimit(ipKey)) {
       res.status(429).json({ error: 'Too many registration attempts.', code: 'RATE_LIMITED' });
