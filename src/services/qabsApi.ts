@@ -133,8 +133,8 @@ export interface IntegrationsStatusResponse {
   paymentsEnabled: boolean;
   environment: string;
   integrations: {
-    tap: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
-    moyasar: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
+    tap: { configured: boolean; sandboxConfigured?: boolean; secretConfigured?: boolean; region: string; methods: string[]; mode: string };
+    moyasar: { configured: boolean; sandboxConfigured?: boolean; secretConfigured?: boolean; region: string; methods: string[]; mode: string };
     stripe: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
     shopify: { configured: boolean; mode: string };
     gemini: { configured: boolean; model: string };
@@ -470,6 +470,34 @@ export const qabsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
+    }),
+
+  // Tap hosted checkout — test-mode only; server derives amount and tenant from invoice.
+  createTapSandboxCharge: (invoiceId: string) =>
+    apiRequest<{
+      provider: 'tap';
+      mode: 'sandbox';
+      invoiceId: string;
+      chargeId: string;
+      providerStatus: string;
+      redirectUrl: string;
+      paymentConfirmed: false;
+    }>('/api/payments/tap/charges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId })
+    }),
+  verifyTapSandboxPayment: (invoiceId: string, chargeId: string) =>
+    apiRequest<{
+      provider: 'tap';
+      mode: 'sandbox';
+      providerStatus: string;
+      paymentConfirmed: boolean;
+      invoice: Record<string, unknown>;
+    }>('/api/payments/tap/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId, chargeId })
     }),
 
   // Billing, Invoices, Subscriptions & AI Credits
