@@ -1124,9 +1124,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <thead className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="p-4">{isAr ? 'الولاية / الاختصاص' : 'Jurisdiction'}</th>
-                <th className="p-4">{isAr ? 'ضريبة دخل الولاية' : 'State Income Tax'}</th>
-                <th className="p-4">{isAr ? 'سرية الملاك (Privacy)' : 'Owner Privacy'}</th>
-                <th className="p-4">{isAr ? 'التقرير السنوي' : 'Annual Report'}</th>
+                <th className="p-4">{isAr ? 'ملاحظات ضريبية عامة' : 'General Tax Notes'}</th>
+                <th className="p-4">{isAr ? 'متطلبات الإفصاح' : 'Disclosure Requirements'}</th>
+                <th className="p-4">{isAr ? 'الرسوم والالتزامات السنوية' : 'Annual Fees & Obligations'}</th>
                 <th className="p-4">{isAr ? 'الأنسب لـ' : 'Recommended For'}</th>
                 <th className="p-4 text-center">{isAr ? 'الإجراء' : 'Action'}</th>
               </tr>
@@ -1136,10 +1136,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'وايومنغ (Wyoming - WY) ⭐' : 'Wyoming (WY)'}
                 </td>
-                <td className="p-4 text-emerald-600 font-bold">0% (معفاة تماماً)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سرية تامة (لا تظهر بالسجلات العامة)</td>
-                <td className="p-4 font-mono">$60 / سنوياً</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">التجارة الإلكترونية، المتاجر الرقمية، والخدمات عن بعد</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى' : 'No state-level income tax; other taxes may apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تخضع لإفصاحات السجلات المطلوبة' : 'Subject to required public-record disclosures'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تقرير سنوي ورسوم حكومية حالية' : 'Annual report; current state fees apply'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب بعض الأنشطة الرقمية بعد مراجعة الالتزامات' : 'May suit some digital businesses after reviewing obligations'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
@@ -1154,10 +1154,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'ديلاوير (Delaware - DE)' : 'Delaware (DE)'}
                 </td>
-                <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">0% (خارج الولاية)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">حماية قانونية متقدمة (Court of Chancery)</td>
-                <td className="p-4 font-mono">$300 / سنوياً</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">الشركات الناشئة التقنية، جذب الاستثمار وصناديق VC</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تختلف حسب نوع الكيان ومكان ممارسة النشاط' : 'Varies by entity type and where business is conducted'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تطبق متطلبات السجل والإفصاح الخاصة بالكيان' : 'Entity-specific public-record and disclosure rules apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'قد تنطبق ضريبة امتياز ورسوم سنوية' : 'Franchise tax and annual fees may apply'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب شركات تسعى لجذب الاستثمار' : 'May suit companies seeking investment'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
@@ -1172,10 +1172,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'نيو مكسيكو (New Mexico - NM)' : 'New Mexico (NM)'}
                 </td>
-                <td className="p-4 text-emerald-600 font-bold">0% (للأعمال الخارجية)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سرية تامة ومطلقة للملاك</td>
-                <td className="p-4 font-mono text-emerald-600 font-bold">$0 (لا يوجد تقرير سنوي)</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">أقل تكلفة صيانة سنوية وميزانية اقتصادية</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تختلف حسب مصدر الدخل والالتزامات المحلية والفيدرالية' : 'Depends on income source and applicable state and federal obligations'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تطبق متطلبات الإفصاح والسجلات القانونية' : 'Required disclosures and public-record rules apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'راجع المتطلبات والرسوم الحالية للكيان' : 'Check current entity requirements and fees'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب من يوازن التكلفة مع المتطلبات' : 'May suit founders balancing cost and requirements'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
@@ -1190,10 +1190,10 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'بريطانيا (UK LTD)' : 'United Kingdom (LTD)'}
                 </td>
-                <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">ضريبة الشركات البريطانية</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سجل Companies House الرسمي</td>
-                <td className="p-4 font-mono">£13 تقرير تأكيد سنوي</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">التجارة مع بريطانيا وأوروبا وبوابات الدفع بالجنيه الإسترليني</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'ضريبة الشركات وفق الأرباح والقواعد البريطانية' : 'Corporation tax under applicable UK rules'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'بيانات الشركة متاحة وفق قواعد Companies House' : 'Company details are public under Companies House rules'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'رسوم الإيداع الحالية لدى Companies House' : 'Current Companies House filing fees'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب نشاطاً يستهدف السوق البريطاني' : 'May suit businesses targeting the UK market'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
@@ -1207,6 +1207,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+          {isAr
+            ? 'هذه مقارنة عامة وليست استشارة قانونية أو ضريبية. تختلف الضرائب والرسوم ومتطلبات الإفصاح حسب نوع الكيان والنشاط والإقامة ومكان ممارسة الأعمال، وقد تتغير. تحقّق من المصادر الحكومية الرسمية قبل التقديم.'
+            : 'This is general information, not legal or tax advice. Taxes, fees, and disclosure requirements vary by entity, activity, residence, and place of business, and may change. Verify current details with official government sources before filing.'}
+        </p>
       </section>
 
       {/* 5. COLLAPSIBLE ALL 50 US STATES TRANSPARENT PRICING */}
