@@ -427,65 +427,65 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     titleAr: 'الوكيل المسجل والعنوان القانوني الأمريكي (Registered Agent)',
     titleEn: 'US Registered Agent & Official Business Address',
     subtitleAr:
-      'تمثيل قانوني معتمد وعنوان فعلي داخل ولاية التأسيس لاستلام المراسلات الحكومية والإشعارات القضائية ومسحها ضوئياً وإرسالها إليك فوراً.',
+      'مساعدة في مراجعة متطلبات الوكيل المسجل في الولاية والتنسيق مع مزود متاح عند تأكيد الأهلية والتوفر؛ استلام البريد ومسحه وإعادة توجيهه يخضع لشروط المزود.',
     subtitleEn:
-      'Authorized statutory representation and physical street address in your state of formation with instant mail scanning and compliance alerts.',
+      'Assistance reviewing state registered-agent requirements and coordinating with an available provider after eligibility and availability are confirmed; mail receipt, scanning, and forwarding depend on provider terms.',
     seoTitleAr: 'خدمة الوكيل المسجل الأمريكي Registered Agent | قبس',
     seoTitleEn: 'US Registered Agent & Street Address Service | QABS',
     seoDescriptionAr:
-      'احصل على وكيل مسجل رسمي وعنوان فعلي لشركتك الأمريكية في كافة الولايات الخمسين مع مسح ضوئي فوري للبريد الحكومي وتنبيهات الامتثال.',
+      'معلومات ومساعدة لطلب وكيل مسجل في الولايات المتاحة بعد مراجعة الولاية والتكلفة والخدمات التي يقدمها المزود.',
     seoDescriptionEn:
-      'Compliant Registered Agent representation in all 50 US states with same-day mail scanning and privacy protection.',
+      'Registered-agent application assistance in supported jurisdictions, subject to state review, provider availability, fees, and service terms.',
     detailedDescriptionAr: [
-      'يشترط القانون الأمريكي في جميع الولايات الخمسين وجود وكيل مسجل (Registered Agent) يمتلك عنواناً فعلياً داخل الولاية ويتواجد خلال ساعات العمل الرسمية لاستلام الإشعارات الحكومية والقانونية نيابة عن الشركة.',
-      'تقدم منصة قبس خدمة الوكيل المسجل المعتمد في كافة الولايات، مع حماية خصوصية عنوانك الشخصي، وأرشفة جميع المراسلات الواردة ضوئياً داخل لوحة التحكم الخاصة بك.'
+      'تتطلب الولايات عادةً وجود وكيل مسجل للكيانات المحلية، لكن تفاصيل العنوان والقبول والاستلام تختلف حسب الولاية ونوع الكيان؛ يجب التحقق من المتطلبات الرسمية قبل التقديم.',
+      'يمكن لقبس المساعدة في مراجعة متطلبات الوكيل ومقارنة الخيارات المتاحة. عنوان الوكيل لا يستبدل بالضرورة كل عناوين الشركة المطلوبة في السجلات، كما أن المسح وإعادة التوجيه والأرشفة تعتمد على مزود الخدمة وتكامله.'
     ],
     detailedDescriptionEn: [
       'Every US state legally requires an LLC or Corporation to maintain a Registered Agent with a physical street address in the state of formation during standard business hours.',
-      'QABS provides reliable Registered Agent coverage across all 50 states, keeping your personal address off public registries while scanning and forwarding official state notices directly to your dashboard.'
+      'QABS can help review registered-agent requirements and available options. An agent address does not necessarily replace every company address required in public records; scanning, forwarding, and dashboard delivery depend on the provider and verified integration.'
     ],
-    deliveryTimeAr: 'تفعيل فوري خلال 24 ساعة',
-    deliveryTimeEn: 'Activated within 24 hours',
+    deliveryTimeAr: 'المدة وتاريخ التفعيل يعتمدان على الولاية ومزود الوكيل وتأكيد الطلب',
+    deliveryTimeEn: 'Activation timing depends on the jurisdiction, agent provider, and confirmed order',
     startingPriceUsd: 99,
-    pricingNoteAr: 'اشتراك سنوي شامل مسح البريد الرسمي والإشعارات',
-    pricingNoteEn: 'Annual subscription including official mail scanning & alerts',
+    pricingNoteAr: 'السعر إرشادي لكل ولاية وقد تختلف رسوم الوكيل وخدمات البريد والمسح وإعادة التوجيه؛ لا يبدأ الاشتراك قبل تأكيد المزود والنطاق.',
+    pricingNoteEn: 'Indicative per-state pricing; agent, mail, scanning, and forwarding fees vary. No subscription starts until provider and scope are confirmed.',
     features: [
       {
-        titleAr: 'تغطية جميع الولايات الـ 50',
-        titleEn: 'All 50 States Coverage',
-        descriptionAr: 'عناوين فعلية معتمدة في وايومنغ، ديلاوير، نيو مكسيكو، تكساس وغيرها.',
-        descriptionEn: 'Verified physical addresses in Wyoming, Delaware, New Mexico, Texas, and all 50 states.'
+        titleAr: 'التحقق من التغطية حسب الولاية',
+        titleEn: 'Jurisdiction Availability Review',
+        descriptionAr: 'تُراجع تغطية مزود الوكيل للولاية المطلوبة وشروط العنوان قبل تأكيد الخدمة.',
+        descriptionEn: 'The selected provider’s coverage and address requirements are checked for the requested jurisdiction before confirmation.'
       },
       {
-        titleAr: 'حماية خصوصية الملاك',
+        titleAr: 'فهم أثر عنوان الوكيل على السجلات',
         titleEn: 'Founder Privacy Shield',
-        descriptionAr: 'إظهار عنوان الوكيل المسجل في السجلات العامة بدلاً من عنوانك الخاص.',
-        descriptionEn: 'Keep your personal home address private from public corporate records.'
+        descriptionAr: 'قد يظهر عنوان الوكيل في بعض السجلات، لكن قد تظل هناك متطلبات لعناوين أخرى أو إفصاحات عن المالك.',
+        descriptionEn: 'An agent address may appear in some records, but other company-address or owner-disclosure requirements may still apply.'
       },
       {
-        titleAr: 'مسح ضوئي فوري للبريد',
-        titleEn: 'Same-Day Mail Scanning',
-        descriptionAr: 'رفع أي خطاب حكومي أو إشعار ولاية بصيغة PDF إلى حسابك فور استلامه.',
-        descriptionEn: 'Official state notices scanned and uploaded to your Vault on the same day.'
+        titleAr: 'خدمات البريد وفق مزود الوكيل',
+        titleEn: 'Provider-Based Mail Services',
+        descriptionAr: 'تختلف آلية استلام الخطابات ومسحها وإرسالها ومدتها ورسومها حسب المزود؛ لا يُفترض وجود ربط تلقائي بلوحة قبس.',
+        descriptionEn: 'Mail receipt, scanning, forwarding times, and fees depend on the provider; automatic QABS dashboard integration is not assumed.'
       },
       {
-        titleAr: 'نقل مجاني من وكيل سابق',
-        titleEn: 'Seamless Agent Change Filing',
-        descriptionAr: 'إمكانية تعيين قبس كوكيل مسجل جديد لشركة قائمة بكل سهولة.',
-        descriptionEn: 'Easy Change of Agent filing if you are switching from another provider.'
+        titleAr: 'مساعدة في تغيير الوكيل عند التوفر',
+        titleEn: 'Registered-Agent Change Assistance',
+        descriptionAr: 'قد تتوفر مساعدة في تجهيز طلب تغيير الوكيل؛ قبول الطلب ورسوم الإيداع وتوفر المزود تخضع للولاية.',
+        descriptionEn: 'Assistance preparing a change-of-agent request may be available; registry acceptance, filing fees, and provider availability depend on the state.'
       }
     ],
     benefitsAr: [
-      'الحفاظ على وضع الشركة القانوني (Good Standing) وتجنب الحل الإداري.',
+      'استلام الإشعارات في الوقت المناسب قد يساعد على متابعة الالتزامات، لكنه لا يضمن Good Standing ولا يغني عن مسؤولية الشركة عن المواعيد.',
       'عدم تفويت أي إشعارات ضريبية أو تقارير سنوية صادرة عن سكرتير الولاية.',
       'إمكانية استخدام العنوان القانوني في نماذج التأسيس وبعض متطلبات الامتثال.',
-      'تجديد سلس تلقائي مع تنبيهات مسبقة قبل 30 يوماً من انتهاء السنة.'
+      'تُراجع مواعيد التجديد وشروط التنبيه وفق مزود الخدمة؛ لا يُفترض وجود تجديد أو تنبيه تلقائي.'
     ],
     benefitsEn: [
-      'Maintain continuous Good Standing and prevent administrative dissolution.',
+      'Timely receipt of notices may support compliance tracking but does not guarantee Good Standing or remove the company’s responsibility for deadlines.',
       'Never miss critical tax notices or Secretary of State compliance deadlines.',
       'Protect founder privacy across public corporate lookups.',
-      'Predictable annual billing with 30-day advance renewal alerts.'
+      'Renewal terms and reminders depend on the provider; automatic renewal or advance alerts are not assumed.'
     ],
     steps: [
       {
@@ -499,21 +499,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '02',
-        titleAr: 'إصدار بيانات العنوان والتفويض',
+        titleAr: 'مراجعة العنوان والتفويض',
         titleEn: 'Address Assignment & Authorization',
-        descriptionAr: 'تسليم تفاصيل العنوان المعتمد داخل الولاية وإعداد نموذج تعيين الوكيل.',
-        descriptionEn: 'Receive your assigned in-state address and sign the Change of Agent consent if transferring.',
-        durationAr: '24 ساعة',
-        durationEn: '24 hours'
+        descriptionAr: 'تُراجع بيانات العنوان وموافقة الوكيل قبل أي تعيين؛ لا يُعتمد العنوان قبل تأكيد المزود.',
+        descriptionEn: 'Review the proposed address and agent consent; the address is not assigned until the provider confirms availability.',
+        durationAr: 'بعد تأكيد المزود',
+        durationEn: 'After provider confirmation'
       },
       {
         stepNumber: '03',
-        titleAr: 'التفعيل والربط مع الخزينة',
+        titleAr: 'تأكيد التفعيل وقناة المراسلات',
         titleEn: 'Activation & Vault Sync',
-        descriptionAr: 'تفعيل لوحة استلام المراسلات وتنبيهات التجديد السنوية تلقائياً.',
-        descriptionEn: 'Activate digital mail forwarding and automated annual compliance reminders.',
-        durationAr: 'فوري بعد الاعتماد',
-        durationEn: 'Immediate'
+        descriptionAr: 'يُؤكد التفعيل وقناة تسليم المراسلات والتنبيهات إذا كانت متاحة لدى المزود ومربوطة تقنياً.',
+        descriptionEn: 'Activation, mail delivery, and reminders are confirmed only where the provider offers them and the integration is technically connected.',
+        durationAr: 'حسب إجراءات المزود',
+        durationEn: 'Subject to provider procedures'
       }
     ],
     packages: [
@@ -524,20 +524,20 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 99,
         billingNoteAr: 'سنوياً لكل ولاية',
         billingNoteEn: 'Per year / per state',
-        descriptionAr: 'تمثيل قانوني معتمد مع مسح البريد الحكومي وتنبيهات الامتثال.',
-        descriptionEn: 'Full statutory representation with government mail scanning and compliance alerts.',
+        descriptionAr: 'طلب وكيل مسجل وفق شروط الولاية والمزود، مع خدمات البريد التي يتم تأكيدها كتابياً.',
+        descriptionEn: 'Registered-agent request subject to state and provider terms, with only the mail services confirmed in writing.',
         recommended: true,
         featuresAr: [
-          'عنوان فعلي معتمد لدى سكرتير الولاية',
-          'استلام الإشعارات الحكومية والقضائية',
-          'مسح ضوئي وإرسال فوري عبر المنصة والبريد',
-          'تنبيهات مواعيد التقرير السنوي'
+          'تأكيد العنوان والقبول لدى الولاية قبل التعيين',
+          'خدمات استلام الإشعارات وفق شروط المزود',
+          'مسح وإرسال البريد إذا كانت الخدمة متاحة ومشمولة في العرض',
+          'معلومات عن مواعيد التقرير السنوي دون ضمان تنبيه آلي'
         ],
         featuresEn: [
-          'Physical street address registered with state',
-          'Official Service of Process acceptance',
-          'Same-day PDF scanning & dashboard upload',
-          'Annual report deadline reminders'
+          'Confirm address and state acceptance before appointment',
+          'Notice-receipt services subject to provider terms',
+          'Scanning and delivery only if available and included in the quote',
+          'Annual-report date information; automated alerts are not guaranteed'
         ]
       },
       {
@@ -547,19 +547,19 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 169,
         billingNoteAr: 'سنوياً شامل إعادة توجيه البريد البنكي',
         billingNoteEn: 'Per year incl. commercial mail scans',
-        descriptionAr: 'يشمل استلام المراسلات البنكية وبطاقات البنوك وخطابات IRS بالإضافة للوكيل.',
-        descriptionEn: 'Includes Registered Agent plus commercial mail scanning for bank cards and IRS letters.',
+        descriptionAr: 'خدمات بريد تجاري إضافية قد تكون متاحة لدى بعض المزودين برسوم وشروط منفصلة؛ يجب تأكيد قبول كل نوع من البريد قبل الطلب.',
+        descriptionEn: 'Additional commercial-mail services may be offered by some providers at separate fees and terms; acceptance of each mail type must be confirmed before ordering.',
         featuresAr: [
           'جميع مزايا الوكيل المسجل السنوي',
-          'استلام خطابات البنوك و Stripe و IRS',
-          'مسح ضوئي غير محدود للرسائل التجارية',
-          'أرشفة رقمية منظمة طوال العام'
+          'قبول أنواع المراسلات التجارية بعد تأكيد المزود',
+          'حدود المسح ورسوم البريد تحددها شروط المزود',
+          'التسليم والأرشفة عبر القناة المتاحة إذا كانت مفعّلة'
         ],
         featuresEn: [
           'All Annual Registered Agent features',
-          'Accepts bank cards, IRS, and Stripe letters',
-          'Unlimited commercial mail PDF scans',
-          'Year-round organized digital mail archive'
+          'Commercial mail types accepted only after provider confirmation',
+          'Scanning limits and mail fees follow provider terms',
+          'Delivery and archiving through the available channel if enabled'
         ]
       }
     ],
@@ -567,14 +567,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل يختلف عنوان الوكيل المسجل عن عنوان مكتب العمل التجاري؟',
         questionEn: 'Is a Registered Agent address different from a commercial mail address?',
-        answerAr: 'الوكيل المسجل مخصص لاستلام الإشعارات الرسمية والقانونية من الولاية، أما باقة بريد الأعمال فتضيف إمكانية استلام بطاقات البنوك والرسائل التجارية.',
-        answerEn: 'A standard Registered Agent receives statutory state notices, while our Mail Forwarding tier also accepts commercial mail and bank cards.'
+        answerAr: 'يقتصر دور الوكيل المسجل عادةً على الإشعارات الرسمية وخدمة الإجراءات وفق قانون الولاية. أما البريد التجاري وبطاقات البنوك فيتطلبان خدمة منفصلة وتأكيداً صريحاً من المزود.',
+        answerEn: 'A standard Registered Agent generally receives statutory notices and service of process under state law. Commercial mail and bank cards require a separate service and explicit provider confirmation.'
       },
       {
         questionAr: 'هل يمكنني نقل شركتي الحالية لوكيل قبس المسجل؟',
         questionEn: 'Can I transfer my existing US LLC to QABS Registered Agent?',
-        answerAr: 'نعم، نتولى تقديم طلب تغيير الوكيل المسجل (Change of Registered Agent) لدى سكرتير الولاية دون أي تعقيدات.',
-        answerEn: 'Yes, we handle the official Change of Registered Agent filing with your Secretary of State.'
+        answerAr: 'قد نساعد في تجهيز طلب تغيير الوكيل وتنسيقه عند توفر الخدمة؛ رسوم الإيداع وقبول الولاية وموعد السريان تخضع للجهة المختصة.',
+        answerEn: 'We may assist with preparing and coordinating a change-of-agent request where available; filing fees, state acceptance, and effective date are controlled by the relevant authority.'
       }
     ],
     formFields: [
