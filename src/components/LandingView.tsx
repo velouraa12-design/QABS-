@@ -385,8 +385,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
                     {isAr
-                      ? 'تشمل تأسيس الشركة الأمريكية، الرقم الضريبي EIN، العنوان، وتجهيز بوابات الدفع والمتجر الإلكتروني'
-                      : 'Includes US LLC formation, IRS EIN, Registered Agent address, payment gateway prep & store'}
+                      ? 'تشمل خدمات مساعدة في التأسيس وطلب EIN وتجهيز مستندات التقديم؛ التنفيذ يخضع للأهلية والتوفر ولا يضمن موافقات الجهات.'
+                      : 'Includes formation and EIN application assistance and provider-application document preparation; subject to eligibility and availability, with no approval guarantees.'}
                   </p>
                 </div>
 
@@ -399,6 +399,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   ))}
                 </ul>
 
+                <p className="text-[10px] leading-5 text-slate-500 dark:text-slate-400">
+                  {isAr
+                    ? 'السعر إرشادي ويخضع لمراجعة الأهلية ونطاق الخدمة والرسوم الحكومية وتأكيد التوفر قبل الدفع. لا نضمن إصدار EIN أو فتح حساب أو قبول بوابة دفع.'
+                    : 'Indicative price subject to eligibility, scope, government fees, and availability review before payment. EIN issuance, bank-account opening, and payment-provider approval are not guaranteed.'}
+                </p>
                 <div className="grid grid-cols-2 gap-2.5 pt-2">
                   <button
                     type="button"
@@ -408,13 +413,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
                         serviceType: 'company_formation',
                         titleAr: isAr ? siteContent.showcasePackageTitleAr : 'باقة التأسيس الشاملة',
                         titleEn: siteContent.showcasePackageTitleEn,
-                        subtitleAr: 'تأسيس شركة أمريكية + EIN + وكيل مسجل + تجهيز الدفع',
-                        subtitleEn: 'Full US LLC + IRS EIN + Registered Agent + Gateway prep',
+                        subtitleAr: 'مساعدة في التأسيس وطلب EIN والوكيل المسجل وتجهيز مستندات التقديم؛ وفق الأهلية والتوفر.',
+                        subtitleEn: 'Formation, EIN, registered-agent and payment-application support, subject to eligibility and availability.',
                         priceUsd: Number(siteContent.showcasePrice) || 349,
                         details: {
                           jurisdiction: 'US_WYOMING',
                           entityType: 'LLC',
-                          addons: { ein: true, physicalAddressAgent: true, businessBank: true, stripePayPal: true }
+                          addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false }
                         }
                       })
                     }
