@@ -45,17 +45,17 @@ describe('Tap sandbox payment adapter', () => {
       requestUrl = String(url);
       requestInit = init;
       return new Response(JSON.stringify({
-        id: 'chg_test_123',
+        id: 'chg_Test123',
         status: 'INITIATED',
-        transaction: { url: 'https://checkout.tap.company/pay/chg_test_123' }
+        transaction: { url: 'https://checkout.tap.company/pay/chg_Test123' }
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as typeof fetch;
 
     const result = await createTapSandboxCharge(input, 'sk_test_123', fakeFetch);
     assert.equal(requestUrl, 'https://api.tap.company/v2/charges/');
-    assert.equal(result.id, 'chg_test_123');
+    assert.equal(result.id, 'chg_Test123');
     assert.equal(result.status, 'INITIATED');
-    assert.equal(result.redirectUrl, 'https://checkout.tap.company/pay/chg_test_123');
+    assert.equal(result.redirectUrl, 'https://checkout.tap.company/pay/chg_Test123');
     assert.equal(new Headers(requestInit?.headers).get('authorization'), 'Bearer sk_test_123');
     const body = JSON.parse(String(requestInit?.body));
     assert.equal(body.amount, 349);
@@ -78,7 +78,7 @@ describe('Tap sandbox payment adapter', () => {
     const fakeFetch = (async (url: string | URL | Request) => {
       requestUrl = String(url);
       return new Response(JSON.stringify({
-        id: 'chg_test_123',
+        id: 'chg_Test123',
         status: 'CAPTURED',
         live_mode: false,
         amount: 349,
@@ -86,10 +86,10 @@ describe('Tap sandbox payment adapter', () => {
         reference: { transaction: 'inv_test_1', order: 'INV-TEST-1' }
       }), { status: 200, headers: { 'content-type': 'application/json' } });
     }) as typeof fetch;
-    const charge = await retrieveTapSandboxCharge('chg_test_123', 'sk_test_123', fakeFetch);
-    assert.equal(requestUrl, 'https://api.tap.company/v2/charges/chg_test_123');
+    const charge = await retrieveTapSandboxCharge('chg_Test123', 'sk_test_123', fakeFetch);
+    assert.equal(requestUrl, 'https://api.tap.company/v2/charges/chg_Test123');
     assert.deepEqual(charge, {
-      id: 'chg_test_123',
+      id: 'chg_Test123',
       status: 'CAPTURED',
       liveMode: false,
       amount: 349,
@@ -106,7 +106,7 @@ describe('Tap sandbox payment adapter', () => {
       return new Response('{}', { status: 200 });
     }) as typeof fetch;
     await assert.rejects(() => retrieveTapSandboxCharge('not-a-charge', 'sk_test_123', fakeFetch), /INVALID_TAP_CHARGE_ID/);
-    await assert.rejects(() => retrieveTapSandboxCharge('chg_test_123', 'sk_live_123', fakeFetch), /TAP_SANDBOX_KEY_REQUIRED/);
+    await assert.rejects(() => retrieveTapSandboxCharge('chg_Test123', 'sk_live_123', fakeFetch), /TAP_SANDBOX_KEY_REQUIRED/);
     assert.equal(calls, 0);
   });
 });
