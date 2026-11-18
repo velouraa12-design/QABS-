@@ -691,8 +691,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '03',
-        titleAr: 'التأسيس وإصدار الوثائق',
-        titleEn: 'State Filing & EIN Issuance',
+        titleAr: 'تنسيق التأسيس ومراجعة طلب EIN',
+        titleEn: 'Formation Coordination & EIN Application Assistance',
         descriptionAr: 'تُنسّق قبس تجهيز طلب الإيداع بعد قبول الأهلية والنطاق وتوفر جهة التنفيذ؛ السجل الحكومي يصدر شهادة التأسيس، ويخضع طلب EIN لمتطلبات IRS.',
         descriptionEn: 'QABS coordinates filing preparation after eligibility and scope acceptance and service availability; the registry issues formation records, and any EIN request is subject to IRS requirements.',
         durationAr: '3 – 10 أيام عمل',
