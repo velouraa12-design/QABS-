@@ -25,6 +25,7 @@ import {
 } from './security.ts';
 import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
+import { createTapSandboxCharge, isTapTestSecret } from './payments/tap.ts';
 
 export interface CreateServerOptions {
   dbPath?: string;
@@ -1541,6 +1542,104 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ invoice: inv });
   });
 
+  // Tap hosted checkout — sandbox only. The amount is always loaded from the
+  // authenticated tenant's invoice; callers cannot supply or override it.
+  app.post('/api/payments/tap/charges', requireAuth, async (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true') {
+      res.status(503).json({ error: 'Sandbox payment initiation is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (!isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'A Tap test-mode secret key is required.', code: 'TAP_SANDBOX_NOT_CONFIGURED' });
+      return;
+    }
+    const invoiceId = sanitizeId(req.body?.invoiceId);
+    if (!invoiceId) {
+      res.status(400).json({ error: 'A valid invoiceId is required.', code: 'INVALID_INVOICE_ID' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, description_en, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ? AND tenant_id = ?`
+    ).get(invoiceId, actor.tenantId) as Record<string, unknown> | undefined;
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found.', code: 'INVOICE_NOT_FOUND' });
+      return;
+    }
+    if (invoice.status === 'paid' || invoice.status === 'cancelled') {
+      res.status(409).json({ error: 'This invoice cannot accept another payment attempt.', code: 'INVOICE_NOT_PAYABLE' });
+      return;
+    }
+    if (String(invoice.payment_proof_ref || '').startsWith('tap:')) {
+      res.status(409).json({ error: 'A Tap payment attempt already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
+      return;
+    }
+
+    let appOrigin: URL;
+    try {
+      appOrigin = new URL(process.env.APP_ORIGIN || '');
+    } catch {
+      res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
+      return;
+    }
+    if (appOrigin.protocol !== 'https:' || appOrigin.username || appOrigin.password) {
+      res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
+      return;
+    }
+    const redirect = new URL('/payment/return', appOrigin);
+    redirect.searchParams.set('invoice', invoiceId);
+
+    try {
+      const charge = await createTapSandboxCharge({
+        amount: Number(invoice.amount),
+        currency: String(invoice.currency || 'USD').toUpperCase(),
+        description: String(invoice.description_en || invoice.invoice_number),
+        invoiceId,
+        invoiceNumber: String(invoice.invoice_number),
+        customerName: actor.name,
+        customerEmail: actor.email,
+        redirectUrl: redirect.toString()
+      }, secretKey);
+      db.prepare(
+        `UPDATE billing_invoices
+         SET status = 'pending_verification', payment_proof_ref = ?
+         WHERE id = ? AND tenant_id = ? AND status != 'paid'`
+      ).run(`tap:${charge.id}`, invoiceId, actor.tenantId);
+      logAudit(
+        db,
+        actor.tenantId,
+        actor.userId,
+        actor.name,
+        `بدء محاولة دفع تجريبية عبر Tap للفاتورة ${invoice.invoice_number}`,
+        `Started Tap sandbox payment attempt for invoice ${invoice.invoice_number}`,
+        String(charge.id)
+      );
+      res.status(201).json({
+        provider: 'tap',
+        mode: 'sandbox',
+        invoiceId,
+        chargeId: charge.id,
+        providerStatus: charge.status,
+        redirectUrl: charge.redirectUrl,
+        paymentConfirmed: false
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'TAP_SANDBOX_REQUEST_FAILED';
+      const safeCode = [
+        'TAP_SANDBOX_KEY_REQUIRED',
+        'INVALID_PAYMENT_AMOUNT',
+        'INVALID_PAYMENT_CURRENCY',
+        'INVALID_PAYMENT_CONTEXT',
+        'TAP_SANDBOX_AUTH_FAILED',
+        'TAP_SANDBOX_REQUEST_FAILED',
+        'TAP_SANDBOX_INVALID_RESPONSE'
+      ].includes(code) ? code : 'TAP_SANDBOX_REQUEST_FAILED';
+      res.status(502).json({ error: 'Tap sandbox could not create the payment session.', code: safeCode });
+    }
+  });
+
   // Safe server-side integration status overview (zero secrets exposed)
   app.get('/api/integrations/status', requireAuth, (_req: AuthedRequest, res: Response) => {
     res.json({
@@ -1548,15 +1647,15 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       environment: process.env.NODE_ENV === 'production' ? 'production_gated' : 'preview',
       integrations: {
         tap: {
-          configured: Boolean(process.env.TAP_PUBLIC_KEY),
-          secretConfigured: Boolean(process.env.TAP_SECRET_KEY),
+          configured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()),
+          sandboxConfigured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()),
           region: 'GCC',
           methods: ['mada', 'Visa/Mastercard', 'Apple Pay'],
           mode: 'sandbox_gated'
         },
         moyasar: {
-          configured: Boolean(process.env.MOYASAR_PUBLISHABLE_KEY),
-          secretConfigured: Boolean(process.env.MOYASAR_SECRET_KEY),
+          configured: process.env.MOYASAR_PUBLISHABLE_KEY?.startsWith('pk_test_') === true && process.env.MOYASAR_SECRET_KEY?.startsWith('sk_test_') === true,
+          sandboxConfigured: process.env.MOYASAR_PUBLISHABLE_KEY?.startsWith('pk_test_') === true && process.env.MOYASAR_SECRET_KEY?.startsWith('sk_test_') === true,
           region: 'SA / GCC',
           methods: ['mada', 'SADAD', 'STC Pay', 'Apple Pay'],
           mode: 'sandbox_gated'
