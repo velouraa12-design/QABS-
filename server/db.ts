@@ -64,6 +64,14 @@ export function createDatabase(dbPath: string): DatabaseSync {
       reset_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS studio_request_attempts (
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      attempt_id TEXT NOT NULL,
+      request_id TEXT NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (tenant_id, attempt_id)
+    );
+
     CREATE TABLE IF NOT EXISTS services_catalog (
       slug TEXT PRIMARY KEY,
       category TEXT NOT NULL,
