@@ -97,7 +97,7 @@ jobs:
         curl -fsS http://127.0.0.1:3000/studio/api/config | node --input-type=module -e '
           let body = ""; for await (const chunk of process.stdin) body += chunk;
           const config = JSON.parse(body);
-          if (config.stage !== "preview-isolated" || config.payments !== false) process.exit(1);
+          if (config.stage !== "preview-isolated" || config.registration !== false || config.emailVerification !== false || config.passwordRecovery !== false || config.payments !== false) process.exit(1);
         '
         # Production-mode smoke checks: unconfigured email flows must fail closed.
         registration_status="$(curl -sS -o /tmp/qabs-register.json -w '%{http_code}' \
