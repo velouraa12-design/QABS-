@@ -223,7 +223,7 @@ export const StudioWorkspaceView: React.FC = () => {
 
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
             <h2 className="text-lg font-black text-[#D5B46B]">دليل الخدمات</h2>
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">{services.slice(0, 12).map((service, index) => <div key={String(service.key || index)} className="rounded-xl bg-[#071A2A] p-3 text-sm">{labelOf(service.titleAr || service.nameAr || service.title || service.name, 'خدمة قبس')}</div>)}</div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">{services.slice(0, 12).map((service, index) => <div key={String(service.key || index)} className="rounded-xl bg-[#071A2A] p-3 text-sm">{labelOf(service.titleAr || service.nameAr || service.title || service.name || service.ar || service.en, 'خدمة قبس')}</div>)}</div>
             <div className="mt-4 rounded-xl border border-[#D5B46B]/20 bg-[#071A2A] p-3 text-xs text-slate-300">حالة الدفع: {config?.payments === true ? 'متاح وفق إعدادات البيئة' : 'غير مفعّل'} · بيئة: {labelOf(config?.stage, 'معاينة')}</div>
           </article>
         </div>
