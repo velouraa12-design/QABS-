@@ -92,3 +92,49 @@ export async function createTapSandboxCharge(
     redirectUrl
   };
 }
+
+export interface TapSandboxVerifiedCharge {
+  id: string;
+  status: string;
+  liveMode: boolean;
+  amount: number;
+  currency: string;
+  transactionReference: string;
+  orderReference: string;
+}
+
+export async function retrieveTapSandboxCharge(
+  chargeId: string,
+  secretKey: string | undefined,
+  fetchImpl: FetchLike = fetch
+): Promise<TapSandboxVerifiedCharge> {
+  if (!isTapTestSecret(secretKey)) {
+    throw new Error('TAP_SANDBOX_KEY_REQUIRED');
+  }
+  if (!/^chg_[A-Za-z0-9]+$/.test(chargeId)) {
+    throw new Error('INVALID_TAP_CHARGE_ID');
+  }
+  const response = await fetchImpl(`https://api.tap.company/v2/charges/${encodeURIComponent(chargeId)}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${secretKey}`,
+      accept: 'application/json'
+    }
+  });
+  const payload = await response.json().catch(() => ({})) as Record<string, any>;
+  if (!response.ok) {
+    throw new Error(response.status === 401 || response.status === 403 ? 'TAP_SANDBOX_AUTH_FAILED' : 'TAP_SANDBOX_REQUEST_FAILED');
+  }
+  if (payload.id !== chargeId || typeof payload.status !== 'string') {
+    throw new Error('TAP_SANDBOX_INVALID_RESPONSE');
+  }
+  return {
+    id: payload.id,
+    status: payload.status,
+    liveMode: payload.live_mode === true,
+    amount: Number(payload.amount),
+    currency: String(payload.currency || '').toUpperCase(),
+    transactionReference: String(payload.reference?.transaction || ''),
+    orderReference: String(payload.reference?.order || '')
+  };
+}
