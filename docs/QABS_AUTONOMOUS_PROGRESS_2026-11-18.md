@@ -130,3 +130,13 @@ Live scrape checks on the new deployment:
 - `#/overview`, `#/workspace`, `#/workspace/overview`, `#/login`, `#/portal`, and `?workspacePreview=1#/overview` all returned the marketing landing page in the Firecrawl scrape. The customer workspace therefore remains NOT VERIFIED on this Pages preview; the route may require a browser interaction or a different host/route. The preview reference link from PR-2 remains a separate demo environment.
 
 The newly deployed preview visibly contains prices and marketing claims (including an EIN success-rate claim). Those are content, not verified service outcomes or approved current pricing; review them before any public release.
+
+
+### Workspace interaction and backend-route verification
+
+A live browser interaction clicked the visible `مساحة العمل` control. It opened the secure-login modal; it did not enter a customer dashboard. No credentials were entered and no form was submitted. This is a useful fail-closed UI observation, but it does not validate a real login.
+
+On the same Pages preview:
+- `/api/health` returned HTTP 200 with `text/html` containing the application's not-found page, not JSON health output.
+- `/studio/api/config` returned HTTP 200 with `text/html` containing the application's not-found page, not a Studio API response.
+This is consistent with the Cloudflare Pages project reporting `uses_functions=false`: the preview is static-only and has no deployed backend Functions/API. Do not wire this Pages origin to real customer operations or treat HTTP 200 on these fallback pages as API success.
