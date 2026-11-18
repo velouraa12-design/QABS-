@@ -422,10 +422,10 @@ Added `tests/studio-api-contract.test.ts` verifying same-origin `/studio/api` re
 - Marked state filing fees as indicative and subject to change; added general legal/tax disclaimers.
 
 ### CI and browser verification
-Latest commit validated: `b8621c7054ebf30adab1a69b659404b6e3b34da4`.
-- GitHub Actions CI run `44235198305`: SUCCESS — TypeScript/lint, API tests (12 tests, 0 failures), route/safety contract checks, build, secret scan.
-- Workspace preview run `44235191970`: SUCCESS — install, lint, tests, route/safety checks, build, artifact upload, isolated Cloudflare Pages deploy.
-- Pages deployment `bb437fd4-d85b-4dc2-ba3c-8de8c5811772` on branch `autonomous/qabs-baseline-audit-20261118`, alias `https://autonomous-qabs-baseline-aud.qabs-workspace-reference-preview.pages.dev`.
+Latest commit validated: `f802c1bea2dfe8932796fc9b58e17104dadaa319` (documentation-only follow-up after the same code passed CI).
+- GitHub Actions CI run `44235610640`: SUCCESS — TypeScript/lint, API tests (12 tests, 0 failures), route/safety contract checks, build, secret scan.
+- Workspace preview run `44235603874`: SUCCESS — install, lint, tests, route/safety checks, build, artifact upload, isolated Cloudflare Pages deploy.
+- Pages deployment `262097a7-b4d9-4a9f-841c-374294e1e5c2` on branch `autonomous/qabs-baseline-audit-20261118`, alias `https://autonomous-qabs-baseline-aud.qabs-workspace-reference-preview.pages.dev`.
 - Browser checks on the deployed branch preview: `/login`, `/signup`, `/forgot-password`, `/verify-email`, `/workspace/overview`, `/workspace/requests`, `/studio#/home`, and `/order` returned without 404. Auth forms were disabled with an explicit offline/capability notice. Public service-order draft and submit buttons were disabled. No unverified stats remained on the landing page. At 390px viewport width, document width was 375px (no horizontal overflow).
 - Browser QA could not enter the authenticated workspace because auth is correctly gated; all post-login page interactions remain NOT VERIFIED.
 
