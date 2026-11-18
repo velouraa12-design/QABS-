@@ -267,7 +267,7 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
           </div>
         </section>
 
-        {/* 5. Approved Packages & Pricing */}
+        {/* 5. Indicative Packages & Pricing */}
         {service.packages.length > 0 && (
           <section className="space-y-6">
             <div>
