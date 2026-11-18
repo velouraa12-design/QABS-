@@ -761,12 +761,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-xs font-black text-[#00A896] uppercase">
-              {isAr ? 'منظومة قبس الرقمية المتكاملة' : 'QABS Unified Digital Ecosystem'}
+              {isAr ? 'خدمات قبس الرقمية' : 'QABS Digital Services'}
             </span>
             <h2 className="text-2xl font-black text-[#003445] dark:text-white mt-1">
               {isAr
-                ? 'كل ما تحتاجه لتأسيس شركتك وربط مدفوعاتك وإدارة متاجرك الإلكترونية'
-                : 'Everything Needed to Form Companies, Connect Global Payments & Run Online Stores'}
+                ? 'مساعدة في تأسيس الأعمال وتجهيز الطلبات ومراجعة احتياجات المتاجر والخدمات الرقمية'
+                : 'Business formation assistance, application preparation, and store and digital-service assessments'}
             </h2>
           </div>
         </div>
@@ -792,7 +792,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'طلب تأسيس شركة' : 'Request Formation'}</span>
+                <span>{isAr ? 'مراجعة خيارات التأسيس' : 'Review Formation Options'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -825,7 +825,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'متابعة الوثائق والامتثال' : 'Manage Compliance'}</span>
+                <span>{isAr ? 'استعراض خدمات الامتثال' : 'Explore Compliance Services'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -858,7 +858,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'إدارة المتاجر الإلكترونية' : 'Open QABS Stores'}</span>
+                <span>{isAr ? 'استعراض خدمة إعداد المتاجر' : 'Explore Store Setup'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -894,7 +894,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'استعراض الباقات وبوابات الدفع' : 'View Plans & Gateways'}</span>
+                <span>{isAr ? 'استعراض خدمات الحسابات والدفع' : 'Explore Account & Payment Services'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
