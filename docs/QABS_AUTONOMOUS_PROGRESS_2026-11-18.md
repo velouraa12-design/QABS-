@@ -485,3 +485,34 @@ Therefore:
 - The legacy `qabsApi` and Studio API must not be mixed; their session and endpoint contracts differ.
 - The new test increases confidence in the subset that exists; it does not close the frontend/backend parity gap or establish Cloudflare tenant isolation.
 - No live Worker, database, DNS, Shopify, payment, or production resource was changed.
+
+
+## 13. Marketing capability and service-scope corrections — 2026-11-18
+
+The public isolated preview was reviewed page-by-page. Additional unsupported or overly certain statements were replaced with eligibility-, provider-, registry-, and scope-dependent wording.
+
+Updated areas:
+- Landing page store plans are now assessment-only options. They no longer show recurring prices, product/store quotas, gateway badges, or a purchase action. The page explicitly says no subscription, payment, domain, gateway activation, or store publication is activated there.
+- QABS AI cards no longer advertise 500/1,500/5,000-credit purchases, instant top-ups, or automated fulfilment. They are marked as in preparation, with no purchasable credits or active automated execution.
+- Company-formation page now distinguishes QABS document/filing coordination from the registry's authority to accept filings and issue official records. Operating agreements and banking resolutions are described as drafts only when included in a confirmed scope. Packages and prices are indicative.
+- EIN page now describes application-preparation assistance, not guaranteed issuance. Fixed 4–10-day and 24-hour claims, guaranteed SSN/ITIN assumptions, bank/payment eligibility claims, and automatic document-vault delivery were removed or qualified.
+- Registered-agent page now conditions state coverage, address assignment, mail scanning/forwarding, commercial mail, reminders, renewal, and change-of-agent support on the selected provider's confirmed terms and availability. It no longer promises all-state coverage or same-day/instant scanning.
+- US LLC page now describes selected-jurisdiction review, not universal 50-state formation availability. Tax treatment, liability separation, registry timing, EIN assistance, bank access, and provider acceptance are explicitly qualified.
+- Landing, company-formation, and US LLC fee-guide labels now distinguish indicative fee references from a promise that QABS can perform a filing in every jurisdiction.
+- Customizer/security copy no longer claims the highest encryption standard or strict tenant isolation as already delivered; it describes controls under development and requires technical verification before operational availability.
+
+### Verification
+
+- Studio server integration tests: 14 tests passed, including synthetic-account registration, Studio session/me, workspace-store access, cross-tenant workspace denial (403), logout, and payment-disabled configuration.
+- Latest verified CI run before this documentation update: run 44241710903, commit `24ad77d48624584c8008132280e1f5b3634acd8c`, all steps passed (TypeScript, API tests, route/marketing checks, build, secret scan).
+- Latest verified isolated Pages preview: `https://10b36908.qabs-workspace-reference-preview.pages.dev`; Firecrawl returned the home page and the company-formation, EIN, registered-agent, and US LLC pages successfully.
+- The preview still contains a formation calculator and indicative price references; the checkout path remains disabled in this preview, and no payment is collected.
+- `npm install` reports 3 high-severity dependency advisories. Exact affected packages and safe upgrade paths have not yet been established; do not run a blanket `npm audit fix --force`.
+
+### Still not complete / blocked
+
+- The Studio API is not wired into `AppContext`; the client and the Express candidate have partial endpoint parity, while the Cloudflare acceptance Worker is a separate runtime.
+- Worker feature flags still disable important email verification/recovery, document, and other operational paths; these must be verified per environment before enabling.
+- No end-to-end test has established full production-grade tenant isolation, file upload security, billing/subscription lifecycle, custom domains, domain purchase, store publication, or live checkout.
+- No live production deployment, DNS change, Shopify theme change, payment activation, or customer communication was performed.
+- Dependency advisory triage remains open.
