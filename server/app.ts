@@ -25,7 +25,7 @@ import {
 } from './security.ts';
 import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
-import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from './payments/tap.ts';
+import { createTapSandboxCharge, isTapTestSecret, isValidTapWebhookUrl, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from './payments/tap.ts';
 
 export interface CreateServerOptions {
   dbPath?: string;
@@ -1621,6 +1621,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       res.status(409).json({ error: 'A payment reference already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
       return;
     }
+    if (!isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim())) {
+      res.status(503).json({ error: 'A dedicated HTTPS Tap webhook endpoint is required.', code: 'TAP_WEBHOOK_URL_NOT_CONFIGURED' });
+      return;
+    }
     // Atomic reservation prevents two concurrent requests from creating duplicate charges
     // and preserves any manual/bank-transfer proof already attached to the invoice.
     const reservation = `tap:pending:${generateToken(8)}`;
@@ -1662,7 +1666,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
         customerName: actor.name,
         customerEmail: actor.email,
         redirectUrl: redirect.toString(),
-        webhookUrl: new URL('/api/payments/tap/webhook', appOrigin).toString()
+        webhookUrl: process.env.TAP_WEBHOOK_URL!.trim()
       }, secretKey);
       db.prepare(
         `UPDATE billing_invoices
@@ -1785,8 +1789,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       environment: process.env.NODE_ENV === 'production' ? 'production_gated' : 'preview',
       integrations: {
         tap: {
-          configured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()),
-          sandboxConfigured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()),
+          configured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()) && isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim()),
+          sandboxConfigured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()) && isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim()),
           region: 'GCC',
           methods: ['mada', 'Visa/Mastercard', 'Apple Pay'],
           mode: 'sandbox_gated'
