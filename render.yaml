@@ -18,4 +18,4 @@ services:
       - key: QABS_ALLOW_SANDBOX_PAYMENTS
         value: "false"
       - key: APP_ORIGIN
-        value: https://preview.qabs1.store
+        value: https://qabs-isolated-preview-api.onrender.com
