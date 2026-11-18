@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { ApiError, qabsApi } from '../services/qabsApi.ts';
 import { X, Sparkles, Send, Bot, Copy, Check, RefreshCw } from 'lucide-react';
@@ -12,23 +12,26 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
   const { language, showToast, backendStatus, isAuthenticated, activeStoreId, user, refreshWorkspace, openClientAuth } = useApp();
   const isAr = language === 'ar';
 
+  const welcomeText = backendStatus === 'connected' && isAuthenticated
+    ? isAr
+      ? 'مرحباً بك في مستشار قبس الذكي. عند توفر رصيد كافٍ واتصال الخادم، تُرسل الطلبات إلى محرك الذكاء الاصطناعي وتُسجل نتائجها.'
+      : 'Welcome to QABS AI. When the server is connected and credits are available, requests are sent to the AI engine and recorded.'
+    : isAr
+      ? 'مرحباً بك في معاينة قبس AI. محرك الذكاء الاصطناعي غير متصل حالياً؛ لن يتم تنفيذ الطلبات أو خصم الأرصدة في هذه المعاينة.'
+      : 'Welcome to the QABS AI preview. The AI engine is not connected; prompts will not execute and no credits will be deducted in this preview.';
+
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [messages, setMessages] = useState<
     { role: 'user' | 'assistant'; text: string; provider?: string }[]
-  >([
-    {
-      role: 'assistant',
-      text: backendStatus === 'connected' && isAuthenticated
-        ? isAr
-          ? 'مرحباً بك في مستشار قبس الذكي. عند توفر رصيد كافٍ واتصال الخادم، تُرسل الطلبات إلى محرك الذكاء الاصطناعي وتُسجل نتائجها.'
-          : 'Welcome to QABS AI. When the server is connected and credits are available, requests are sent to the AI engine and recorded.'
-        : isAr
-          ? 'مرحباً بك في معاينة قبس AI. محرك الذكاء الاصطناعي غير متصل حالياً؛ لن يتم تنفيذ الطلبات أو خصم الأرصدة في هذه المعاينة.'
-          : 'Welcome to the QABS AI preview. The AI engine is not connected; prompts will not execute and no credits will be deducted in this preview.'
-    }
-  ]);
+  >([{ role: 'assistant', text: welcomeText }]);
+
+  useEffect(() => {
+    setMessages(prev => prev.length === 1 && prev[0].role === 'assistant'
+      ? [{ role: 'assistant', text: welcomeText }]
+      : prev);
+  }, [welcomeText]);
 
   if (!isOpen) return null;
 
