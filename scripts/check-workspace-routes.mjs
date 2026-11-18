@@ -98,7 +98,6 @@ const forbiddenUnverifiedClaims = [
   'Order Package Now',
   'Order in ',
   'Form Company in ',
-  'Form ',
   'Choose the best state (Wyoming for commerce, Delaware for VC)',
   'نتولى عنك كافة الإجراءات الحكومية والقانونية والتقنية',
   'نقوم بإيداع النظام الأساسي لدى سكرتير الولاية واستخراج الرقم الضريبي',
