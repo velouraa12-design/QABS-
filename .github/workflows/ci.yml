@@ -2,7 +2,7 @@ name: QABS Platform CI & Quality Check
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'autonomous/**' ]
   pull_request:
     branches: [ main, master ]
 
