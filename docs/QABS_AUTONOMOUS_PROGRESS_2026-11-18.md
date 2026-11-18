@@ -547,3 +547,18 @@ Changes committed on the isolated branch:
 - The Studio server contract test now asserts these capabilities remain disabled under the default test environment.
 
 This is a fail-closed capability-advertisement correction only. It does not configure mail, enable authentication flows, add file storage, or alter any Cloudflare Worker. CI has not yet been observed for these new commits; the changes are not considered verified until the workflow passes.
+
+
+## 15. Capability gate CI verification — 2026-11-18
+
+The capability-advertisement hardening in section 14 is now validated by GitHub Actions:
+- Workflow run: 44242770547
+- Commit: 37d1bc4e71c1ba02931c52fda2c6cbcd7578b738
+- Overall conclusion: SUCCESS.
+- Job `validate`: SUCCESS — TypeScript/lint, API and route contract tests, workspace route verification, Vite build, and security/secret scan all completed successfully.
+
+Follow-up source review confirms the main React `AppContext` still imports and calls the legacy `qabsApi`; it does not use `qabsStudioApi`. The clients use different route prefixes, cookie/CSRF assumptions, and response contracts. The Pages static preview has no API Functions, and the isolated Studio Worker does not implement the full set of operations expected by the legacy client. This remains a hard integration blocker; do not connect the clients by swapping imports or partially wiring authentication.
+
+The Express candidate also still contains legacy `/api/documents` upload/download handlers, while the Studio config correctly advertises document capabilities as disabled. These are separate API surfaces; the disabled Studio flags do not disable the legacy handlers. Before any document feature is exposed, verify the deployed routing target, authenticated tenant ownership, content validation, private storage, malware scanning/quarantine, retention, and download authorization end-to-end. No live upload or document route was invoked in this follow-up.
+
+No PR merge, production deployment, DNS/payment mutation, or customer-data operation was performed. The CI success validates this branch commit's automated checks, not full platform readiness.
