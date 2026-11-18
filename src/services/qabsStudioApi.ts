@@ -23,7 +23,12 @@ export interface StudioConfig {
   registration?: boolean;
   emailVerification?: boolean;
   passwordRecovery?: boolean;
+  formationDetails?: boolean;
+  documents?: boolean;
+  privateDocuments?: boolean;
   emailCodeLogin?: boolean;
+  security?: { twoFactor?: boolean; optional?: boolean; scope?: string };
+  countries?: string[];
   googleSignIn?: boolean;
   payments?: boolean;
   stage?: string;
