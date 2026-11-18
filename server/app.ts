@@ -1582,7 +1582,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       db.prepare(
         `UPDATE billing_invoices SET status = 'paid', verified_at = ?
          WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
-      ).run(new Date().toISOString(), invoiceId, invoice.tenant_id, `tap:${payload.id}`);
+      ).run(new Date().toISOString(), invoiceId, String(invoice.tenant_id), `tap:${payload.id}`);
     }
     res.status(200).json({ received: true, processed: payload.status === 'CAPTURED' && amountMatches && currencyMatches });
   });
