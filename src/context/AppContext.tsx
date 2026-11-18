@@ -1053,40 +1053,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   const restoreStoreSnapshot = (storeId: string, snapshotId: string) => {
-    const target = stores.find(s => s.id === storeId);
-    const snap = (target?.designVersions || []).find(v => v.id === snapshotId);
-    if (!snap) return;
-    const restoredSections = snap.sections.map(sec => ({ ...sec }));
-    setStores(prev =>
-      prev.map(s =>
-        s.id === storeId
-          ? {
-              ...s,
-              theme: snap.theme,
-              primaryColor: snap.primaryColor,
-              accentColor: snap.accentColor,
-              fontFamily: snap.fontFamily,
-              sections: restoredSections
-            }
-          : s
-      )
-    );
-    if (backendStatus === 'connected') {
-      void qabsApi
-        .updateStore(storeId, {
-          theme: snap.theme,
-          settings: {
-            primaryColor: snap.primaryColor,
-            accentColor: snap.accentColor,
-            fontFamily: snap.fontFamily,
-            sections: restoredSections
-          }
-        })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
-    showToast(language === 'ar' ? 'تم استعادة نسخة التصميم' : 'Design restored');
+    void storeId; void snapshotId;
+    showToast(language === 'ar' ? 'استعادة نسخ التصميم غير متصلة بخدمة التخزين الخادمي؛ لم يتغير المتجر.' : 'Design snapshot restore is not connected to server storage; the store was not changed.');
   };
+
 
   const updateStoreSections = (storeId: string, sections: StoreSectionBlock[]) => {
     if (!requireConnectedBackend()) return;
@@ -1291,23 +1261,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueOrderInvoice = (orderId: string): Invoice | null => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return null;
-    const store = stores.find(s => s.id === targetOrder.storeId);
-    const newInvoice: Invoice = {
-      id: `inv_${Date.now()}`,
-      invoiceNumber: `INV-${targetOrder.orderNumber}`,
-      date: new Date().toISOString().split('T')[0],
-      amount: targetOrder.total,
-      currency: targetOrder.currency || store?.currency || 'SAR',
-      status: 'pending_verification',
-      descriptionAr: `فاتورة طلب متجر (${store?.name || 'متجر قبس'}) — ${targetOrder.orderNumber}`,
-      descriptionEn: `Store order invoice (${store?.name || 'QABS Store'}) — ${targetOrder.orderNumber}`,
-      clientName: targetOrder.customerName
-    };
-    setInvoices(prev => [newInvoice, ...prev]);
-    return newInvoice;
+    void orderId;
+    showToast(language === 'ar' ? 'إصدار فواتير الطلبات غير متصل بنظام الفوترة؛ لم تُنشأ فاتورة.' : 'Order invoicing is not connected to the billing service; no invoice was created.');
+    return null;
   };
+
 
   const addCustomer = (c: Omit<StoreCustomer, 'id' | 'ordersCount' | 'totalSpent' | 'lastOrderDate'>) => {
     if (!requireConnectedBackend()) return;
@@ -1498,15 +1456,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
   const toggleStoreApp = (appId: string, storeId: string) => {
-    setStoreApps(prev =>
-      prev.map(app => {
-        if (app.id !== appId) return app;
-        const currentIds = app.installedStoreIds || app.installedStores || [];
-        const updatedIds = currentIds.includes(storeId) ? currentIds.filter(x => x !== storeId) : [...currentIds, storeId];
-        return { ...app, installedStoreIds: updatedIds, installedStores: updatedIds };
-      })
-    );
+    void appId; void storeId;
+    showToast(language === 'ar' ? 'إدارة تطبيقات المتجر غير متصلة بالخادم؛ لم يتم تثبيت أو إزالة أي تطبيق.' : 'Store-app management is not connected to the server; no app was installed or removed.');
   };
+
+
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
     void tpl;
     showToast(language === 'ar' ? 'حفظ قوالب المتاجر غير متصل بالخادم؛ لم يُحفظ قالب محلي.' : 'Store-template persistence is not connected; no local-only template was saved.');
@@ -1514,6 +1468,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 
   const triggerSystemBackup = (targetLabel?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1739,6 +1695,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     planId?: 'starter' | 'growth' | 'enterprise',
     billingCycle?: 'monthly' | 'annual'
   ): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         const res = await qabsApi.renewSubscription(planId || subscription.planId, billingCycle || subscription.billingCycle);
@@ -1759,6 +1717,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyInvoiceWithProof = async (invoiceId: string, paymentProofRef: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.adminVerifyInvoice(invoiceId, paymentProofRef);
@@ -2234,6 +2194,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- OTHER HELPERS ---
   const syncShopifyStore = (storeId: string, domain: string, _accessToken: string, webhooksConnected: boolean) => {
+    if (!requireConnectedBackend()) return;
+
     const cleanDomain = domain.trim();
     if (backendStatus === 'connected') {
       void (async () => {
