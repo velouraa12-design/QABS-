@@ -1087,6 +1087,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('WY')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1105,6 +1107,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('DE')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1123,6 +1127,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('NM')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1141,6 +1147,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('UK')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1378,6 +1386,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
             <button
               type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
               onClick={() => handleFormationAction('WY')}
               className="px-6 py-3.5 rounded-xl bg-[#E5C158] hover:bg-[#d8b44c] text-slate-950 font-black text-xs sm:text-sm transition-all cursor-pointer shadow-lg text-center"
             >
