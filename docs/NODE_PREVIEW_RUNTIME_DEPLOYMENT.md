@@ -48,3 +48,13 @@ This change does not create a hosting service, attach a paid persistent disk, co
 7. Keep Tap disabled until the previous checks pass; then use Tap test mode and verify the signed webhook end-to-end.
 8. Confirm restart persistence, rate limiting, backup/restore, and logs do not expose secrets or private documents.
 9. Do not merge this PR or deploy to production without explicit approval.
+
+## Optional free preview blueprint (non-durable acceptance only)
+
+The root `render.yaml` defines a free Docker web service with payments disabled and no custom domain. It is suitable only for temporary API/authentication smoke tests. Render free services spin down after inactivity and their local filesystem is ephemeral; the configured SQLite file under `/tmp` can be lost on restart, spin-down, or redeploy. Do not store real customer records or documents there, do not enable Tap, and do not treat this as production or durable staging.
+
+To create it, the repository owner must import the existing GitHub repository into Render and explicitly create the Blueprint. This repository change alone does not create the service. A durable environment requires a paid persistent disk or migration to a managed persistent database; no paid resource is provisioned by this change.
+
+Render documents these free-tier limits and disk requirements:
+- Free web service limitations: https://render.com/docs/free
+- Persistent disks: https://render.com/docs/disks
