@@ -140,7 +140,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   // Collapsible states pricing
   const [showStatesPricing, setShowStatesPricing] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
-  const [stateFilter, setStateFilter] = useState<'all' | 'popular' | 'zero_tax' | 'low_fee'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'low_fee'>('all');
   const [selectedPkgId, setSelectedPkgId] = useState<'starter' | 'complete' | 'premium'>('complete');
 
   // FAQ Accordion state
@@ -242,8 +242,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
       st.nameEn.toLowerCase().includes(stateSearch.toLowerCase()) ||
       st.code.toLowerCase().includes(stateSearch.toLowerCase());
     if (!matchesSearch) return false;
-    if (stateFilter === 'popular') return st.tags.includes('popular');
-    if (stateFilter === 'zero_tax') return st.tags.includes('zero_tax');
     if (stateFilter === 'low_fee') return st.stateFilingFee <= 100;
     return true;
   });
@@ -1285,8 +1283,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs font-bold"
                   >
                     <option value="all">{isAr ? 'كل الولايات (50)' : 'All 50 States'}</option>
-                    <option value="popular">{isAr ? 'الأكثر شعبية ⭐' : 'Most Popular'}</option>
-                    <option value="zero_tax">{isAr ? 'لا ضريبة دخل على مستوى الولاية' : 'No State-Level Income Tax'}</option>
                     <option value="low_fee">{isAr ? 'رسوم حكومية منخفضة' : 'Low Filing Fee'}</option>
                   </select>
                 </div>
@@ -1312,11 +1308,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                             {isAr ? st.nameAr : st.nameEn}{' '}
                             <span className="text-xs font-mono text-[#00A896]">({st.code})</span>
                           </span>
-                          {st.badgeAr && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                              {isAr ? st.badgeAr : st.badgeEn}
-                            </span>
-                          )}
                         </div>
                         <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs">
                           <span className="text-slate-500">
