@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { OWNER_USER_PROFILE } from '../data/mockData.ts';
+import { studioApi, StudioConfig } from '../services/qabsStudioApi.ts';
 import {
   X,
   Lock,
@@ -51,10 +52,28 @@ export const AuthModal: React.FC = () => {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [verifyTokenInput, setVerifyTokenInput] = useState('');
   const [showVerifyPanel, setShowVerifyPanel] = useState(authMode === 'verify');
+  const [authConfig, setAuthConfig] = useState<StudioConfig | null>(null);
+  const [authConfigLoading, setAuthConfigLoading] = useState(false);
 
   useEffect(() => {
     setShowVerifyPanel(authMode === 'verify');
   }, [authMode]);
+
+  useEffect(() => {
+    if (!authModalOpen) return;
+    let cancelled = false;
+    setAuthConfigLoading(true);
+    studioApi.config()
+      .then(config => { if (!cancelled) setAuthConfig(config); })
+      .catch(() => { if (!cancelled) setAuthConfig(null); })
+      .finally(() => { if (!cancelled) setAuthConfigLoading(false); });
+    return () => { cancelled = true; };
+  }, [authModalOpen]);
+
+  const studioAuthReady = authConfig?.registration === true
+    && authConfig?.emailVerification === true
+    && authConfig?.passwordRecovery === true;
+  const authActionsReady = backendStatus === 'connected' && studioAuthReady && !authConfigLoading;
   const [verifyDone, setVerifyDone] = useState(false);
   const [recoveryStage, setRecoveryStage] = useState<'request' | 'confirm'>('request');
   const [resetDone, setResetDone] = useState(false);
@@ -91,7 +110,10 @@ export const AuthModal: React.FC = () => {
   const handleRecoverRequest = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    if (backendStatus !== 'connected') return;
+    if (!authActionsReady) {
+      setAuthError(isAr ? 'المصادقة متوقفة حتى تفعيل التحقق من البريد واستعادة كلمة المرور في الخادم.' : 'Authentication is disabled until the server enables email verification and password recovery.');
+      return;
+    }
     if (!email.trim()) return;
     const tok = await requestPasswordReset(email.trim());
     if (tok) setResetTokenInput(tok);
@@ -101,7 +123,7 @@ export const AuthModal: React.FC = () => {
   const handleRecoverConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
-    if (backendStatus !== 'connected') return;
+    if (!authActionsReady) return;
     const ok = await confirmPasswordReset(resetTokenInput, newPasswordInput);
     if (ok) {
       setResetDone(true);
@@ -175,11 +197,19 @@ export const AuthModal: React.FC = () => {
           </button>
         </div>
 
-        {backendStatus !== 'connected' && (
+        {!authActionsReady && (
           <div role="status" className="px-6 py-3 bg-amber-950/50 border-b border-amber-800 text-amber-200 text-[11px] leading-6">
             {isAr
-              ? 'المعاينة غير متصلة بخدمة المصادقة والبريد. الدخول والتسجيل والتحقق واستعادة كلمة المرور معطلة؛ لن يتم إنشاء جلسة أو حساب أو إرسال رسالة.'
-              : 'This preview is not connected to authentication or email services. Sign-in, registration, verification, and recovery are disabled; no session, account, or email will be created.'}
+              ? authConfigLoading
+                ? 'جارٍ التحقق من قدرات المصادقة... تبقى جميع إجراءات الحساب معطلة حتى اكتمال التحقق.'
+                : backendStatus !== 'connected'
+                  ? 'المعاينة غير متصلة بخدمة المصادقة. الدخول والتسجيل والتحقق والاستعادة معطلة؛ لن يتم إنشاء جلسة أو حساب أو إرسال رسالة.'
+                  : 'الخادم لا يفعّل حالياً التحقق من البريد واستعادة كلمة المرور معاً؛ لذلك تبقى المصادقة معطلة.'
+              : authConfigLoading
+                ? 'Checking authentication capabilities... account actions remain disabled until the check completes.'
+                : backendStatus !== 'connected'
+                  ? 'This preview is not connected to authentication. Sign-in, registration, verification, and recovery are disabled; no session, account, or email will be created.'
+                  : 'The server does not currently enable both email verification and password recovery; authentication therefore remains disabled.'}
           </div>
         )}
 
@@ -343,7 +373,7 @@ export const AuthModal: React.FC = () => {
 
               <button
                 type="submit"
-                disabled={authLoading || backendStatus !== 'connected'}
+                disabled={authLoading || !authActionsReady}
                 className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
               >
                 {authLoading
@@ -420,7 +450,7 @@ export const AuthModal: React.FC = () => {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="submit"
-                      disabled={authLoading || backendStatus !== 'connected'}
+                      disabled={authLoading || !authActionsReady}
                       className="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-xs cursor-pointer"
                     >
                       {isAr ? 'تأكيد البريد الآن ✓' : 'Verify Email Now ✓'}
@@ -506,7 +536,7 @@ export const AuthModal: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={authLoading || backendStatus !== 'connected'}
+                    disabled={authLoading || !authActionsReady}
                     className="w-full py-2.5 bg-gradient-to-r from-[#D5B46B] to-[#F3E5AB] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {authLoading
@@ -592,7 +622,7 @@ export const AuthModal: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={authLoading || backendStatus !== 'connected'}
+                    disabled={authLoading || !authActionsReady}
                     className="w-full py-2.5 bg-gradient-to-r from-[#00A389] to-[#2DD4BF] text-slate-950 font-black rounded-xl text-xs hover:opacity-95 transition-all cursor-pointer shadow-md disabled:opacity-50"
                   >
                     {authLoading
@@ -632,7 +662,7 @@ export const AuthModal: React.FC = () => {
                     </div>
                     <button
                       type="submit"
-                      disabled={authLoading || backendStatus !== 'connected'}
+                      disabled={authLoading || !authActionsReady}
                       className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                     >
                       {isAr ? 'إصدار رمز الاستعادة' : 'Request Recovery Token'}
@@ -678,7 +708,7 @@ export const AuthModal: React.FC = () => {
                     )}
                     <button
                       type="submit"
-                      disabled={authLoading || backendStatus !== 'connected'}
+                      disabled={authLoading || !authActionsReady}
                       className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-xs cursor-pointer"
                     >
                       {isAr ? 'تأكيد تغيير كلمة المرور' : 'Confirm Password Reset'}
