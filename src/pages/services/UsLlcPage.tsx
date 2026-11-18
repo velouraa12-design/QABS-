@@ -126,9 +126,6 @@ export const UsLlcPage: React.FC = () => {
                         {st.code}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {isAr ? st.recommendedForAr : st.recommendedForEn}
-                    </p>
                     <div className="pt-2 border-t border-[#EAE6DC] dark:border-slate-800 flex items-center justify-between text-xs">
                       <span className="text-slate-500">
                         {isAr ? `الولاية: $${st.stateFilingFee}` : `State: $${st.stateFilingFee}`}
