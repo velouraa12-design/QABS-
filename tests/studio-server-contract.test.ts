@@ -197,6 +197,24 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       assert.equal(blockedRegistration.status, 503);
       const blockedPayload = await blockedRegistration.json() as Json;
       assert.equal(blockedPayload.code, 'REGISTRATION_DISABLED');
+      const blockedForgot = await fetch(`http://127.0.0.1:${address.port}/api/auth/forgot-password`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'blocked@example.test' })
+      });
+      assert.equal(blockedForgot.status, 503);
+      assert.equal((await blockedForgot.json() as Json).code, 'PASSWORD_RECOVERY_DISABLED');
+      const blockedReset = await fetch(`http://127.0.0.1:${address.port}/api/auth/reset-password`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: 'synthetic-token', newPassword: 'SyntheticStrong!2026' })
+      });
+      assert.equal(blockedReset.status, 503);
+      assert.equal((await blockedReset.json() as Json).code, 'PASSWORD_RECOVERY_DISABLED');
+      const blockedVerify = await fetch(`http://127.0.0.1:${address.port}/api/auth/verify-email`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: 'synthetic-token' })
+      });
+      assert.equal(blockedVerify.status, 503);
+      assert.equal((await blockedVerify.json() as Json).code, 'EMAIL_VERIFICATION_DISABLED');
     } finally {
       await new Promise<void>((resolve, reject) =>
         server.close(error => error ? reject(error) : resolve())
