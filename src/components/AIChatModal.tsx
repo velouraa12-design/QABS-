@@ -20,9 +20,13 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
   >([
     {
       role: 'assistant',
-      text: isAr
-        ? 'مرحباً بك في مستشار قبس الذكي (QABS AI Studio). يرتبط هذا الاستوديو مباشرة برصيد حسابك وبخادم قبس الآمن لصياغة قرارات التأسيس، تحليل بيانات متجرك الفعلية، وتخطيط ربط بوابات الخليج (Tap و Moyasar). كيف أخدمك اليوم؟'
-        : 'Welcome to QABS AI Studio. Connected directly to your tenant credit ledger and workspace database to draft corporate resolutions, analyze live store inventory, and plan Tap/Moyasar & Stripe readiness. How can I help today?'
+      text: backendStatus === 'connected' && isAuthenticated
+        ? isAr
+          ? 'مرحباً بك في مستشار قبس الذكي. عند توفر رصيد كافٍ واتصال الخادم، تُرسل الطلبات إلى محرك الذكاء الاصطناعي وتُسجل نتائجها.'
+          : 'Welcome to QABS AI. When the server is connected and credits are available, requests are sent to the AI engine and recorded.'
+        : isAr
+          ? 'مرحباً بك في معاينة قبس AI. محرك الذكاء الاصطناعي غير متصل حالياً؛ لن يتم تنفيذ الطلبات أو خصم الأرصدة في هذه المعاينة.'
+          : 'Welcome to the QABS AI preview. The AI engine is not connected; prompts will not execute and no credits will be deducted in this preview.'
     }
   ]);
 
@@ -116,7 +120,11 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
               <h2 className="text-base font-bold text-white flex items-center gap-2">
                 <span>{isAr ? 'استوديو قبس للذكاء الاصطناعي' : 'QABS AI Business Studio'}</span>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00A389]/20 text-[#00A389] font-mono">
-                  {isAuthenticated ? `${user.credits} credits` : 'Server-Side Gemini & SQLite'}
+                  {backendStatus === 'connected' && isAuthenticated
+                    ? `${user.credits} credits`
+                    : backendStatus === 'connected'
+                    ? (isAr ? 'يتطلب تسجيل الدخول' : 'Sign-in required')
+                    : (isAr ? 'معاينة غير متصلة' : 'Offline Preview')}
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
