@@ -226,3 +226,45 @@ Standalone auth Worker endpoint smoke checks (workers.dev; no signup, login, ema
 - Earlier `/api/me` and `/api/health` probes returned 404 because this Worker uses the `/api/v1/*` contract, not the portal Worker contract.
 
 Architecture finding: there are at least two distinct authentication implementations and databases: the portal Worker implements `/api/auth/*` with `__Host-qdp_session` and its own D1, while the standalone auth Worker implements `/api/v1/auth/*` with `__Host-qabs_session` and its own D1. The standalone auth Worker currently has no Service Binding or zone route. Do not select it as the canonical auth service or migrate accounts until a compatibility design, data ownership, session migration, email verification, and complete authorization contract are proven. This is currently BLOCKED as an architecture decision, not a reason to connect them by guesswork.
+
+
+## 14. Implemented isolated workspace preview API-bridge repair
+
+The original `qabs-unified-workspace-staging` Worker was inspected and found to have two integration defects:
+1. It proxied only `/api/*`, while the actual Studio client uses `/studio/api/*`; the proxy also forwarded the legacy path without the configured `/studio` base path.
+2. Its static-page Content-Security-Policy set `connect-src 'none'`, preventing browser fetch/XHR even to the same origin.
+
+To preserve the previous preview, I created a NEW Worker rather than overwriting the old one:
+- Worker: `qabs-unified-workspace-staging-v2`
+- Deployment ID: `54569a033a7f46f8bd89dbdb0e45d284`
+- Version tag: `b6e7611928f241a8a1dbba2298a4fcf4`
+- URL: `https://qabs-unified-workspace-staging-v2.qabs1store.workers.dev`
+- Only binding: `API -> qabs-stores-acceptance-preview`.
+- workers.dev enabled; preview URLs disabled; no custom zone route or DNS change.
+- The original `qabs-unified-workspace-staging` Worker remains intact as rollback/reference.
+
+Code changes in v2:
+- Proxy `/studio/api/*` to the acceptance API without stripping its configured base path.
+- Keep legacy `/api/*` compatibility by rewriting it to `/studio/api/*`.
+- Change static CSP from `connect-src 'none'` to `connect-src 'self'` so same-origin API calls are permitted.
+- Preserve embedded static assets and the existing acceptance API service binding.
+
+Post-deployment live checks:
+| Check | Result |
+|---|---|
+| `/_qabs_staging_health` | PASS — HTTP 200, staging health JSON |
+| Root HTML | PASS — HTTP 200, Arabic QABS landing shell |
+| CSP | PASS — `connect-src 'self'` |
+| `/studio/api/me` without session | PASS — proxied JSON 401 `authentication_required` |
+| `/studio/api/config` | PASS — proxied JSON 200 |
+| Legacy `/api/me` | PASS — rewritten and proxied JSON 401 `authentication_required` |
+| Hash route `#/workspace/overview` | PASS — dedicated demo workspace screen rendered and clearly marked offline/sample |
+| Hash route `#/services/formation` | PASS — service detail page rendered; no real submission |
+| Hash route `#/services/stores` | PASS — service detail page rendered; no real store creation |
+| Hash route `#/services/advisor` | PASS — AI service information page rendered; no AI execution |
+
+Desktop and mobile scrapes both returned HTTP 200. This is a content-level responsive smoke check; full visual interaction and device-width pixel QA remain NOT VERIFIED.
+
+Attempted a synthetic authenticated end-to-end login through the new same-origin Worker using the already-created Alpha test account, but the browser tool's safety layer blocked the request. No login or logout result is claimed for v2. The previously completed two-user tests remain direct tests against the acceptance Worker, not the new proxy path.
+
+Important: the v2 preview now has a working API bridge, but its rendered workspace remains explicitly a disconnected demo shell. The React app's existing `qabsStudioApi.ts` adapter is not yet wired into `AppContext`; the API bridge repair alone does not connect the customer UI to authenticated backend data.
