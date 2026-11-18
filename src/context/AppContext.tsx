@@ -2092,8 +2092,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (backendStatus === 'connected') {
       setAuthLoading(true);
       try {
-        const res = await qabsApi.register({ name: name.trim(), email: email.trim(), password, companyName: companyName.trim() });
-        if (res.previewEmailVerifyToken) setPreviewVerifyToken(res.previewEmailVerifyToken);
+        await qabsApi.register({ name: name.trim(), email: email.trim(), password, companyName: companyName.trim() });
+        // Never expose preview verification tokens in the browser UI.
+        setPreviewVerifyToken(null);
         const boot = await qabsApi.bootstrap();
         applyBootstrapPayload(boot);
         try {
@@ -2129,10 +2130,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthError(null);
     if (backendStatus === 'connected') {
       try {
-        const res = await qabsApi.forgotPassword(email.trim());
-        const tok = res.previewResetToken || null;
-        setPreviewResetToken(tok);
-        return tok;
+        await qabsApi.forgotPassword(email.trim());
+        // Reset tokens must only be delivered through the configured mail channel.
+        // A backend preview token is never returned to the browser UI.
+        setPreviewResetToken(null);
+        showToast(language === 'ar'
+          ? 'إذا كان البريد مسجلاً، فستصل تعليمات الاستعادة عبر البريد الإلكتروني.'
+          : 'If the address is registered, password-reset instructions will be sent by email.');
+        return null;
       } catch (err) {
         const msg = (err as ApiError)?.message || 'Recovery failed';
         setAuthError(msg);
@@ -2190,15 +2195,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const resendVerificationEmail = async (): Promise<string | null> => {
     if (backendStatus === 'connected') {
       try {
-        const res = await qabsApi.resendVerification();
-        const tok = res.previewEmailVerifyToken || null;
-        if (tok) setPreviewVerifyToken(tok);
+        await qabsApi.resendVerification();
+        // Never expose backend preview verification tokens in a browser response.
+        setPreviewVerifyToken(null);
         showToast(
           language === 'ar'
-            ? 'تم إصدار رمز تأكيد البريد الإلكتروني بنجاح ✓'
-            : 'Email verification token issued ✓'
+            ? 'إذا كان الحساب مؤهلاً، فستصل رسالة التحقق إلى بريده الإلكتروني.'
+            : 'If the account is eligible, a verification email will be sent.'
         );
-        return tok;
+        return null;
       } catch (err) {
         handleApiFailure(err, 'تعذر إعادة إرسال رمز التحقق', 'Failed to resend verification token');
         return null;
@@ -2212,11 +2217,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const logout = async () => {
+    let serverRevoked = backendStatus !== 'connected';
     if (backendStatus === 'connected') {
       try {
         await qabsApi.logout();
+        serverRevoked = true;
       } catch {
-        // clear local state anyway
+        // Always clear this browser's UI state, but do not claim the server session was revoked.
+        serverRevoked = false;
       }
       setCompanies([]);
       setStores([]);
@@ -2242,7 +2250,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined' && window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-    showToast(language === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Signed out cleanly');
+    showToast(serverRevoked
+      ? (language === 'ar' ? 'تم تسجيل الخروج من هذا الجهاز.' : 'Signed out on this device.')
+      : (language === 'ar'
+        ? 'تم إخفاء الجلسة محلياً، لكن تعذّر تأكيد إلغائها من الخادم. أعد المحاولة عند عودة الاتصال.'
+        : 'Signed out locally, but server-side session revocation was not confirmed. Retry when the service is reachable.'));
   };
 
   // --- OTHER HELPERS ---
