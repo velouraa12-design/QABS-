@@ -261,26 +261,26 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     pricingNoteEn: 'Indicative fee; scope is application-preparation assistance subject to eligibility and confirmation, with no guarantee of EIN issuance or provider approval.',
     features: [
       {
-        titleAr: 'لا يتطلب رقم SSN أو ITIN',
-        titleEn: 'No SSN or ITIN Required',
+        titleAr: 'مراجعة متطلبات SSN أو ITIN',
+        titleEn: 'SSN or ITIN Requirements Review',
         descriptionAr: 'تُراجع متطلبات SSN أو ITIN وقناة التقديم وفق حالة مقدم الطلب وتعليمات IRS.',
         descriptionEn: 'SSN or ITIN requirements and application channels are reviewed against the applicant’s circumstances and IRS instructions.'
       },
       {
-        titleAr: 'إعداد احترافي لنموذج SS-4',
+        titleAr: 'المساعدة في إعداد نموذج SS-4',
         titleEn: 'Accurate Form SS-4 Preparation',
         descriptionAr: 'مساعدة في إعداد ومراجعة نموذج SS-4 والبيانات المقدمة؛ لا يمكن ضمان خلو الطلب من الملاحظات أو تأخر المعالجة.',
         descriptionEn: 'Assistance preparing and reviewing Form SS-4; comments, rejection, or processing delays cannot be ruled out.'
       },
       {
-        titleAr: 'مؤهل لـ Mercury و Stripe و Amazon',
-        titleEn: 'Required for Banking & Stripe',
+        titleAr: 'مستندات مساعدة لطلبات الحسابات والدفع',
+        titleEn: 'Banking & Payment Application Documents',
         descriptionAr: 'قد يطلب بعض مزودي الحسابات والدفع رقم EIN؛ وجوده وحده لا يضمن أهلية الحساب أو الموافقة.',
         descriptionEn: 'Some account and payment providers may request an EIN; having one does not by itself establish eligibility or approval.'
       },
       {
-        titleAr: 'متابعة مباشرة وتسليم PDF',
-        titleEn: 'Direct Tracking & Digital Delivery',
+        titleAr: 'تنسيق التقديم وتسليم المستندات المتاحة',
+        titleEn: 'Submission Coordination & Available Document Handover',
         descriptionAr: 'تُسلّم نسخة المستند الرسمي بعد صدوره عبر قناة التسليم المتاحة إذا كانت مفعّلة.',
         descriptionEn: 'The official notice is handed over after issuance through the available delivery channel, if enabled.'
       }
@@ -309,12 +309,12 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '02',
-        titleAr: 'إعداد وتوقيع نموذج SS-4',
-        titleEn: 'Prepare & Sign Form SS-4',
+        titleAr: 'إعداد ومراجعة نموذج SS-4',
+        titleEn: 'Prepare & Review Form SS-4',
         descriptionAr: 'تساعد قبس في إعداد نموذج SS-4 ومراجعته؛ تُحدد طريقة التوقيع والتقديم وفق القناة والمتطلبات المعمول بها.',
         descriptionEn: 'QABS can assist with Form SS-4 preparation and review; signing and submission methods depend on the applicable channel and requirements.',
-        durationAr: 'خلال 24 ساعة',
-        durationEn: 'Within 24h'
+        durationAr: 'بعد قبول الطلب ومراجعة المتطلبات',
+        durationEn: 'After request acceptance and requirements review'
       },
       {
         stepNumber: '03',
@@ -322,8 +322,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         titleEn: 'IRS International Submission',
         descriptionAr: 'يُنسّق التقديم عبر قناة متاحة بعد قبول الطلب؛ تحدد IRS إجراءات المعالجة والرد.',
         descriptionEn: 'Submission is coordinated through an available channel after acceptance; the IRS determines processing and response.',
-        durationAr: '4 – 10 أيام عمل',
-        durationEn: '4 – 10 business days'
+        durationAr: 'حسب معالجة IRS والقناة المتاحة',
+        durationEn: 'Subject to IRS processing and available channel'
       },
       {
         stepNumber: '04',
@@ -331,15 +331,15 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         titleEn: 'Official Letter Delivery',
         descriptionAr: 'تُسلّم نسخة CP575 أو 147C إذا أصدرتها IRS وكانت متاحة، ولا يعني ذلك قبول البنوك أو بوابات الدفع.',
         descriptionEn: 'A CP575 or 147C copy is handed over if issued by the IRS and available; this does not imply bank or payment-provider approval.',
-        durationAr: 'فوري عند الإصدار',
-        durationEn: 'Instant upon issuance'
+        durationAr: 'بعد صدور الخطاب وتوفره',
+        durationEn: 'After the notice is issued and available'
       }
     ],
     packages: [
       {
         id: 'ein_standard',
-        nameAr: 'استخراج EIN القياسي',
-        nameEn: 'Standard EIN Filing',
+        nameAr: 'مساعدة طلب EIN القياسي',
+        nameEn: 'Standard EIN Application Assistance',
         priceUsd: 70,
         billingNoteAr: 'دفعة واحدة لشركة قائمة',
         billingNoteEn: 'One-time fee for existing LLC/Corp',
@@ -361,11 +361,11 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         id: 'ein_express',
-        nameAr: 'خدمة EIN السريعة + 147C',
-        nameEn: 'Priority EIN + 147C Verification',
+        nameAr: 'مساعدة طلب EIN أو مراجعة خطاب 147C',
+        nameEn: 'EIN Application or 147C Review Assistance',
         priceUsd: 119,
-        billingNoteAr: 'أولوية قصوى + خطاب تحقق إضافي',
-        billingNoteEn: 'Priority queue + verification letter',
+        billingNoteAr: 'خدمة إضافية حسب الأهلية والتوفر',
+        billingNoteEn: 'Additional service subject to eligibility and availability',
         descriptionAr: 'طلب مساعدة لمراجعة متطلبات خطاب 147C أو تحديث بيانات سابقة لدى IRS؛ توفر الإجراء ونتيجته يخضعان للمصلحة.',
         descriptionEn: 'Assistance reviewing a 147C request or prior IRS record update; availability and outcome are determined by the IRS.',
         featuresAr: [
