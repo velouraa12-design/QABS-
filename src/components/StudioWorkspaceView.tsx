@@ -269,7 +269,7 @@ export const StudioWorkspaceView: React.FC = () => {
   );
 
   if (loading) {
-    return <section dir="rtl" className="min-h-[65vh] grid place-items-center bg-[#071A2A] text-[#D5B46B]">جارٍ الاتصال بمساحة قبس الآمنة…</section>;
+    return <section dir="rtl" className="min-h-[65vh] grid place-items-center bg-[#071A2A] text-[#D5B46B]">جارٍ الاتصال بمساحة قبس…</section>;
   }
 
   if (error && !config) {
