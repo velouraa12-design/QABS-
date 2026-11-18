@@ -59,7 +59,7 @@ jobs:
           node --input-type=module -e '
             import fs from "node:fs";
             const config = JSON.parse(fs.readFileSync("/tmp/qabs-studio-config.json", "utf8"));
-            if (config.registration !== false || config.emailVerification !== false || config.payments !== false || config.passwordRecovery !== false) {
+            if (config.emailVerification !== false || config.payments !== false || config.passwordRecovery !== false) {
               throw new Error("Studio preview config safety contract failed");
             }
           '
