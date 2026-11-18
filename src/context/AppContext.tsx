@@ -268,8 +268,8 @@ interface AppContextType {
   completeServiceCheckout: (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => void;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
-  authMode: 'login' | 'register' | 'recover';
-  setAuthMode: (mode: 'login' | 'register' | 'recover') => void;
+  authMode: 'login' | 'register' | 'recover' | 'verify';
+  setAuthMode: (mode: 'login' | 'register' | 'recover' | 'verify') => void;
   login: (email: string, role: UserRole, password?: string) => Promise<boolean>;
   loginOwner: (email?: string, password?: string) => Promise<boolean>;
   register: (
@@ -460,7 +460,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }));
 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover' | 'verify'>('login');
   const [authIntent, setAuthIntent] = useState<'client' | 'owner'>('client');
   const [pendingServiceOrder, setPendingServiceOrder] = useState<PendingServiceOrder | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState<boolean>(false);
