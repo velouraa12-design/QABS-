@@ -35,6 +35,7 @@ const llcSource = readFileSync('src/pages/services/UsLlcPage.tsx', 'utf8');
 const formationDataSource = readFileSync('src/data/pages/formationServices.ts', 'utf8');
 const customizerSource = readFileSync('src/context/CustomizerContext.tsx', 'utf8');
 const serviceTemplateSource = readFileSync('src/components/pages/ServicePageTemplate.tsx', 'utf8');
+const viteConfigSource = readFileSync('vite.config.ts', 'utf8');
 const companyFormationStart = formationDataSource.indexOf("slug: 'company-formation'");
 const nextFormationRecord = formationDataSource.indexOf("slug:", companyFormationStart + 5);
 const companyFormationCopy = companyFormationStart >= 0 && nextFormationRecord > companyFormationStart
@@ -161,6 +162,13 @@ for (const phrase of requiredTruthfulCopy) {
     .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
   if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
+if (!viteConfigSource.includes("host: '127.0.0.1'")) {
+  errors.push('Vite development server must bind to loopback only.');
+}
+if (viteConfigSource.includes("host: '0.0.0.0'") || viteConfigSource.includes('allowedHosts: true')) {
+  errors.push('Vite development server must not bind to all interfaces or allow every host.');
+}
+
 const requiredPreviewSafetyContracts = [
   [appContextSource, 'const requireConnectedBackend = (): boolean'],
   [appContextSource, 'Checkout is disabled in this preview'],
