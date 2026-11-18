@@ -1,10 +1,11 @@
 /**
  * QABS Studio API client for the deployed /studio route.
- * Studio uses an HttpOnly __Host-qdp_session cookie and CSRF token.
- * It does not use the legacy Bearer-token client in qabsApi.ts.
+ * Studio uses the same-origin HttpOnly qabs_session cookie and CSRF token
+ * issued by the preview server. It does not use the legacy qabsApi client.
  *
- * IMPORTANT: the public Pages preview is a different origin and cannot use
- * the portal's SameSite=Strict cookie. Use only from portal.qabs1.store/studio.
+ * IMPORTANT: use only behind the matching same-origin /studio proxy. The
+ * public Pages preview is a separate origin and is not an authenticated
+ * customer workspace.
  * This client is not wired into AppContext until authenticated ownership and
  * tenant-isolation tests pass. No financial or irreversible writes are exposed.
  */
