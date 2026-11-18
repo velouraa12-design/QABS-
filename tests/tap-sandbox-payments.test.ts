@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge } from '../server/payments/tap.ts';
+import { createHmac } from 'node:crypto';
+import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from '../server/payments/tap.ts';
 
 describe('Tap sandbox payment adapter', () => {
   const input = {
@@ -97,6 +98,26 @@ describe('Tap sandbox payment adapter', () => {
       transactionReference: 'inv_test_1',
       orderReference: 'INV-TEST-1'
     });
+  });
+
+  it('verifies Tap webhook hashstrings and rejects altered or live-mode events', () => {
+    const secret = 'sk_test_qabs_webhook';
+    const payload = {
+      id: 'chg_TapSandbox123',
+      object: 'charge',
+      live_mode: false,
+      status: 'CAPTURED',
+      amount: 349,
+      currency: 'USD',
+      reference: { gateway: 'gw_123', payment: 'pay_123', transaction: 'inv_test_1', order: 'INV-TEST-1' },
+      transaction: { created: '1763400000000' }
+    };
+    const input = 'x_id' + payload.id + 'x_amount349.00x_currencyUSDx_gateway_referencegw_123x_payment_referencepay_123x_statusCAPTUREDx_created1763400000000';
+    const hash = createHmac('sha256', secret).update(input).digest('hex');
+    assert.equal(verifyTapWebhookHashstring(payload, hash, secret), true);
+    assert.equal(verifyTapWebhookHashstring({ ...payload, amount: 350 }, hash, secret), false);
+    assert.equal(verifyTapWebhookHashstring({ ...payload, live_mode: true }, hash, 'sk_live_not_allowed'), false);
+    assert.equal(verifyTapWebhookHashstring(payload, 'bad-signature', secret), false);
   });
 
   it('rejects malformed charge ids and never accepts live-mode credentials', async () => {
