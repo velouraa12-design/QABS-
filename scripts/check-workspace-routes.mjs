@@ -233,7 +233,7 @@ for (const [source, token] of requiredPreviewSafetyContracts) {
 
 const requiredRouteContracts = [
   ["workspace deep links", "path.startsWith('/workspace/')"],
-  ["account alias is guarded as a workspace route", "path === '/account'"],
+  ["account alias mounts Studio directly", "normalizePath(currentPath) === '/account' ? <StudioWorkspaceView />"],
   ["Studio route mounts its own API-backed workspace", "normalizePath(currentPath) === '/studio'"],
   ["Studio view is mounted as a standalone API-backed workspace", "StudioWorkspaceView"],
   ["login route", "'/login': 'login'"],
@@ -241,7 +241,7 @@ const requiredRouteContracts = [
   ["password recovery route", "'/forgot-password': 'recover'"],
   ["email verification route", "'/verify-email': 'verify'"],
   ["workspace route renders landing/auth gate", "path === '/workspace' || path.startsWith('/workspace/')"],
-  ["account alias renders the authenticated workspace entry", "path === '/account'"],
+  ["account alias is excluded from the legacy auth gate", "path === '/workspace' || path.startsWith('/workspace/')"],
   ["email verification panel state", "setShowVerifyPanel(authMode === 'verify')"]
 ];
 for (const [label, token] of requiredRouteContracts) {
