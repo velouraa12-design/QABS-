@@ -59,6 +59,42 @@ export interface WorkspaceStoreFilters {
   offset?: number;
 }
 
+export interface StudioServiceRequest {
+  id: string;
+  service: string;
+  title: string;
+  status: string;
+  payload: Record<string, unknown>;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+export interface StudioStoreDraft {
+  id: string;
+  template_key: string;
+  name: string;
+  status: string;
+  created_at: string;
+}
+export interface StudioStoreSetup {
+  kind: 'physical' | 'digital' | 'mixed';
+  language: 'ar' | 'en';
+  country: string;
+  currency: string;
+  time_zone: string;
+}
+export interface StudioSettingsPayload {
+  revision: number;
+  profile: Record<string, string>;
+  preferences: Record<string, string>;
+}
+export interface StudioServiceRequestFilters {
+  service?: string;
+  status?: string;
+  page?: number;
+  workspace_id?: string;
+}
+
 const API_PREFIX = '/studio/api';
 let csrfToken: string | null = null;
 
@@ -140,5 +176,94 @@ export const studioApi = {
       q: filters.q,
       offset: filters.offset
     })}`);
-  }
+  },
+  servicesCatalog: () => request<{
+    services: Array<Record<string, unknown>>;
+    statusLabels: Record<string, string>;
+    statusLabelsEn: Record<string, string>;
+    payments: false;
+    externalExecution: string;
+    attachments: Record<string, unknown>;
+    preview: boolean;
+  }>('/services/catalog'),
+  serviceRequests: (filters: StudioServiceRequestFilters = {}) =>
+    request<{
+      requests: StudioServiceRequest[];
+      legacyFormation: Array<Record<string, unknown>>;
+      hasMore: boolean;
+      page: number;
+    }>(`/services/requests${queryString({
+      service: filters.service,
+      status: filters.status,
+      page: filters.page,
+      workspace_id: filters.workspace_id
+    })}`),
+  createServiceRequest: (input: {
+    service: string;
+    title: string;
+    payload: Record<string, unknown>;
+    attempt_id: string;
+    formation_id?: string;
+    workspace_id?: string;
+  }) => request<{ request: StudioServiceRequest; replayed?: boolean }>('/services/requests', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  }, true),
+  storeDrafts: () => request<{ drafts: StudioStoreDraft[]; scope: string; published: false }>('/store-drafts'),
+  createStoreDraft: (input: { attempt_id: string; template_key: string; name: string }) =>
+    request<{ id: string; status: 'draft'; published: false; payments: false }>('/store-drafts', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }, true),
+  storeDraft: (id: string) => request<{ draft: StudioStoreDraft; published: false; payments: false }>(`/store-drafts/${encodeURIComponent(id)}`),
+  projectCatalog: () => request<{
+    types: Array<{ key: string; ar: string; en: string; editor: boolean }>;
+    templates: Array<{ key: string; ar: string; en: string; type: string }>;
+    permanent_delete: false;
+    team_invites: false;
+  }>('/project-catalog'),
+  createProjectWorkspace: (input: { name: string; display_name: string }) =>
+    request<{ workspace: StudioProjectWorkspace; replayed?: boolean }>('/project-workspaces', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }, true),
+  workspaceStoreOptions: () => request<{
+    countries: string[];
+    currencies: string[];
+    time_zones: string[];
+  }>('/workspace-store-options'),
+  createWorkspaceStore: (input: {
+    workspace_id: string;
+    attempt_id: string;
+    name: string;
+    description?: string;
+    template_key: string;
+    store_setup: StudioStoreSetup;
+  }) => request<{ project: Record<string, unknown> }>('/workspace-stores', {
+    method: 'POST',
+    body: JSON.stringify(input)
+  }, true),
+  workspaceStore: (id: string) =>
+    request<{ store: StudioWorkspaceStore }>(`/workspace-stores/${encodeURIComponent(id)}`),
+  workspaceStoreActivity: (id: string) =>
+    request<{ events: Array<Record<string, unknown>> }>(`/workspace-stores/${encodeURIComponent(id)}/activity`),
+  settings: () => request<{
+    account: { id: string; email: string; emailVerified: boolean };
+    settings: { profile: Record<string, string>; preferences: Record<string, string>; revision: number; updated_at: string | null };
+    sessions: Array<{ current: boolean; expires_at: string }>;
+    capabilities: Record<string, boolean>;
+  }>('/settings'),
+  updateSettings: (input: StudioSettingsPayload) =>
+    request<{ saved: boolean; settings: StudioSettingsPayload }>('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(input)
+    }, true),
+  createFormationSelection: (input: Record<string, unknown> & { attempt_id: string }) =>
+    request<{ id: string; selection: Record<string, unknown>; status: 'draft'; paymentConfirmed: false; documentsCollected: false }>('/formation-selections', {
+      method: 'POST',
+      body: JSON.stringify(input)
+    }, true),
+  formationSelection: (id: string) =>
+    request<{ id: string; selection: Record<string, unknown>; createdAt: string }>(`/formation-selections${queryString({ id })}`)
+
 };
