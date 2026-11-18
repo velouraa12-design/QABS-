@@ -46,6 +46,30 @@ jobs:
         if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
         run: |
           npx wrangler pages deploy dist --project-name=qabs-workspace-reference-preview --branch=${GITHUB_REF_NAME}
+      - name: Smoke-test isolated Studio API bridge
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' }}
+        run: |
+          preview_url="https://autonomous-qabs-baseline-aud.qabs-workspace-reference-preview.pages.dev"
+          for attempt in $(seq 1 20); do
+            if curl -fsS "$preview_url/studio/api/config" -o /tmp/qabs-studio-config.json; then
+              break
+            fi
+            sleep 3
+          done
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const config = JSON.parse(fs.readFileSync("/tmp/qabs-studio-config.json", "utf8"));
+            if (config.registration !== true || config.payments !== false || config.passwordRecovery !== false) {
+              throw new Error("Studio preview config safety contract failed");
+            }
+          '
+          auth_status="$(curl -sS -o /tmp/qabs-studio-unauth.json -w '%{http_code}' "$preview_url/studio/api/me")"
+          test "$auth_status" = "401"
+          origin_status="$(curl -sS -o /tmp/qabs-studio-origin.json -w '%{http_code}' \
+            -X POST -H 'Origin: https://attacker.invalid' -H 'Content-Type: application/json' \
+            -d '{}' "$preview_url/studio/api/project-workspaces")"
+          test "$origin_status" = "403"
+          grep -q 'origin_rejected' /tmp/qabs-studio-origin.json
       - name: Report missing Cloudflare token (non-blocking)
         if: ${{ env.CLOUDFLARE_API_TOKEN == '' }}
         run: |
