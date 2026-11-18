@@ -80,7 +80,7 @@ export const CompanyFormationPage: React.FC = () => {
               to="/services/us-llc"
               className="text-xs font-black text-[#92743A] dark:text-[#D5B46B] hover:underline whitespace-nowrap"
             >
-              {isAr ? 'استعرض أسعار الـ 50 ولاية ←' : 'Explore All 50 US States →'}
+              {isAr ? 'استعرض جدول رسوم الولايات الإرشادي ←' : 'Explore Indicative State Fee Guide →'}
             </AppLink>
           </div>
 
