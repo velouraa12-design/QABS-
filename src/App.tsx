@@ -246,6 +246,8 @@ const MainLayout: React.FC = () => {
       '/reset-password': 'recover',
       '/verify-email': 'verify'
     };
+    const studioAuthPaths = new Set(['/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email']);
+    if (studioAuthPaths.has(path)) return;
     const requestedMode = authRoutes[path];
     if (!requestedMode) return;
     if (isAuthenticated) {
@@ -389,7 +391,7 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       <main className="flex-1">
-        {normalizePath(currentPath) === '/studio' || normalizePath(currentPath).startsWith('/studio/') || normalizePath(currentPath) === '/account' ? <StudioWorkspaceView /> : normalizePath(currentPath) === '/payment/return' ? <TapPaymentReturnView /> : <>
+        {normalizePath(currentPath) === '/studio' || normalizePath(currentPath).startsWith('/studio/') || ['/account', '/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(normalizePath(currentPath)) ? <StudioWorkspaceView /> : normalizePath(currentPath) === '/payment/return' ? <TapPaymentReturnView /> : <>
         {(mode === 'landing' || !isAuthenticated) && renderPublicRoute()}
 
         {isAuthenticated && mode === 'portal' && (
