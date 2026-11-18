@@ -120,3 +120,15 @@ The isolated integration test `tests/studio-server-contract.test.ts` now checks 
 The new Studio service-request endpoints exist only in the local Express candidate. They have **not** been deployed to, or proven equivalent on, the Cloudflare acceptance Worker. The following client operations still lack matching Express routes in the inspected candidate: store drafts, project-workspace creation, workspace-store creation/detail/activity, settings read/write, and formation selections. The customer-facing AppContext remains intentionally unwired to the Studio adapter.
 
 No production resource, customer record, D1 data, DNS, Shopify, payment provider, or live checkout was changed. No PR merge or production release was performed.
+
+## 2026-11-18 follow-up — Tap sandbox payment adapter
+
+The isolated development branch now includes a server-side Tap hosted-checkout adapter. It is intentionally sandbox-only and is not enabled by default.
+
+- `POST /api/payments/tap/charges` accepts only an invoice ID. Invoice amount, currency, number and customer identity are derived from the authenticated tenant's invoice/session.
+- Initiation requires `QABS_ALLOW_SANDBOX_PAYMENTS=true`, an HTTPS `APP_ORIGIN`, and a Tap secret beginning with `sk_test`. Live credentials are rejected.
+- An atomic invoice reference reservation prevents concurrent duplicate charge creation and does not overwrite an existing bank-transfer/manual proof reference.
+- `POST /api/payments/tap/verify` retrieves the charge directly from Tap and checks captured status, sandbox mode, exact amount/currency and both invoice references before changing the invoice to paid.
+- Client API methods are available in `qabsApi`; the checkout UI/return route and webhook signature verification are not yet connected.
+- Mocked adapter tests and an isolated Express API test cover test-key gating, provider request payload, tenant/session/CSRF, server-derived invoice amount, and provider-side verification.
+- No Tap credentials were added, no external charge was created, and no payment setting was enabled in Cloudflare. CI status for these latest commits has not yet been reported by GitHub Actions.
