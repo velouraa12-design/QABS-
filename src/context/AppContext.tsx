@@ -446,43 +446,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [refunds, setRefunds] = useState<RefundRecord[]>(INITIAL_REFUNDS);
   const [aiHistory, setAiHistory] = useState<AICommandHistoryItem[]>([]);
   const [sectionSettings, setSectionSettings] = useState<WorkspaceSectionSettings>(() => ({
-    overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...(persisted.sectionSettings?.overview || {}) },
-    orders: { ...DEFAULT_SECTION_SETTINGS.orders, ...(persisted.sectionSettings?.orders || {}) },
-    documents: { ...DEFAULT_SECTION_SETTINGS.documents, ...(persisted.sectionSettings?.documents || {}) },
-    billing: { ...DEFAULT_SECTION_SETTINGS.billing, ...(persisted.sectionSettings?.billing || {}) },
-    qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi, ...(persisted.sectionSettings?.qabsAi || {}) },
-    crypto: { ...DEFAULT_SECTION_SETTINGS.crypto, ...(persisted.sectionSettings?.crypto || {}) },
-    support: { ...DEFAULT_SECTION_SETTINGS.support, ...(persisted.sectionSettings?.support || {}) },
+    overview: { ...DEFAULT_SECTION_SETTINGS.overview },
+    orders: { ...DEFAULT_SECTION_SETTINGS.orders },
+    documents: { ...DEFAULT_SECTION_SETTINGS.documents },
+    billing: { ...DEFAULT_SECTION_SETTINGS.billing },
+    qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi },
+    crypto: { ...DEFAULT_SECTION_SETTINGS.crypto },
+    support: { ...DEFAULT_SECTION_SETTINGS.support },
     companyFormation: {
       ...DEFAULT_SECTION_SETTINGS.companyFormation,
-      ...(persisted.sectionSettings?.companyFormation || {}),
-      stateFees: {
-        ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees,
-        ...(persisted.sectionSettings?.companyFormation?.stateFees || {})
-      }
+      stateFees: { ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees }
     }
   }));
 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
   const [authIntent, setAuthIntent] = useState<'client' | 'owner'>('client');
-  const [pendingServiceOrder, setPendingServiceOrder] = useState<PendingServiceOrder | null>(
-    persisted.pendingServiceOrder ?? null
-  );
+  const [pendingServiceOrder, setPendingServiceOrder] = useState<PendingServiceOrder | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState<boolean>(false);
-  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>(() => {
-    const raw = persisted.submittedServiceOrders ?? [];
-    return raw.map(item => ({
-      ...item,
-      status: ((item.status as string) === 'received'
-        ? 'new'
-        : (item.status as string) === 'in_review'
-        ? 'under_review'
-        : (item.status as string) === 'awaiting_payment'
-        ? 'needs_info'
-        : item.status) as ServiceOrderStatus
-    }));
-  });
+  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>([]);
 
   const isOwner = isAuthenticated && PRIVILEGED_ROLES.has(user.role);
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
@@ -2402,7 +2384,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const importWorkspaceBackupJson = (): boolean => false;
   const resetWorkspaceData = () => {
-    localStorage.removeItem(STORAGE_KEY);
     if (backendStatus === 'connected') void refreshWorkspace();
   };
 
