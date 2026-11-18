@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { OWNER_USER_PROFILE } from '../data/mockData.ts';
-import { studioApi, StudioConfig } from '../services/qabsStudioApi.ts';
+import { studioApi } from '../services/qabsStudioApi.ts';
+import type { StudioConfig } from '../services/qabsStudioApi.ts';
 import {
   X,
   Lock,
