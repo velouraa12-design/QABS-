@@ -85,6 +85,10 @@ export const AuthModal: React.FC = () => {
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    if (!authActionsReady) {
+      setAuthError(isAr ? 'المصادقة غير متاحة حتى يكتمل إعداد التحقق من البريد والاستعادة على الخادم.' : 'Authentication is unavailable until server-side email verification and recovery are enabled.');
+      return;
+    }
     if (isOwnerIntent) {
       await loginOwner(email.trim() || OWNER_USER_PROFILE.email, password);
       return;
@@ -96,6 +100,10 @@ export const AuthModal: React.FC = () => {
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError(null);
+    if (!authActionsReady) {
+      setAuthError(isAr ? 'التسجيل متوقف حتى تفعيل التحقق من البريد والاستعادة على الخادم.' : 'Registration is disabled until server-side email verification and recovery are enabled.');
+      return;
+    }
     if (!email.trim() || !name.trim() || password.length < 8) {
       setAuthError(
         isAr
@@ -177,13 +185,15 @@ export const AuthModal: React.FC = () => {
                   : 'Recover Password'}
               </h2>
               <p className="text-[11px] text-slate-400">
-                {backendStatus === 'connected'
+                {authActionsReady
                   ? isAr
-                    ? 'مصادقة فعلية عبر HttpOnly Cookie + CSRF'
-                    : 'Real HttpOnly Session + CSRF Authentication'
-                  : isAr
-                  ? 'وضع المعاينة الثابت'
-                  : 'Static Preview Mode'}
+                    ? 'مصادقة خادمية مع تحقق البريد والاستعادة مفعّلين'
+                    : 'Server authentication with email verification and recovery enabled'
+                  : authConfigLoading
+                    ? isAr ? 'جارٍ التحقق من جاهزية المصادقة' : 'Checking authentication readiness'
+                    : isAr
+                      ? 'المصادقة متوقفة حتى اكتمال متطلبات الأمان'
+                      : 'Authentication disabled until security requirements are met'}
               </p>
             </div>
           </div>
