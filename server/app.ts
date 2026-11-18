@@ -243,12 +243,24 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   app.get('/studio/api/config', (_req: Request, res: Response) => {
+    // Capabilities are opt-in. Email-dependent flows stay disabled unless an
+    // operator explicitly enables them AND a Resend credential is present.
+    // This prevents the API from advertising flows that the runtime cannot deliver.
+    const emailProviderReady = Boolean(process.env.RESEND_API_KEY?.trim());
+    const emailVerificationEnabled =
+      process.env.QABS_EMAIL_VERIFICATION_ENABLED === 'true' && emailProviderReady;
+    const passwordRecoveryEnabled =
+      process.env.QABS_PASSWORD_RECOVERY_ENABLED === 'true' && emailProviderReady;
+
     res.json({
       stage: 'preview-isolated',
       payments: false,
       registration: true,
-      emailVerification: true,
-      passwordRecovery: true,
+      emailVerification: emailVerificationEnabled,
+      passwordRecovery: passwordRecoveryEnabled,
+      formationDetails: false,
+      documents: false,
+      privateDocuments: false,
       emailCodeLogin: false,
       googleSignIn: false
     });
