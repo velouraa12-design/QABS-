@@ -68,8 +68,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Delaware LLC / C-Corp',
     entityType: 'LLC',
     baseUsd: 260,
-    noteAr: 'المعيار الاستثماري للشركات الناشئة والبنوك',
-    noteEn: 'Gold standard for startups & venture scaling'
+    noteAr: 'قد تناسب شركات تسعى لجذب الاستثمار؛ راجع الرسوم والالتزامات',
+    noteEn: 'May suit companies seeking investment; review fees and obligations'
   },
   {
     id: 'US_KENTUCKY',
@@ -78,8 +78,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Kentucky LLC (USA)',
     entityType: 'LLC',
     baseUsd: 189,
-    noteAr: 'رسوم حكومية اقتصادية وسرعة إيداع عالية',
-    noteEn: 'Lowest state filing fee & fast turnaround'
+    noteAr: 'راجع الرسوم الحالية ومتطلبات الولاية قبل التقديم',
+    noteEn: 'Review current state fees and requirements before filing'
   },
   {
     id: 'US_NEW_MEXICO',
@@ -88,8 +88,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'New Mexico LLC (USA)',
     entityType: 'LLC',
     baseUsd: 199,
-    noteAr: 'خصوصية عالية وبدون رسوم تقرير سنوي',
-    noteEn: 'Full privacy & $0 annual state report'
+    noteAr: 'قد تناسب بعض الأنشطة؛ تحقّق من الإفصاحات والرسوم الحالية',
+    noteEn: 'May suit some businesses; verify current disclosure and fee requirements'
   },
   {
     id: 'UK_LTD',
@@ -98,8 +98,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'United Kingdom (UK LTD)',
     entityType: 'LTD',
     baseUsd: 179,
-    noteAr: 'تأسيس أوروبي سريع للتجارة وبوابات الدفع',
-    noteEn: 'Fast UK Companies House registration'
+    noteAr: 'متطلبات ورسوم Companies House تتغير؛ تحقّق قبل التقديم',
+    noteEn: 'Companies House requirements and fees change; verify before filing'
   }
 ];
 
