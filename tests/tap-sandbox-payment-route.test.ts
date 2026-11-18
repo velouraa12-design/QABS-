@@ -11,13 +11,26 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       tap: process.env.TAP_SECRET_KEY,
       origin: process.env.APP_ORIGIN,
       resend: process.env.RESEND_API_KEY,
-      webhook: process.env.TAP_WEBHOOK_URL
+      webhook: process.env.TAP_WEBHOOK_URL,
+      registration: process.env.QABS_REGISTRATION_ENABLED,
+      verification: process.env.QABS_EMAIL_VERIFICATION_ENABLED
     };
     process.env.QABS_ALLOW_SANDBOX_PAYMENTS = 'true';
     process.env.TAP_SECRET_KEY = 'sk_test_qabs_fake_key';
     process.env.APP_ORIGIN = 'https://preview.qabs1.store';
     process.env.TAP_WEBHOOK_URL = 'https://api-preview.example.test/api/payments/tap/webhook';
-    delete process.env.RESEND_API_KEY;
+    process.env.QABS_REGISTRATION_ENABLED = 'true';
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED = 'true';
+    process.env.RESEND_API_KEY = 're_synthetic_test_only';
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === 'https://api.resend.com/emails') {
+        return new Response(JSON.stringify({ id: 'synthetic-email' }), {
+          status: 200, headers: { 'content-type': 'application/json' }
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
 
     const { app, db } = createQabsApp({ dbPath: ':memory:', exposePreviewTokens: true, rateLimitMax: 100 });
     const server = app.listen(0, '127.0.0.1');
@@ -176,6 +189,10 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       else process.env.RESEND_API_KEY = originalEnv.resend;
       if (originalEnv.webhook === undefined) delete process.env.TAP_WEBHOOK_URL;
       else process.env.TAP_WEBHOOK_URL = originalEnv.webhook;
+      if (originalEnv.registration === undefined) delete process.env.QABS_REGISTRATION_ENABLED;
+      else process.env.QABS_REGISTRATION_ENABLED = originalEnv.registration;
+      if (originalEnv.verification === undefined) delete process.env.QABS_EMAIL_VERIFICATION_ENABLED;
+      else process.env.QABS_EMAIL_VERIFICATION_ENABLED = originalEnv.verification;
       db.close();
     }
   });
