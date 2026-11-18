@@ -287,14 +287,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     ],
     benefitsAr: [
       'قد يكون EIN أحد المستندات المطلوبة لدى بعض مزودي الحسابات؛ يطبق كل مزود شروطه وقراره المستقل.',
-      'تعبئة نماذج W-9 / W-8BEN-E للمنصات والشركات الأمريكية.',
-      'توظيف متعاقدين وموظفين وإصدار فواتير نظامية.',
+      'قد تطلب بعض الجهات نماذج ضريبية مثل W-9 أو W-8BEN-E؛ تحديد النموذج الصحيح يحتاج مراجعة ضريبية مستقلة.',
+      'قد يُستخدم EIN في بعض إجراءات التوظيف والضرائب والفوترة بحسب نشاط الشركة والتزاماتها.',
       'تحديد النماذج والالتزامات الضريبية المناسبة يحتاج مراجعة مستقلة وفق حالة الشركة والمعاملة.'
     ],
     benefitsEn: [
       'An EIN may be one of the documents requested by some providers; each provider applies independent eligibility checks and decisions.',
-      'Complete vendor and marketplace tax forms cleanly.',
-      'Hire contractors and issue formal US corporate invoices.',
+      'Some counterparties may request tax forms such as W-9 or W-8BEN-E; selecting the correct form requires separate tax review.',
+      'An EIN may be used for certain employment, tax, and invoicing processes depending on the business and its obligations.',
       'Tax forms and withholding treatment require separate review based on the entity and transaction.'
     ],
     steps: [
@@ -318,8 +318,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '03',
-        titleAr: 'الإيداع لدى قسم IRS الدولي',
-        titleEn: 'IRS International Submission',
+        titleAr: 'تنسيق قناة التقديم المتاحة لدى IRS',
+        titleEn: 'Coordinate an Available IRS Submission Channel',
         descriptionAr: 'يُنسّق التقديم عبر قناة متاحة بعد قبول الطلب؛ تحدد IRS إجراءات المعالجة والرد.',
         descriptionEn: 'Submission is coordinated through an available channel after acceptance; the IRS determines processing and response.',
         durationAr: 'حسب معالجة IRS والقناة المتاحة',
@@ -341,22 +341,22 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'مساعدة طلب EIN القياسي',
         nameEn: 'Standard EIN Application Assistance',
         priceUsd: 70,
-        billingNoteAr: 'دفعة واحدة لشركة قائمة',
-        billingNoteEn: 'One-time fee for existing LLC/Corp',
+        billingNoteAr: 'سعر إرشادي لمساعدة إعداد الطلب؛ لا يشمل رسوماً حكومية أو يضمن إصداراً',
+        billingNoteEn: 'Indicative application-preparation assistance fee; no issuance guarantee',
         descriptionAr: 'مساعدة في إعداد نموذج SS-4 ومراجعة المستندات وتنسيق التقديم عند تأكيد الأهلية والتوفر.',
         descriptionEn: 'Assist with Form SS-4 and document review and coordinate submission subject to eligibility and availability.',
         recommended: true,
         featuresAr: [
           'إعداد ومراجعة نموذج IRS SS-4',
-          'تقديم الطلب لقسم غير المقيمين',
-          'نسخة PDF أصلية للخطاب الرسمي',
-          'مراجعة جاهزية التقديم البنكي'
+          'تنسيق التقديم عبر قناة IRS متاحة بعد مراجعة المتطلبات',
+          'تسليم نسخة من خطاب IRS إذا صدر وكان متاحاً',
+          'مراجعة قائمة المستندات التي قد يطلبها مزود الحساب دون ضمان القبول'
         ],
         featuresEn: [
           'IRS Form SS-4 preparation & audit',
-          'Non-resident international filing',
-          'Official PDF EIN confirmation letter',
-          'Banking verification readiness check'
+          'Coordinate submission through an available IRS channel after requirements review',
+          'Provide a copy of the IRS notice if issued and available',
+          'Review documents a provider may request without guaranteeing approval'
         ]
       },
       {
@@ -370,14 +370,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         descriptionEn: 'Assistance reviewing a 147C request or prior IRS record update; availability and outcome are determined by the IRS.',
         featuresAr: [
           'تحديد نطاق المتابعة الممكنة قبل قبول العرض',
-          'استخراج خطاب 147C عند الحاجة',
-          'تحديث اسم أو عنوان الشركة لدى IRS',
+          'مراجعة متطلبات طلب خطاب 147C؛ الإصدار يعود إلى IRS',
+          'مراجعة إجراءات تحديث بيانات الكيان لدى IRS دون ضمان قبول التحديث',
           'مراجعة مستندات التقديم لمزود الدفع دون ضمان القبول أو الربط'
         ],
         featuresEn: [
           'Confirm the available follow-up scope before accepting the quote',
-          'IRS Letter 147C retrieval if needed',
-          'IRS entity address/name update guidance',
+          'Review requirements for requesting IRS Letter 147C; issuance is determined by the IRS',
+          'Review IRS entity-record update procedures without guaranteeing acceptance',
           'Review payment-provider application documents without guaranteeing approval or integration'
         ]
       }
@@ -392,8 +392,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل ينتهي مفعول الرقم الضريبي EIN؟',
         questionEn: 'Does an EIN expire?',
-        answerAr: 'لا، الرقم الضريبي الفيدرالي دائم ولا ينتهي مفعوله طالما الشركة قائمة ولا يتطلب رسوم تجديد سنوية.',
-        answerEn: 'No, an EIN is permanent for the life of your entity and has zero annual renewal fees.'
+        answerAr: 'لا يُعاد عادةً تخصيص رقم EIN لكيان آخر، لكن إغلاق النشاط أو تغيير هيكله قد يستلزم إبلاغ IRS أو طلب رقم جديد في حالات محددة؛ راجع تعليمات IRS بحسب الحالة.',
+        answerEn: 'An EIN is generally not reassigned to another entity, but closing a business or changing its structure may require IRS notification or a new EIN in specific cases; check IRS guidance for the situation.'
       }
     ],
     formFields: [
