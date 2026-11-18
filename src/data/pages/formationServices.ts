@@ -48,8 +48,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         titleAr: 'اتفاقية تشغيل وصلاحيات مخصصة',
         titleEn: 'Custom Operating Agreement',
-        descriptionAr: 'صياغة احترافية لاتفاقية التشغيل وقرارات التوقيع البنكي جاهزة للاعتماد.',
-        descriptionEn: 'Professionally drafted Operating Agreement and Banking Resolution ready for signing.'
+        descriptionAr: 'يمكن إعداد مسودة اتفاقية تشغيل أو قرار بنكي إذا شملهما نطاق الخدمة؛ يراجع العميل ومستشاره المختص المسودة قبل التوقيع أو الاعتماد.',
+        descriptionEn: 'An Operating Agreement or banking-resolution draft may be prepared if included in the agreed scope; the client and qualified adviser must review it before signing or adoption.'
       },
       {
         titleAr: 'خزينة مستندات موثقة',
@@ -61,14 +61,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     benefitsAr: [
       'قد يوفر الكيان فصلاً قانونياً بين أصول الشركة والأصول الشخصية عند الالتزام بالقوانين والإدارة السليمة؛ لا يُعد ذلك حماية مطلقة.',
       'إمكانية التقديم على بوابات الدفع العالمية مثل Stripe و PayPal.',
-      'البيع في الأسواق الأمريكية والأوروبية ومنصات أمازون وشوبيفاي باسم شركة رسمية.',
-      'إدارة التأسيس والمتاجر والفوترة من لوحة تحكم موحدة.'
+      'قد يساعد وجود كيان مسجل في التقديم لبعض الأسواق والمنصات، مع خضوع القبول لشروط كل منصة ومزود.',
+      'تُعرض معلومات الطلب عبر القنوات المتاحة؛ تكامل لوحة العمل والوثائق يعتمد على تفعيل الخدمة وربطها فعلياً.'
     ],
     benefitsEn: [
       'An entity may provide legal separation between business and personal assets when properly maintained; this is not absolute protection.',
       'Eligibility to apply for global payment processors like Stripe and PayPal.',
-      'Sell on Amazon US, Shopify, and B2B global contracts under a registered entity.',
-      'Unified QABS workspace linking corporate compliance with online store operations.'
+      'A registered entity may support applications to some marketplaces and providers, subject to each platform’s independent requirements and approval.',
+      'Request information is shown through available channels; unified workspace and document features depend on verified service integration.'
     ],
     steps: [
       {
@@ -84,8 +84,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '02',
         titleAr: 'مراجعة البيانات وفحص الاسم',
         titleEn: 'Name Screening & KYC Review',
-        descriptionAr: 'يتحقق فريق الامتثال في قبس من توفر الاسم التجاري ومطابقة بيانات المؤسسين.',
-        descriptionEn: 'Our compliance desk verifies corporate name availability and founder documentation.',
+        descriptionAr: 'تُراجع البيانات الأولية ومتطلبات الاسم؛ التحقق الرسمي من توفر الاسم وقبول الطلب يعود إلى السجل المختص.',
+        descriptionEn: 'Initial details and naming requirements are reviewed; the relevant registry performs the official name-availability and filing checks.',
         durationAr: 'بعد اكتمال المراجعة',
         durationEn: 'After review is completed'
       },
@@ -93,8 +93,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '03',
         titleAr: 'الإيداع الرسمي وإصدار الشهادة',
         titleEn: 'Official State Filing & Issuance',
-        descriptionAr: 'يُقدّم الملف بعد اكتمال المتطلبات؛ تصدر الشهادة وفق وقت معالجة الجهة الحكومية.',
-        descriptionEn: 'The filing is submitted after requirements are complete; the registry determines issuance timing.',
+        descriptionAr: 'يُنسّق الإيداع بعد قبول الطلب وتأكيد نطاق التنفيذ وتوفر جهة الإيداع؛ الجهة الحكومية وحدها تصدر المستندات الرسمية وتحدد وقت المعالجة.',
+        descriptionEn: 'Filing coordination occurs only after request acceptance, scope confirmation, and filing-service availability; the government registry alone issues official records and controls processing time.',
         durationAr: 'حسب مدة معالجة الجهة الحكومية',
         durationEn: 'Subject to government processing times'
       },
@@ -119,16 +119,16 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         descriptionAr: 'مناسبة لمن يحتاج تأسيس الكيان الرسمي في بريطانيا أو الولايات الاقتصادية.',
         descriptionEn: 'Ideal for founders seeking official registration with essential compliance.',
         featuresAr: [
-          'فحص توفر الاسم التجاري',
-          'إيداع عقد التأسيس الرسمي',
-          'وكيل مسجل مجاني لمدة شهرين',
-          'نسخة رقمية في خزينة الوثائق'
+          'مراجعة أولية لاسم الشركة المقترح',
+          'تجهيز مستندات التقديم بعد قبول نطاق الخدمة',
+          'مراجعة متطلبات الوكيل المسجل وتأكيد توفره وسعره',
+          'تسليم المخرجات عبر القناة المتاحة بعد اكتمال الخدمة'
         ],
         featuresEn: [
-          'Corporate name availability check',
-          'Official Articles of Organization filing',
-          '2 months complimentary Registered Agent',
-          'Digital delivery in QABS Vault'
+          'Initial review of the proposed company name',
+          'Prepare filing documents after service-scope acceptance',
+          'Review registered-agent requirements and confirm availability and price',
+          'Deliver outputs through the available channel after completion'
         ]
       },
       {
@@ -138,22 +138,22 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 299,
         billingNoteAr: '+ رسوم الولاية الحكومية',
         billingNoteEn: '+ statutory state fee',
-        descriptionAr: 'الباقة المعتمدة للتجارة الإلكترونية، تشمل التأسيس والرقم الضريبي والوكيل.',
-        descriptionEn: 'Recommended e-commerce package including EIN, Operating Agreement, and Agent.',
+        descriptionAr: 'خيار إرشادي قد يشمل تنسيق التأسيس ومساعدة طلب EIN ومسودة اتفاقية تشغيل ومتطلبات الوكيل؛ يخضع كل عنصر للأهلية والتوفر والتأكيد.',
+        descriptionEn: 'An indicative option that may include formation coordination, EIN application assistance, an Operating Agreement draft, and agent requirements; each item is subject to eligibility, availability, and confirmation.',
         recommended: true,
         featuresAr: [
-          'تأسيس الشركة في الولاية المختارة',
-          'استخراج الرقم الضريبي الفيدرالي EIN',
-          'صياغة اتفاقية التشغيل Operating Agreement',
-          'وكيل مسجل وعنوان رسمي لمدة شهرين مجاناً',
-          'قرار التوقيع البنكي Banking Resolution'
+          'تنسيق طلب التأسيس بعد قبول نطاق الخدمة',
+          'مساعدة في إعداد طلب EIN وفق أهلية ومتطلبات IRS دون ضمان الإصدار',
+          'مسودة اتفاقية تشغيل إذا شملها العرض',
+          'التحقق من متطلبات الوكيل المسجل وتكلفته قبل الطلب',
+          'مسودة قرار بنكي إذا شملها العرض'
         ],
         featuresEn: [
-          'Full state entity incorporation',
-          'Federal IRS EIN Tax ID issuance',
-          'Custom Operating Agreement drafting',
-          'Registered Agent & street address (2 months free)',
-          'Official Banking Resolution'
+          'Coordinate the formation request after scope acceptance',
+          'Assist with EIN application preparation subject to IRS eligibility; issuance is not guaranteed',
+          'Operating Agreement draft if included in the quote',
+          'Confirm registered-agent requirements and cost before ordering',
+          'Draft banking resolution if included in the quote'
         ]
       },
       {
@@ -163,21 +163,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 599,
         billingNoteAr: 'تشمل أولوية التنفيذ وسنة وكيل',
         billingNoteEn: 'Includes priority filing & 1-yr agent',
-        descriptionAr: 'حل متكامل يشمل سنة وكيل مسجل وتجهيز ملف البنك وبوابات الدفع وأولوية التنفيذ.',
-        descriptionEn: 'All-inclusive launch with 1 full year registered agent, banking prep, and priority queue.',
+        descriptionAr: 'خيار مخصص يخضع لعرض سعر منفصل؛ لا تُعد أولوية المعالجة أو سنة الوكيل أو تجهيز الحسابات أو قبول بوابات الدفع مضمونة قبل التأكيد الكتابي.',
+        descriptionEn: 'A custom option requiring a separate quote; priority processing, a one-year agent, account preparation, and payment-provider acceptance are not guaranteed until confirmed in writing.',
         featuresAr: [
-          'جميع مزايا الباقة المتكاملة',
-          'وكيل مسجل وعنوان أمريكي لسنة كاملة',
-          'أولوية معالجة سريعة للإيداع',
-          'تجهيز ملف Mercury / Wise و Stripe',
-          'دعم استشاري مخصص بعد التأسيس'
+          'مراجعة نطاق الخدمات الإضافية قبل التسعير',
+          'التحقق من توفر الوكيل ومدته وتكلفته',
+          'تحديد ما إذا كانت متابعة الإيداع متاحة',
+          'تنظيم مستندات التقديم للحسابات عند انطباق الأهلية',
+          'تحديد الدعم اللاحق كتابياً ضمن العرض'
         ],
         featuresEn: [
-          'All Complete package deliverables',
-          'Full 1-year Registered Agent & US address',
-          'Priority state filing handling',
-          'Mercury / Wise & Stripe readiness file',
-          'Dedicated post-formation specialist support'
+          'Review and quote additional service scope',
+          'Confirm agent availability, term, and cost',
+          'Confirm whether filing coordination is available',
+          'Organize provider application documents where eligible',
+          'Define post-formation support in writing'
         ]
       }
     ],
@@ -197,8 +197,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل تشمل الباقة استخراج الرقم الضريبي EIN؟',
         questionEn: 'Does the package include Federal EIN issuance?',
-        answerAr: 'نعم، الباقة المتكاملة وباقة الانطلاقة الشاملة تشملان استخراج الرقم الضريبي الفيدرالي EIN رسمياً من IRS.',
-        answerEn: 'Yes, both our Complete and Turnkey packages include official IRS EIN issuance for non-US residents.'
+        answerAr: 'قد تشمل الباقة مساعدة في إعداد طلب EIN إذا انطبقت متطلبات IRS وتم تأكيد ذلك في العرض؛ قرار الإصدار يعود إلى IRS ولا نضمنه.',
+        answerEn: 'A package may include EIN application assistance where IRS requirements are met and the scope is confirmed in writing; the IRS decides issuance and QABS does not guarantee it.'
       }
     ],
     formFields: [
