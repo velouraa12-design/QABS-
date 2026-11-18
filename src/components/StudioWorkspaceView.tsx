@@ -24,7 +24,10 @@ export const StudioWorkspaceView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register'>(() => {
+    if (typeof window !== 'undefined' && ['/signup', '/register'].includes(window.location.pathname.replace(/\\/$/, '') || '/')) return 'register';
+    return 'login';
+  });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [workspaces, setWorkspaces] = useState<StudioProjectWorkspace[]>([]);
@@ -45,6 +48,9 @@ export const StudioWorkspaceView: React.FC = () => {
   const [displayName, setDisplayName] = useState('');
   const [draftName, setDraftName] = useState('');
   const [templateKey, setTemplateKey] = useState('');
+  const routePath = typeof window !== 'undefined' ? window.location.pathname.replace(/\\/$/, '') || '/' : '/';
+  const recoveryRoute = ['/forgot-password', '/recover', '/reset-password'].includes(routePath);
+  const verificationRoute = routePath === '/verify-email';
 
   const loadData = useCallback(async (preferredWorkspaceId?: string) => {
     const results = await Promise.allSettled([
@@ -281,6 +287,8 @@ export const StudioWorkspaceView: React.FC = () => {
       <section dir="rtl" className="min-h-[72vh] bg-[#071A2A] px-4 py-12 text-white">
         <div className="mx-auto max-w-md rounded-3xl border border-[#D5B46B]/30 bg-[#0D2639] p-7 shadow-2xl">
           <div className="mb-6 text-center"><div className="text-sm font-bold tracking-[.25em] text-[#D5B46B]">QABS STUDIO</div><h1 className="mt-3 text-2xl font-black">مساحة أعمالك في قبس</h1><p className="mt-2 text-sm text-slate-300">سجّل الدخول لإدارة مساحات العمل وطلبات الخدمات ومسودات المتاجر.</p></div>
+          {recoveryRoute && <p role="status" className="mb-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">استعادة كلمة المرور غير مفعّلة في بيئة المعاينة. ارجع إلى تسجيل الدخول أو تواصل مع الدعم.</p>}
+          {verificationRoute && <p role="status" className="mb-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">التحقق من البريد غير مفعّل حالياً؛ لا يمكن إكمال توثيق الحساب من هذه البيئة.</p>}
           <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#071A2A] p-1 text-sm"><button onClick={() => setAuthMode('login')} className={`rounded-lg py-2 font-bold ${authMode === 'login' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>تسجيل الدخول</button><button onClick={() => setAuthMode('register')} disabled={!registrationReady} className={`rounded-lg py-2 font-bold disabled:opacity-40 ${authMode === 'register' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>إنشاء حساب</button></div>
           <form onSubmit={handleAuth} className="space-y-4">
             <label className="block text-sm font-bold">البريد الإلكتروني<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /></label>
