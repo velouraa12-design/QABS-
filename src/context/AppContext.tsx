@@ -1921,78 +1921,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeServiceCheckout = (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => {
-    if (!requireConnectedBackend()) return;
-
-    if (!pendingServiceOrder) return;
-    const ord = pendingServiceOrder;
-    const d = ord.details || {};
-
-    if (ord.serviceType === 'company_formation') {
-      const jur = d.jurisdiction || 'US_WYOMING';
-      const suffix = d.entityType || (jur === 'UK_LTD' ? 'LTD' : 'LLC');
-      const baseName = (d.companyName || `${user.companyName || user.name || 'QABS VENTURES'}`).trim().toUpperCase();
-      const companyName = baseName.endsWith(suffix) ? baseName : `${baseName} ${suffix}`;
-      addCompany({
-        companyName,
-        jurisdiction: jur,
-        entityType: suffix,
-        registeredAgent: 'QABS Statutory Registered Agent LLC',
-        registeredAddress: '30 N Gould St Ste R, Sheridan, WY 82801, USA',
-        renewalDueDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        ownerName: user.name,
-        ownerEmail: user.email,
-        packagePriceUsd: ord.priceUsd,
-        formationStage: 1,
-        notes: `Submitted via ${paymentMethod} (pending verification)`
-      });
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-      return;
-    }
-
-    if (ord.serviceType === 'store_package') {
-      const planId = d.planId || 'growth';
-      const cycle = d.billingCycle || 'monthly';
-      changeSubscriptionPlan(planId, cycle);
-      if (d.storeName || planId) {
-        const name = d.storeName?.trim() || `${user.companyName || user.name} Store`;
-        const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14) || `store${Math.floor(100 + Math.random() * 899)}`;
-        const resolvedGateway: StoreInstance['gatewayType'] =
-          paymentMethod === 'Tap' || paymentMethod === 'Moyasar' || paymentMethod === 'PayPal'
-            ? paymentMethod
-            : 'Tap';
-        addStore({
-          name,
-          ownerName: user.name,
-          ownerEmail: user.email,
-          activityAr: 'متجر إلكتروني مستقل — مسودة',
-          activityEn: 'Independent Storefront — Draft',
-          country: 'SA',
-          defaultLanguage: 'both',
-          subdomain: `${slug}.qabs1.store`,
-          currency: 'SAR',
-          taxRate: 15,
-          theme: 'gold_executive',
-          status: 'draft',
-          approvalStatus: 'draft',
-          paymentConnected: false,
-          paymentApprovalStatus: 'unconfigured',
-          gatewayType: resolvedGateway
-        });
-      }
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-      return;
-    }
-
-    if (ord.serviceType === 'ai_credits') {
-      topUpCredits(ord.priceUsd);
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-    }
+    void paymentMethod;
+    showToast(language === 'ar'
+      ? 'الدفع غير مفعّل في المعاينة. لم يتم تحصيل أي مبلغ أو إنشاء اشتراك أو متجر أو إضافة رصيد.'
+      : 'Checkout is disabled in this preview. No payment, subscription, store, or credits were created.');
+    setCheckoutModalOpen(false);
   };
 
   const submitServiceOrder = async (
