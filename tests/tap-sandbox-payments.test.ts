@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { createTapSandboxCharge, isTapTestSecret } from '../server/payments/tap.ts';
+import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge } from '../server/payments/tap.ts';
 
 describe('Tap sandbox payment adapter', () => {
   const input = {
@@ -71,5 +71,42 @@ describe('Tap sandbox payment adapter', () => {
       () => createTapSandboxCharge(input, 'sk_test_123', fakeFetch),
       error => error instanceof Error && error.message === 'TAP_SANDBOX_AUTH_FAILED'
     );
+  });
+
+  it('retrieves a Tap charge and normalizes the verification fields', async () => {
+    let requestUrl = '';
+    const fakeFetch = (async (url: string | URL | Request) => {
+      requestUrl = String(url);
+      return new Response(JSON.stringify({
+        id: 'chg_test_123',
+        status: 'CAPTURED',
+        live_mode: false,
+        amount: 349,
+        currency: 'USD',
+        reference: { transaction: 'inv_test_1', order: 'INV-TEST-1' }
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as typeof fetch;
+    const charge = await retrieveTapSandboxCharge('chg_test_123', 'sk_test_123', fakeFetch);
+    assert.equal(requestUrl, 'https://api.tap.company/v2/charges/chg_test_123');
+    assert.deepEqual(charge, {
+      id: 'chg_test_123',
+      status: 'CAPTURED',
+      liveMode: false,
+      amount: 349,
+      currency: 'USD',
+      transactionReference: 'inv_test_1',
+      orderReference: 'INV-TEST-1'
+    });
+  });
+
+  it('rejects malformed charge ids and never accepts live-mode credentials', async () => {
+    let calls = 0;
+    const fakeFetch = (async () => {
+      calls += 1;
+      return new Response('{}', { status: 200 });
+    }) as typeof fetch;
+    await assert.rejects(() => retrieveTapSandboxCharge('not-a-charge', 'sk_test_123', fakeFetch), /INVALID_TAP_CHARGE_ID/);
+    await assert.rejects(() => retrieveTapSandboxCharge('chg_test_123', 'sk_live_123', fakeFetch), /TAP_SANDBOX_KEY_REQUIRED/);
+    assert.equal(calls, 0);
   });
 });
