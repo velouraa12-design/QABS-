@@ -12,10 +12,14 @@ export const AIChatModal: React.FC<AIChatModalProps> = ({ isOpen, onClose }) => 
   const { language, showToast, backendStatus, isAuthenticated, activeStoreId, user, refreshWorkspace, openClientAuth } = useApp();
   const isAr = language === 'ar';
 
-  const welcomeText = backendStatus === 'connected' && isAuthenticated
-    ? isAr
-      ? 'مرحباً بك في مستشار قبس الذكي. عند توفر رصيد كافٍ واتصال الخادم، تُرسل الطلبات إلى محرك الذكاء الاصطناعي وتُسجل نتائجها.'
-      : 'Welcome to QABS AI. When the server is connected and credits are available, requests are sent to the AI engine and recorded.'
+  const welcomeText = backendStatus === 'connected'
+    ? isAuthenticated
+      ? isAr
+        ? 'مرحباً بك في مستشار قبس الذكي. تُرسل الطلبات إلى المحرك المتصل عند توفر الرصيد والصلاحية.'
+        : 'Welcome to QABS AI. Requests are sent to the connected engine when the account is authorized and has sufficient credits.'
+      : isAr
+        ? 'خدمة قبس AI متصلة، لكن يلزم تسجيل الدخول الموثّق قبل تنفيذ أي طلب.'
+        : 'QABS AI service is connected, but verified sign-in is required before executing requests.'
     : isAr
       ? 'مرحباً بك في معاينة قبس AI. محرك الذكاء الاصطناعي غير متصل حالياً؛ لن يتم تنفيذ الطلبات أو خصم الأرصدة في هذه المعاينة.'
       : 'Welcome to the QABS AI preview. The AI engine is not connected; prompts will not execute and no credits will be deducted in this preview.';
