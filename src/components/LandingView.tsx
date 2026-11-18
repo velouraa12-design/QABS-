@@ -974,8 +974,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
               {isAr
-                ? 'نتولى عنك كافة الإجراءات الحكومية والقانونية والتقنية لتتفرغ لتنمية تجارتك'
-                : 'We manage all legal, governmental, and technical procedures so you can focus on scale'}
+                ? 'نراجع المتطلبات وننسق الخطوات المتفق عليها؛ الجهات الحكومية ومزودو الحسابات والدفع يتخذون قراراتهم بصورة مستقلة.'
+                : 'We review requirements and coordinate the agreed scope; government registries and account/payment providers make their own decisions.'}
             </p>
             <div className="pt-1">
               <AppLink
@@ -994,12 +994,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 01
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'اختيار الولاية وتعبئة البيانات' : 'Select State & Enter Details'}
+                {isAr ? 'مراجعة الاختصاص وتعبئة البيانات' : 'Review Jurisdiction & Enter Details'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'اختر الولاية الأنسب لنشاطك (وايومنغ للتجارة الإلكترونية، ديلاوير للاستثمار) وقم بتحديد اسم الشركة والمدراء.'
-                  : 'Choose the best state (Wyoming for commerce, Delaware for VC) and specify company name & managers.'}
+                  ? 'قارن الاختصاصات المتاحة وفق النشاط ومكان ممارسة العمل والرسوم والالتزامات؛ لا توجد ولاية مناسبة للجميع.'
+                  : 'Compare supported jurisdictions against business activity, operating location, fees, and obligations; no single state fits everyone.'}
               </p>
             </div>
 
@@ -1008,12 +1008,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 02
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'الإيداع واستخراج EIN والوثائق' : 'State Filing & IRS EIN'}
+                {isAr ? 'تجهيز الطلبات وتنسيق الإيداع' : 'Application Preparation & Filing Coordination'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'نقوم بإيداع النظام الأساسي لدى سكرتير الولاية واستخراج الرقم الضريبي الفيدرالي EIN وتجهيز عقد التأسيس.'
-                  : 'We file Articles of Organization, obtain IRS EIN letter, and issue the custom Operating Agreement.'}
+                  ? 'نساعد في تجهيز مستندات الإيداع وطلب EIN عند الأهلية؛ السجل الحكومي يصدر وثائق التأسيس وIRS تقرر إصدار الرقم الضريبي.'
+                  : 'We help prepare filing and EIN application documents where eligible; the registry issues formation records and the IRS decides whether to issue an EIN.'}
               </p>
             </div>
 
@@ -1022,7 +1022,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 03
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'تفعيل البنك والدفع وإطلاق المتجر' : 'Banking, Gateways & Launch'}
+                {isAr ? 'مراجعة طلبات الحسابات والدفع وإعداد المتجر' : 'Account Applications, Payments & Store Setup Review'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
