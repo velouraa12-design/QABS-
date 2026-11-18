@@ -769,32 +769,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCompanyStatus = (id: string, status: CompanyFormation['status']) => {
-    if (!requireConnectedBackend()) return;
-
-    setCompanies(prev => prev.map(c => (c.id === id ? { ...c, status } : c)));
+    void id; void status;
+    showToast(language === 'ar' ? 'تحديث حالة التأسيس غير متصل بخدمة الخادم؛ لم يتم تغيير الحالة.' : 'Formation status updates are not connected to the server; no status was changed.');
   };
+
 
   const advanceCompanyStage = (id: string, nextStage?: 1 | 2 | 3 | 4 | 5) => {
-    if (!requireConnectedBackend()) return;
-
-    const target = companies.find(c => c.id === id);
-    if (!target) return;
-    const computedStage = (nextStage ?? Math.min(5, (target.formationStage ?? 1) + 1)) as 1 | 2 | 3 | 4 | 5;
-    setCompanies(prev =>
-      prev.map(c =>
-        c.id === id
-          ? {
-              ...c,
-              formationStage: computedStage,
-              status: computedStage === 5 ? 'approved' : computedStage >= 2 ? 'submitted_to_state' : 'under_review'
-            }
-          : c
-      )
-    );
-    appendAudit(`ترقية مرحلة التأسيس (${target.companyName}) إلى ${computedStage}/5`, `Advanced formation (${target.companyName}) to ${computedStage}/5`, target.companyName);
+    void id; void nextStage;
+    showToast(language === 'ar' ? 'تحديث مرحلة التأسيس غير متاح حتى ربط واجهة الخادم.' : 'Formation-stage updates are unavailable until the server API is connected.');
   };
 
-  // --- STORES (TENANT & ADMIN GATED) ---
+
   const addStore = (
     storeData: Omit<StoreInstance, 'id' | 'productsCount' | 'ordersCount' | 'totalRevenue' | 'createdAt'>
   ) => {
@@ -1056,47 +1041,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyStoreDomain = (storeId: string) => {
-    if (!requireConnectedBackend()) return;
-
-    if (backendStatus === 'connected') {
-      void (async () => {
-        try {
-          await qabsApi.adminVerifyStoreDomain(storeId, true);
-          await refreshWorkspace();
-          showToast(language === 'ar' ? 'تم توثيق سجل النطاق في قاعدة البيانات (بدون تعديل DNS فعلي).' : 'Domain status verified in database.');
-        } catch (err) {
-          handleApiFailure(err, 'تعذر توثيق النطاق', 'Failed to verify store domain');
-        }
-      })();
-      return;
-    }
-    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, domainVerified: true } : s)));
+    void storeId;
+    showToast(language === 'ar' ? 'التحقق من النطاق يتطلب تحققاً خادمياً؛ لم يتم اعتماد أي نطاق.' : 'Domain verification requires a server-side check; no domain was verified.');
   };
+
 
   const saveStoreSnapshot = (storeId: string, label: string) => {
-    if (!requireConnectedBackend()) return;
-
-    const target = stores.find(s => s.id === storeId);
-    const newSnap = {
-      id: `ver_${Date.now()}`,
-      label: label || `نسخة (${new Date().toLocaleTimeString()})`,
-      savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      theme: target?.theme || 'gold_executive',
-      primaryColor: target?.primaryColor || '#004457',
-      accentColor: target?.accentColor || '#C8A24A',
-      fontFamily: target?.fontFamily || 'Cairo',
-      sections: (target?.sections || DEFAULT_STORE_SECTIONS).map(sec => ({ ...sec }))
-    };
-    const nextVersions = [newSnap, ...(target?.designVersions || [])];
-    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, designVersions: nextVersions } : s)));
-    if (backendStatus === 'connected' && target) {
-      void qabsApi
-        .updateStore(storeId, { settings: { designVersions: nextVersions } })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
-    showToast(language === 'ar' ? 'تم حفظ نسخة التصميم' : 'Design snapshot saved');
+    void storeId; void label;
+    showToast(language === 'ar' ? 'حفظ نسخة المتجر غير متصل بخدمة النسخ الاحتياطي؛ لم تُنشأ نسخة وهمية.' : 'Store snapshots are not connected to backup storage; no local-only snapshot was created.');
   };
+
 
   const restoreStoreSnapshot = (storeId: string, snapshotId: string) => {
     const target = stores.find(s => s.id === storeId);
@@ -1554,10 +1508,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
-    if (!requireConnectedBackend()) return;
-
-    setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
+    void tpl;
+    showToast(language === 'ar' ? 'حفظ قوالب المتاجر غير متصل بالخادم؛ لم يُحفظ قالب محلي.' : 'Store-template persistence is not connected; no local-only template was saved.');
   };
+
+
   const triggerSystemBackup = (targetLabel?: string) => {
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1580,12 +1535,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
-    if (!requireConnectedBackend()) return;
-
-    setBanking(prev => [{ ...bank, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' }, ...prev]);
+    void bank;
+    showToast(language === 'ar' ? 'إضافة الحسابات التجارية غير متصلة بمزود موثّق؛ لم يُنشأ حساب.' : 'Business-account provisioning is not connected to a verified provider; no account was created.');
   };
 
-  // --- SUPPORT TICKETS ---
+
   const addTicket = (t: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'status'>) => {
     if (!requireConnectedBackend()) return;
 
@@ -1704,23 +1658,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- STAFF ---
-  const addStaff = (s: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
-    if (!requireConnectedBackend()) return;
-
-    setStaff(prev => [{ ...s, id: `stf_${Date.now()}`, status: 'active', lastActive: 'now' }, ...prev]);
+  const addStaff = (staffInput: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
+    void staffInput;
+    showToast(language === 'ar' ? 'إنشاء الموظفين يتطلب خدمة إدارة مستخدمين خادمية؛ لم يُنشأ حساب.' : 'Staff creation requires the server-side user-management service; no account was created.');
   };
+
+
   const updateStaffPermissions = (staffId: string, permissions: string[]) => {
-    if (!requireConnectedBackend()) return;
-
-    setStaff(prev => prev.map(m => (m.id === staffId ? { ...m, permissions } : m)));
+    void staffId; void permissions;
+    showToast(language === 'ar' ? 'تعديل صلاحيات الموظفين غير متصل بالخادم؛ لم تتغير الصلاحيات.' : 'Staff permissions are not connected to the server; no permissions changed.');
   };
+
+
   const removeStaff = (staffId: string) => {
-    if (!requireConnectedBackend()) return;
-
-    setStaff(prev => prev.filter(m => m.id !== staffId));
+    void staffId;
+    showToast(language === 'ar' ? 'إزالة الموظفين تتطلب إلغاء حساب خادمي؛ لم يتم حذف أي حساب.' : 'Staff removal requires server-side account revocation; no account was removed.');
   };
 
-  // --- BILLING, SUBSCRIPTIONS, INVOICES & CREDITS (STRICT FINANCIAL GATE) ---
+
   const changeSubscriptionPlan = (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => {
     if (!requireConnectedBackend()) return;
 
@@ -1823,24 +1778,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueRefund = (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => {
-    if (!requireConnectedBackend()) return;
-
-    const newRefund: RefundRecord = {
-      id: `ref_${Date.now()}`,
-      orderNumber,
-      amount,
-      currency: 'USD',
-      reasonAr,
-      reasonEn,
-      status: 'requested',
-      date: new Date().toISOString().split('T')[0],
-      customerName: user.name
-    };
-    setRefunds(prev => [newRefund, ...prev]);
-    showToast(language === 'ar' ? `تم تسجيل طلب الاسترداد للطلب ${orderNumber} للمراجعة` : `Refund request recorded for ${orderNumber}`);
+    void orderNumber; void amount; void reasonAr; void reasonEn;
+    showToast(language === 'ar' ? 'طلبات الاسترداد غير متصلة بنظام المدفوعات؛ لم يُنشأ طلب أو تحويل مالي.' : 'Refunds are not connected to the payment system; no refund request or transfer was created.');
   };
 
+
   const topUpCredits = (amount: number) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -2394,36 +2339,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSetupStep = (storeId: string, stepId: string) => {
-    if (!requireConnectedBackend()) return;
-
-    const target = stores.find(s => s.id === storeId);
-    const current = target?.setupStepsCompleted || [];
-    const nextSteps = current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId];
-    setStores(prev =>
-      prev.map(s => (s.id === storeId ? { ...s, setupStepsCompleted: nextSteps } : s))
-    );
-    if (backendStatus === 'connected') {
-      void qabsApi
-        .updateStore(storeId, { settings: { setupStepsCompleted: nextSteps } })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
+    void storeId; void stepId;
+    showToast(language === 'ar' ? 'تحديث خطوات إعداد المتجر غير متصل بالخادم؛ لم يتم حفظ التغيير.' : 'Store setup progress is not connected to the server; no change was saved.');
   };
+
 
   const addCompanyDocument = (
     companyId: string,
     name: string,
     docType: CompanyFormation['documents'][number]['type']
   ) => {
-    if (!requireConnectedBackend()) return;
-
-    const today = new Date().toISOString().split('T')[0];
-    setCompanies(prev =>
-      prev.map(c =>
-        c.id === companyId ? { ...c, documents: [{ name, type: docType, status: 'ready', date: today }, ...c.documents] } : c
-      )
-    );
+    void companyId; void name; void docType;
+    showToast(language === 'ar' ? 'حفظ مستندات التأسيس يتطلب خزنة ملفات خادمية؛ لم يُسجل مستند محلي.' : 'Formation documents require the server-side document vault; no local-only document was recorded.');
   };
+
 
   const activateProductionMode = (_storeId?: string) => {
     showToast(
