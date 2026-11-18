@@ -5,6 +5,7 @@ on:
       - preview/workspace-reference-layout
       - unified-template-preview-20261116
       - chore/qabs-123-unified-completion
+      - integration/qabs-unified-preview-20261118
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,6 +29,13 @@ jobs:
         run: npm run check:routes
       - name: Build static site
         run: npm run build
+      - name: Exclude AI Studio access-history artifacts from public preview
+        run: |
+          find dist -type f -path '*/aistudio/applet_access_history_*.json' -delete
+          if find dist -type f -path '*/aistudio/applet_access_history_*.json' -print -quit | grep -q .; then
+            echo "::error::AI Studio access-history artifacts must not be published in the preview."
+            exit 1
+          fi
       - name: Upload preview artifact
         uses: actions/upload-artifact@v4
         with:
