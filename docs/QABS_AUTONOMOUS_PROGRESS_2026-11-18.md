@@ -437,3 +437,27 @@ Latest commit validated: `b8621c7054ebf30adab1a69b659404b6e3b34da4`.
 5. Cross-tenant tests passed in the local Express test harness, but a two-user/two-store authenticated penetration test against the Cloudflare Studio Worker remains NOT VERIFIED because no approved synthetic credentials are provisioned.
 
 No production environment, Shopify theme/checkout, DNS, payment keys, or customer data were changed.
+
+
+## 20. Authentication and document feature-flag root cause
+
+Read-only Cloudflare Worker settings review of `qabs-stores-acceptance-preview` confirmed:
+- `EMAIL_LOGIN_ENABLED=false`
+- `PASSWORD_RECOVERY_ENABLED=false`
+- `FORMATION_UPLOAD_ENABLED=false`
+- `FORMATION_DETAILS_ENABLED=false`
+- `REGISTRATION_ENABLED=true`
+- `PROJECTS_ENABLED=true`
+- `STORE_LINKS_ENABLED=true`
+- `WORKSPACE_STORES_ENABLED=true`
+- `CONSOLE_ENABLED=true`
+- `GOOGLE_LOGIN_ENABLED=false`
+
+Required email-provider bindings are absent:
+- `RESEND_API_KEY`: not bound to this Worker.
+- `MAIL_FROM`: not bound to this Worker.
+- `EMAIL_LOGIN_ENABLED` and `PASSWORD_RECOVERY_ENABLED` are false.
+
+The deployed Worker contains email-code login and password-recovery modules, but their readiness checks require the Resend key, sender identity, and explicit feature flags. The password recovery implementation uses a single-use short-lived token and session invalidation; it remains disabled. Do not copy secrets from another Worker, enable flags, or send test/customer emails without explicit authorization and a safe test recipient.
+
+Formation document upload is disabled by `FORMATION_UPLOAD_ENABLED=false`; the service catalog also reports sensitive-document uploads disallowed and malware scanning unavailable. Keep uploads disabled until a server-side document vault, access checks, retention rules, and malware scanning are verified.
