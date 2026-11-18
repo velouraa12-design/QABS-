@@ -1,5 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { createQabsApp } from '../server/app.ts';
 
 describe('Tap sandbox payment API — authenticated tenant invoice flow', () => {
@@ -104,11 +105,45 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       assert.equal(tapChargeRequest.current?.amount, 349, 'server must use invoice amount, not client amount');
       assert.equal(tapChargeRequest.current?.currency, 'USD');
       assert.equal(tapChargeRequest.current?.save_card, false);
+      assert.equal(tapChargeRequest.current?.post?.url, 'https://preview.qabs1.store/api/payments/tap/webhook');
 
       const beforeVerify = db.prepare('SELECT status, payment_proof_ref FROM billing_invoices WHERE id = ?')
         .get('inv_tap_sandbox_1') as { status: string; payment_proof_ref: string };
       assert.equal(beforeVerify.status, 'pending_verification');
       assert.equal(beforeVerify.payment_proof_ref, 'tap:chg_TapSandbox123');
+
+      const webhookPayload = {
+        id: 'chg_TapSandbox123',
+        object: 'charge',
+        live_mode: false,
+        status: 'CAPTURED',
+        amount: 349,
+        currency: 'USD',
+        reference: {
+          gateway: 'gw_sandbox',
+          payment: 'pay_sandbox',
+          transaction: 'inv_tap_sandbox_1',
+          order: 'INV-TAP-TEST-1'
+        },
+        transaction: { created: '1763400000000' }
+      };
+      const hashInput = 'x_id' + webhookPayload.id + 'x_amount349.00x_currencyUSDx_gateway_referencegw_sandboxx_payment_referencepay_sandboxx_statusCAPTUREDx_created1763400000000';
+      const hashstring = createHmac('sha256', 'sk_test_qabs_fake_key').update(hashInput).digest('hex');
+      const webhookResponse = await originalFetch(`${baseUrl}/api/payments/tap/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', hashstring },
+        body: JSON.stringify(webhookPayload)
+      });
+      assert.equal(webhookResponse.status, 200);
+      const afterWebhook = db.prepare('SELECT status FROM billing_invoices WHERE id = ?')
+        .get('inv_tap_sandbox_1') as { status: string };
+      assert.equal(afterWebhook.status, 'paid', 'valid signed Tap webhook should reconcile the invoice');
+      const invalidWebhook = await originalFetch(`${baseUrl}/api/payments/tap/webhook`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', hashstring: '00'.repeat(32) },
+        body: JSON.stringify(webhookPayload)
+      });
+      assert.equal(invalidWebhook.status, 401);
 
       const verifyResponse = await originalFetch(`${baseUrl}/api/payments/tap/verify`, {
         method: 'POST',
