@@ -37,7 +37,7 @@ export const UsLlcPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#EAE6DC] dark:border-slate-800 pb-5">
             <div>
               <h2 className="text-2xl font-black text-[#14243E] dark:text-white">
-                {isAr ? 'دليل أسعار تأسيس US LLC في جميع الولايات الـ 50' : 'All 50 US States LLC Formation Pricing'}
+                {isAr ? 'دليل إرشادي لرسوم تأسيس US LLC حسب الولاية' : 'Indicative US LLC Formation Fees by State'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {isAr
