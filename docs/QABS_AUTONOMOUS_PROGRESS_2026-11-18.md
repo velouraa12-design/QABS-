@@ -286,3 +286,21 @@ Source/schema observations:
 - This commerce preview has its own D1, separate from the acceptance Studio D1 and the live commerce D1. Do not merge or copy account/store data between them.
 
 Conclusion: useful isolated commerce code/reference, not a production-ready commerce backend and not currently a unified auth+commerce staging environment.
+
+
+## 16. Frontend offline-authentication hardening and CI
+
+On this isolated development branch, `src/context/AppContext.tsx` was hardened to fail closed when the backend is disconnected:
+- Offline role switching no longer creates a Super Admin or client identity.
+- Offline login and registration return failure and do not set `isAuthenticated`.
+- Offline password-reset and email-verification paths no longer return synthetic success tokens or mark an email verified.
+- Static/offline startup no longer restores a cached user/session or customer workspace records from localStorage.
+- Offline customer data and pending service orders are cleared; workspace state is no longer persisted as an offline authenticated session.
+
+A draft PR was opened for review (PR #5; not merged).
+GitHub Actions run `44231080195` completed with SUCCESS:
+- TypeScript/lint: PASS.
+- Vite build: PASS.
+- Secret scan: PASS.
+
+The repository's current `ci.yml` does not run `npm test` or `check:routes`; those remain NOT VERIFIED in this run. This is not a full regression-test pass.
