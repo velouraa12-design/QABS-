@@ -9,7 +9,6 @@ import {
   Sparkles,
   Store,
   Building2,
-  ArrowLeft,
   LockKeyhole
 } from 'lucide-react';
 
