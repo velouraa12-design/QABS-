@@ -89,7 +89,14 @@ const forbiddenUnverifiedClaims = [
   'Official EIN confirmation letter uploaded directly to your QABS Vault',
   'Priority handling & daily follow-up',
   'استخراج خطاب EIN الرسمي من IRS، عنوان أمريكي معتمد',
-  'تجنب الاستقطاع الضريبي التلقائي بنسبة 30%'
+  'تجنب الاستقطاع الضريبي التلقائي بنسبة 30%',
+  'No SSN or ITIN Required',
+  'Required for Banking & Stripe',
+  'Priority EIN + 147C Verification',
+  'Priority queue + verification letter',
+  'Within 24h',
+  '4 – 10 أيام عمل',
+  '4 – 10 business days'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
