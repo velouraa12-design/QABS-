@@ -32,7 +32,14 @@ const aiChatSource = readFileSync('src/components/AIChatModal.tsx', 'utf8');
 const landingSource = readFileSync('src/components/LandingView.tsx', 'utf8');
 const formationSource = readFileSync('src/pages/services/CompanyFormationPage.tsx', 'utf8');
 const llcSource = readFileSync('src/pages/services/UsLlcPage.tsx', 'utf8');
-const marketingSource = [landingSource, formationSource, llcSource].join('\n');
+const formationDataSource = readFileSync('src/data/pages/formationServices.ts', 'utf8');
+const companyFormationStart = formationDataSource.indexOf("slug: 'company-formation'");
+const nextFormationRecord = formationDataSource.indexOf("slug:", companyFormationStart + 5);
+const companyFormationCopy = companyFormationStart >= 0 && nextFormationRecord > companyFormationStart
+  ? formationDataSource.slice(companyFormationStart, nextFormationRecord)
+  : '';
+if (!companyFormationCopy) errors.push('Could not inspect the company-formation marketing record.');
+const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy].join('\n');
 const forbiddenUnverifiedClaims = [
   '+1,450',
   'EIN Issuance Success',
@@ -41,7 +48,15 @@ const forbiddenUnverifiedClaims = [
   '4 to 10 business days',
   'نسبة نجاح استخراج EIN',
   'متوسط سرعة الإيداع لدى الولاية',
-  'يؤهلك لفتح حسابات بنكية'
+  'يؤهلك لفتح حسابات بنكية',
+  '100% non-resident ownership',
+  '100% Foreign Ownership',
+  'Banking & Gateway Ready',
+  'موافقة قانونية للبنوك والدفع',
+  '1 – 3 أيام عمل للإيداع الحكومي',
+  '1 – 3 business days for state filing',
+  'Permanent cloud access to all certified articles',
+  'أرشفة دائمة لجميع شهادات التأسيس'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -53,7 +68,9 @@ const requiredTruthfulCopy = [
   'do not guarantee a bank account',
   'لا تضمن فتح حساب بنكي',
   'لا يعني إيداعاً حكومياً',
-  'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى'
+  'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى',
+  'لا تضمن قبس إصدار EIN أو فتح حساب أو موافقة أي مزود',
+  'QABS does not guarantee EIN issuance, account opening, or provider approval'
 ];
 for (const phrase of requiredTruthfulCopy) {
   if (!landingSource.toLowerCase().includes(phrase.toLowerCase())) {
