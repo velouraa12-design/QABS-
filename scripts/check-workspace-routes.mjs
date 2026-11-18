@@ -25,6 +25,9 @@ if (declared.length !== sidebar.length) errors.push(`Tab/sidebar count mismatch:
 const appSource = readFileSync('src/App.tsx', 'utf8');
 const authSource = readFileSync('src/components/AuthModal.tsx', 'utf8');
 const landingSource = readFileSync('src/components/LandingView.tsx', 'utf8');
+const formationSource = readFileSync('src/pages/services/CompanyFormationPage.tsx', 'utf8');
+const llcSource = readFileSync('src/pages/services/UsLlcPage.tsx', 'utf8');
+const marketingSource = [landingSource, formationSource, llcSource].join('\n');
 const forbiddenUnverifiedClaims = [
   '+1,450',
   'EIN Issuance Success',
@@ -36,7 +39,7 @@ const forbiddenUnverifiedClaims = [
   'يؤهلك لفتح حسابات بنكية'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
-  if (landingSource.toLowerCase().includes(claim.toLowerCase())) {
+  if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
     errors.push(`Unverified marketing claim remains: ${claim}`);
   }
 }
@@ -44,7 +47,9 @@ for (const claim of forbiddenUnverifiedClaims) {
 const requiredTruthfulCopy = [
   'do not guarantee a bank account',
   'لا تضمن فتح حساب بنكي',
-  'لا يعني إيداعاً حكومياً'
+  'لا يعني إيداعاً حكومياً',
+  'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى',
+  'تُراجع الضرائب والرسوم'
 ];
 for (const phrase of requiredTruthfulCopy) {
   if (!landingSource.toLowerCase().includes(phrase.toLowerCase())) {
