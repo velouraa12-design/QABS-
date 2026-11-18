@@ -30,11 +30,19 @@ export async function onRequest({ request, env }: PagesRequestContext): Promise<
     return Response.json({ error: 'origin_rejected' }, { status: 403 });
   }
 
-  const target = new URL(incomingUrl.pathname + incomingUrl.search, UPSTREAM_ORIGIN);
-  const upstream = new Request(target, request);
-  const headers = new Headers(upstream.headers);
-  headers.set('Origin', API_ORIGIN);
-  headers.delete('Host');
+  if (!env?.QABS_STUDIO_API || typeof env.QABS_STUDIO_API.fetch !== 'function') {
+    return Response.json({ error: 'preview_api_binding_missing' }, { status: 503 });
+  }
 
-  return env.QABS_STUDIO_API.fetch(new Request(upstream, { headers }));
+  try {
+    const target = new URL(incomingUrl.pathname + incomingUrl.search, UPSTREAM_ORIGIN);
+    const upstream = new Request(target, request);
+    const headers = new Headers(upstream.headers);
+    headers.set('Origin', API_ORIGIN);
+    headers.delete('Host');
+    return await env.QABS_STUDIO_API.fetch(new Request(upstream, { headers }));
+  } catch (error) {
+    console.error('QABS preview API proxy failed:', error instanceof Error ? error.name : 'unknown');
+    return Response.json({ error: 'preview_api_unavailable' }, { status: 502 });
+  }
 }
