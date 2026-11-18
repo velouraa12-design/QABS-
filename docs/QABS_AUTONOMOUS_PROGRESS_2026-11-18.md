@@ -620,3 +620,27 @@ Implemented in the local Express candidate (not yet in the Cloudflare acceptance
 This endpoint work is in `server/app.ts` + local SQLite tests. It is **not** deployed to or proven equivalent on `qabs-stores-acceptance-preview`. The Pages preview remains a static/demo shell, and AppContext remains unwired to the Studio adapter. Do not use the Express candidate as proof of production readiness.
 
 The current live Worker probes remain GET-only and unauthenticated; protected endpoints returned 401. No authenticated Worker account was created or used. No production resources were modified.
+
+
+## 16. Tap sandbox checkout, return route, and signed webhook — 2026-11-18
+
+Completed on the isolated branch:
+
+- Connected the Billing invoice table to qabsApi.createTapSandboxCharge; the Tap button is visible only when the authenticated backend reports Tap sandbox configured and backend status is connected.
+- Added /payment/return React handling for Tap invoice and tap_id parameters. The browser callback calls the authenticated server verification endpoint; it does not trust redirect query parameters as payment proof, and refreshes the workspace after verification.
+- Added Tap server-to-server post.url to the hosted charge request.
+- Added POST /api/payments/tap/webhook with Tap HMAC-SHA256 hashstring validation and constant-time comparison. It rejects invalid signatures and only reconciles an invoice when the charge is a sandbox captured event and charge ID, invoice ID, invoice number, amount, and currency match the reserved invoice.
+- Added unit tests for valid/altered webhook signatures and route tests for webhook invoice reconciliation, invalid signature rejection, authenticated checkout, CSRF, and provider-side verification.
+- Updated payment integration documentation.
+
+Verification:
+- GitHub CI run 44295529899, commit fc29dcc5fdb6c315d9c28309ed1eb2e641f5f21f: SUCCESS. TypeScript/lint, API and route contract tests, 34 workspace route checks, Vite build, and secret scan all passed.
+- Isolated Pages preview deployment run 44295520765: SUCCESS.
+- Preview URL: https://7ecc2d51.qabs-workspace-reference-preview.pages.dev.
+- Live scrape: landing page HTTP 200; direct /payment/return route HTTP 200 and correctly requires sign-in before attempting verification.
+- PR #5 remains Draft and unmerged.
+
+Important acceptance boundary:
+- The Pages preview is a static frontend preview; the live scrape does not prove the Express payment API is deployed behind that hostname. Tap payment remains disabled there until the isolated backend is actually routed and configured.
+- No Tap credentials were installed, no sandbox flag was enabled, no provider charge was initiated, and no live payment, DNS, Shopify checkout, or production resource was changed.
+- External Tap sandbox acceptance remains pending a disposable test key in a secured non-production secret store and an API runtime that is routed to the frontend preview. Do not enable payment collection in production.
