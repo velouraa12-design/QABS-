@@ -562,3 +562,19 @@ Follow-up source review confirms the main React `AppContext` still imports and c
 The Express candidate also still contains legacy `/api/documents` upload/download handlers, while the Studio config correctly advertises document capabilities as disabled. These are separate API surfaces; the disabled Studio flags do not disable the legacy handlers. Before any document feature is exposed, verify the deployed routing target, authenticated tenant ownership, content validation, private storage, malware scanning/quarantine, retention, and download authorization end-to-end. No live upload or document route was invoked in this follow-up.
 
 No PR merge, production deployment, DNS/payment mutation, or customer-data operation was performed. The CI success validates this branch commit's automated checks, not full platform readiness.
+
+
+## 15. Formation calculator and order-entry preview safety — 2026-11-18
+
+- Reframed the homepage formation calculator as an indicative eligibility/quote review, not a checkout.
+- Default EIN and registered-agent add-ons are now unselected; bank and gateway selections are described as document/requirements review, not setup or activation.
+- Added clear notes that government/provider fees may be additional and that selecting an add-on does not activate it or guarantee approval.
+- Added `indicativeOnly`, `quoteReviewOnly`, and `governmentFeesMayBeAdditional` to the typed pending service-order details.
+- Formation, package, and jurisdiction-order actions are disabled on the public `.pages.dev` preview. The preview buttons state that requests and payments are not enabled.
+- Changed formation CTAs and order titles to eligibility/quote review language and removed “continue to checkout” wording.
+- Added route-contract checks to prevent checkout wording from returning and require preview order actions to remain disabled.
+
+Verification:
+- CI run 44243493086, commit `e8435acd544a9a7b97e1e51d3f00d3a312fdfa83`: success.
+- Isolated Pages deployment run 44243488227: success.
+- Latest preview: `https://68765c2c.qabs-workspace-reference-preview.pages.dev`. A live scrape confirms the calculator, top package, and AI/store cards display no-payment/disabled states and indicative service copy.
