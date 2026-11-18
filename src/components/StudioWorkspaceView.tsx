@@ -60,6 +60,7 @@ export const StudioWorkspaceView: React.FC = () => {
       const next = results[1].value.templates || [];
       setTemplates(next);
       setTemplateKey(current => current || next[0]?.key || '');
+      setStoreTemplateKey(current => current || next.find(template => template.type === 'store')?.key || next[0]?.key || '');
     }
     if (results[2].status === 'fulfilled') {
       const catalog = results[2].value.services as StudioService[];
