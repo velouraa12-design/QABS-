@@ -1,7 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
-import { createTapSandboxCharge, isTapTestSecret, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from '../server/payments/tap.ts';
+import { createTapSandboxCharge, isTapTestSecret, isValidTapWebhookUrl, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from '../server/payments/tap.ts';
 
 describe('Tap sandbox payment adapter', () => {
   const input = {
@@ -19,6 +19,14 @@ describe('Tap sandbox payment adapter', () => {
     assert.equal(isTapTestSecret('sk_test_123'), true);
     assert.equal(isTapTestSecret('sk_live_123'), false);
     assert.equal(isTapTestSecret(undefined), false);
+  });
+
+  it('accepts only the dedicated HTTPS webhook endpoint', () => {
+    assert.equal(isValidTapWebhookUrl('https://api-preview.example.test/api/payments/tap/webhook'), true);
+    assert.equal(isValidTapWebhookUrl('http://api-preview.example.test/api/payments/tap/webhook'), false);
+    assert.equal(isValidTapWebhookUrl('https://api-preview.example.test/other'), false);
+    assert.equal(isValidTapWebhookUrl('https://api-preview.example.test/api/payments/tap/webhook?next=x'), false);
+    assert.equal(isValidTapWebhookUrl(undefined), false);
   });
 
   it('refuses live or missing credentials before making a network request', async () => {
@@ -64,6 +72,8 @@ describe('Tap sandbox payment adapter', () => {
     assert.equal(body.source.id, 'src_all');
     assert.equal(body.save_card, false);
     assert.equal(body.threeDSecure, true);
+    assert.equal(body.customer.first_name, 'QABS');
+    assert.equal(body.customer.last_name, 'Test Customer');
   });
 
   it('does not leak Tap error response bodies to callers', async () => {
