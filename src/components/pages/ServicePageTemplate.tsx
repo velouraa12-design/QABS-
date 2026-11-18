@@ -296,11 +296,11 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
                         <span className="text-xs font-bold text-[#92743A] dark:text-[#D5B46B]">
                           {pkg.recommended
                             ? isAr
-                              ? 'الباقة الموصى بها'
-                              : 'Recommended'
+                              ? 'خيار مقترح'
+                              : 'Suggested option'
                             : isAr
-                            ? 'باقة معتمدة'
-                            : 'Approved Tier'}
+                            ? 'خيار إرشادي'
+                            : 'Indicative option'}
                         </span>
                         <span className="text-[11px] text-slate-500">
                           {isAr ? pkg.billingNoteAr : pkg.billingNoteEn}
