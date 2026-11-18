@@ -24,6 +24,11 @@ if (declared.length !== sidebar.length) errors.push(`Tab/sidebar count mismatch:
 
 const appSource = readFileSync('src/App.tsx', 'utf8');
 const authSource = readFileSync('src/components/AuthModal.tsx', 'utf8');
+const appContextSource = readFileSync('src/context/AppContext.tsx', 'utf8');
+const checkoutSource = readFileSync('src/components/CheckoutModal.tsx', 'utf8');
+const serviceOrderSource = readFileSync('src/components/pages/ServiceOrderForm.tsx', 'utf8');
+const formationWizardSource = readFileSync('src/components/FormationWizardModal.tsx', 'utf8');
+const aiChatSource = readFileSync('src/components/AIChatModal.tsx', 'utf8');
 const landingSource = readFileSync('src/components/LandingView.tsx', 'utf8');
 const formationSource = readFileSync('src/pages/services/CompanyFormationPage.tsx', 'utf8');
 const llcSource = readFileSync('src/pages/services/UsLlcPage.tsx', 'utf8');
@@ -55,6 +60,23 @@ for (const phrase of requiredTruthfulCopy) {
     errors.push(`Missing truthful service disclaimer: ${phrase}`);
   }
 }
+const requiredPreviewSafetyContracts = [
+  [appContextSource, 'const requireConnectedBackend = (): boolean'],
+  [appContextSource, 'Checkout is disabled in this preview'],
+  [appContextSource, 'if (!requireConnectedBackend()) return false;'],
+  [checkoutSource, 'Checkout and invoicing are disabled in this preview'],
+  [checkoutSource, 'disabled'],
+  [serviceOrderSource, "backendStatus !== 'connected'"],
+  [serviceOrderSource, 'this form is view-only'],
+  [formationWizardSource, 'saving and submission are disabled'],
+  [aiChatSource, 'prompts will not execute and no credits will be deducted']
+];
+for (const [source, token] of requiredPreviewSafetyContracts) {
+  if (!source.toLowerCase().includes(token.toLowerCase())) {
+    errors.push(`Missing offline-preview safety guard: ${token}`);
+  }
+}
+
 const requiredRouteContracts = [
   ["workspace deep links", "path.startsWith('/workspace/')"],
   ["Studio entry alias", "path === '/studio'"],
