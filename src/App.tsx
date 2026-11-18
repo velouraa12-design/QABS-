@@ -53,6 +53,7 @@ import {
   OrderServicePage
 } from './pages/index.ts';
 import { CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { qabsApi } from './services/qabsApi.ts';
 
 const WORKSPACE_HASH_PREFIXES = [
   '/overview',
@@ -94,6 +95,73 @@ const isWorkspaceLocation = (): boolean => {
     path === '/studio' || path.startsWith('/studio/')
   ) return true;
   return WORKSPACE_HASH_PREFIXES.some(prefix => hash.startsWith(`#${prefix}`));
+};
+
+const TapPaymentReturnView: React.FC = () => {
+  const { language, backendStatus, isAuthenticated, refreshWorkspace } = useApp();
+  const isAr = language === 'ar';
+  const [state, setState] = useState<'checking' | 'success' | 'pending' | 'error' | 'login'>('checking');
+  const [message, setMessage] = useState('');
+
+  useEffect(() => {
+    if (backendStatus === 'checking') return;
+    if (!isAuthenticated) {
+      setState('login');
+      setMessage(isAr ? 'سجّل الدخول إلى حسابك أولاً، ثم افتح رابط العودة مرة أخرى.' : 'Sign in to your account, then reopen the payment return page.');
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const invoiceId = params.get('invoice') || '';
+    const chargeId = params.get('tap_id') || '';
+    window.history.replaceState(window.history.state, '', window.location.pathname);
+    if (!invoiceId || !chargeId) {
+      setState('error');
+      setMessage(isAr ? 'بيانات العودة غير مكتملة. راجع الفاتورة من مساحة العمل.' : 'The return reference is incomplete. Check the invoice in your workspace.');
+      return;
+    }
+    let active = true;
+    qabsApi.verifyTapSandboxPayment(invoiceId, chargeId)
+      .then(async result => {
+        await refreshWorkspace();
+        if (!active) return;
+        if (result.paymentConfirmed && String(result.invoice?.status) === 'paid') {
+          setState('success');
+          setMessage(isAr ? 'تم التحقق من عملية الدفع التجريبية وتحديث الفاتورة.' : 'The sandbox payment was verified and the invoice was updated.');
+        } else {
+          setState('pending');
+          setMessage(isAr ? 'لم تؤكد Tap اكتمال الدفع بعد. ستظل الفاتورة غير مدفوعة حتى التحقق من الخادم.' : 'Tap has not confirmed capture. The invoice remains unpaid until server verification succeeds.');
+        }
+      })
+      .catch(error => {
+        if (!active) return;
+        setState('error');
+        setMessage(error instanceof Error ? error.message : (isAr ? 'تعذر التحقق من الدفع.' : 'Payment verification failed.'));
+      });
+    return () => { active = false; };
+  }, [backendStatus, isAuthenticated, isAr, refreshWorkspace]);
+
+  const title = state === 'success'
+    ? (isAr ? 'تم التحقق من الدفع' : 'Payment verified')
+    : state === 'checking'
+      ? (isAr ? 'جارٍ التحقق من الدفع' : 'Verifying payment')
+      : state === 'pending'
+        ? (isAr ? 'الدفع قيد التحقق' : 'Payment pending verification')
+        : state === 'login'
+          ? (isAr ? 'تسجيل الدخول مطلوب' : 'Sign-in required')
+          : (isAr ? 'تعذر التحقق من الدفع' : 'Payment could not be verified');
+
+  return (
+    <section className="max-w-2xl mx-auto px-4 py-24 text-center">
+      <div className="rounded-2xl border border-[#D5B46B]/40 bg-[#082030] p-8 shadow-xl">
+        <div className="text-[#D5B46B] text-2xl font-black mb-4">{title}</div>
+        <p className="text-sm text-slate-300 leading-7">{message || (isAr ? 'يرجى الانتظار حتى يتحقق الخادم من حالة العملية لدى Tap.' : 'Please wait while the server checks the transaction status with Tap.')}</p>
+        {state === 'checking' && <div className="mt-5 text-xs text-slate-400">{isAr ? 'لا تغلق الصفحة.' : 'Please keep this page open.'}</div>}
+        <a href={state === 'login' ? '/login' : '/#/billing'} className="inline-flex mt-7 px-5 py-3 rounded-lg bg-[#D5B46B] text-[#14243E] text-xs font-black">
+          {state === 'login' ? (isAr ? 'تسجيل الدخول' : 'Sign in') : (isAr ? 'العودة إلى الفواتير' : 'Back to billing')}
+        </a>
+      </div>
+    </section>
+  );
 };
 
 const MainLayout: React.FC = () => {
@@ -322,6 +390,7 @@ const MainLayout: React.FC = () => {
 
       {/* Main View Router */}
       <main className="flex-1">
+        {normalizePath(currentPath) === '/payment/return' ? <TapPaymentReturnView /> : <>
         {(mode === 'landing' || !isAuthenticated) && renderPublicRoute()}
 
         {isAuthenticated && mode === 'portal' && (
@@ -340,6 +409,7 @@ const MainLayout: React.FC = () => {
         {isOwner && mode === 'admin' && <AdminView />}
 
         {isOwner && mode === 'template_hub' && <TemplateHubView />}
+        </>}
       </main>
 
       {/* Footer */}
