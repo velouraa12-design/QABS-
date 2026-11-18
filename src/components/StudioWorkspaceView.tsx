@@ -1,5 +1,5 @@
 import React, { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
-import { studioApi, StudioConfig, StudioProjectWorkspace, StudioServiceRequest, StudioStoreDraft } from '../services/qabsStudioApi.ts';
+import { studioApi, StudioConfig, StudioProjectWorkspace, StudioServiceRequest, StudioStoreDraft, StudioWorkspaceStore, StudioStoreSetup } from '../services/qabsStudioApi.ts';
 
 type StudioUser = {
   id: string;
@@ -32,6 +32,12 @@ export const StudioWorkspaceView: React.FC = () => {
   const [services, setServices] = useState<StudioService[]>([]);
   const [requests, setRequests] = useState<StudioServiceRequest[]>([]);
   const [drafts, setDrafts] = useState<StudioStoreDraft[]>([]);
+  const [stores, setStores] = useState<StudioWorkspaceStore[]>([]);
+  const [storeOptions, setStoreOptions] = useState<{ countries: string[]; currencies: string[]; time_zones: string[] }>({ countries: [], currencies: [], time_zones: [] });
+  const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
+  const [storeName, setStoreName] = useState('');
+  const [storeTemplateKey, setStoreTemplateKey] = useState('');
+  const [storeSetup, setStoreSetup] = useState<StudioStoreSetup>({ kind: 'digital', language: 'ar', country: '', currency: 'USD', time_zone: 'UTC' });
   const [workspaceName, setWorkspaceName] = useState('مساحة أعمالي');
   const [displayName, setDisplayName] = useState('');
   const [draftName, setDraftName] = useState('');
@@ -43,7 +49,8 @@ export const StudioWorkspaceView: React.FC = () => {
       studioApi.projectCatalog(),
       studioApi.servicesCatalog(),
       studioApi.serviceRequests(),
-      studioApi.storeDrafts()
+      studioApi.storeDrafts(),
+      studioApi.workspaceStoreOptions()
     ]);
     if (results[0].status === 'fulfilled') setWorkspaces(results[0].value.workspaces || []);
     if (results[1].status === 'fulfilled') {
@@ -54,6 +61,26 @@ export const StudioWorkspaceView: React.FC = () => {
     if (results[2].status === 'fulfilled') setServices(results[2].value.services as StudioService[]);
     if (results[3].status === 'fulfilled') setRequests(results[3].value.requests || []);
     if (results[4].status === 'fulfilled') setDrafts(results[4].value.drafts || []);
+    if (results[5].status === 'fulfilled') {
+      const options = results[5].value;
+      setStoreOptions(options);
+      setStoreSetup(current => ({ ...current, country: current.country || (options.countries.includes('YE') ? 'YE' : options.countries[0] || ''), currency: options.currencies.includes(current.currency) ? current.currency : 'USD', time_zone: options.time_zones.includes(current.time_zone) ? current.time_zone : 'UTC' }));
+    }
+    if (results[0].status === 'fulfilled') {
+      const available = results[0].value.workspaces || [];
+      if (available.length) {
+        setSelectedWorkspaceId(current => current && available.some(item => item.id === current) ? current : available[0].id);
+        try {
+          const listed = await studioApi.workspaceStores(available[0].id);
+          setStores(listed.stores || []);
+        } catch {
+          setStores([]);
+        }
+      } else {
+        setStores([]);
+        setSelectedWorkspaceId('');
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -111,6 +138,8 @@ export const StudioWorkspaceView: React.FC = () => {
       setWorkspaces([]);
       setRequests([]);
       setDrafts([]);
+      setStores([]);
+      setSelectedWorkspaceId('');
       setServices([]);
     } catch (logoutError) {
       setError(messageOf(logoutError));
@@ -152,6 +181,44 @@ export const StudioWorkspaceView: React.FC = () => {
       setBusy(false);
     }
   };
+
+  const createStore = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!selectedWorkspaceId || !storeTemplateKey || !storeSetup.country) return;
+    setBusy(true);
+    setError('');
+    try {
+      await studioApi.createWorkspaceStore({
+        workspace_id: selectedWorkspaceId,
+        attempt_id: crypto.randomUUID(),
+        name: storeName.trim(),
+        template_key: storeTemplateKey,
+        store_setup: storeSetup
+      });
+      setStoreName('');
+      const listed = await studioApi.workspaceStores(selectedWorkspaceId);
+      setStores(listed.stores || []);
+    } catch (createError) {
+      setError(messageOf(createError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const changeWorkspace = async (workspaceId: string) => {
+    setSelectedWorkspaceId(workspaceId);
+    setStores([]);
+    if (!workspaceId) return;
+    try {
+      const listed = await studioApi.workspaceStores(workspaceId);
+      setStores(listed.stores || []);
+    } catch (loadError) {
+      setError(messageOf(loadError));
+    }
+  };
+
+  const storeTemplates = templates.filter(template => template.type === 'store');
+  const availableStoreTemplates = storeTemplates.length ? storeTemplates : templates;
 
   const templateLabel = useMemo(
     () => new Map(templates.map(template => [template.key, template.ar || template.en])),
@@ -207,6 +274,25 @@ export const StudioWorkspaceView: React.FC = () => {
             <h2 className="text-lg font-black text-[#D5B46B]">مساحة العمل</h2>
             {workspaces.length ? <div className="mt-4 space-y-3">{workspaces.map(workspace => <div key={workspace.id} className="rounded-xl bg-[#071A2A] p-4"><div className="font-bold">{workspace.name}</div><div className="mt-1 text-xs text-slate-400">{workspace.display_name} · {workspace.role}</div></div>)}</div> : <p className="mt-3 text-sm text-slate-300">لم تنشئ مساحة عمل بعد.</p>}
             {!workspaces.length && <form onSubmit={createWorkspace} className="mt-4 space-y-3"><input required maxLength={100} value={workspaceName} onChange={e => setWorkspaceName(e.target.value)} aria-label="اسم مساحة العمل" className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3" placeholder="اسم مساحة العمل" /><input required maxLength={80} value={displayName} onChange={e => setDisplayName(e.target.value)} aria-label="اسم صاحب الحساب" className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3" placeholder="اسم العرض" /><button disabled={busy} className="rounded-xl bg-[#D5B46B] px-4 py-3 text-sm font-black text-[#14243E] disabled:opacity-50">إنشاء مساحة العمل</button></form>}
+          </article>
+
+          <article className="rounded-2xl border border-[#D5B46B]/30 bg-[#0D2639] p-5 lg:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div><h2 className="text-lg font-black text-[#D5B46B]">متاجري ومساحات البيع</h2><p className="mt-1 text-xs text-slate-400">إنشاء متجر مستقل كمسودة إعداد داخل مساحة العمل المختارة.</p></div>
+              {workspaces.length > 1 && <select aria-label="مساحة العمل" value={selectedWorkspaceId} onChange={e => void changeWorkspace(e.target.value)} className="rounded-xl border border-white/10 bg-[#071A2A] px-3 py-2 text-sm">{workspaces.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
+            </div>
+            {stores.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{stores.map(store => <div key={store.id} className="rounded-xl border border-white/10 bg-[#071A2A] p-4"><div className="font-bold">{store.name}</div><div className="mt-2 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-amber-300/10 px-2 py-1 text-amber-200">{store.lifecycle === 'configured_draft' ? 'إعداد مبدئي مكتمل' : 'مسودة إعداد'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{store.status === 'active' ? 'نشط داخل مساحة العمل' : 'مؤرشف'}</span></div><p className="mt-2 text-xs text-slate-400">{store.store_setup?.country || 'لم يحدد البلد'} · {store.store_setup?.currency || 'لم تحدد العملة'}</p><p className="mt-2 text-[11px] text-slate-500">غير منشور · لا نطاق ولا تحصيل مدفوعات</p></div>)}</div> : <p className="mt-4 rounded-xl bg-[#071A2A] p-4 text-sm text-slate-300">لا توجد متاجر في مساحة العمل هذه بعد.</p>}
+            <form onSubmit={createStore} className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <input required maxLength={120} value={storeName} onChange={e => setStoreName(e.target.value)} aria-label="اسم المتجر" placeholder="اسم المتجر" className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3" />
+              <select required value={storeTemplateKey} onChange={e => setStoreTemplateKey(e.target.value)} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="">اختر قالب المتجر</option>{availableStoreTemplates.map(template => <option key={template.key} value={template.key}>{template.ar || template.en}</option>)}</select>
+              <select value={storeSetup.kind} onChange={e => setStoreSetup(current => ({ ...current, kind: e.target.value as StudioStoreSetup['kind'] }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="digital">منتجات رقمية</option><option value="physical">منتجات مادية</option><option value="mixed">مادي ورقمي</option></select>
+              <select required value={storeSetup.country} onChange={e => setStoreSetup(current => ({ ...current, country: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="">بلد المتجر</option>{storeOptions.countries.map(country => <option key={country} value={country}>{country}</option>)}</select>
+              <select value={storeSetup.currency} onChange={e => setStoreSetup(current => ({ ...current, currency: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3">{storeOptions.currencies.filter(currency => ['USD','EUR','SAR','AED','GBP','TRY','YER'].includes(currency)).map(currency => <option key={currency} value={currency}>{currency}</option>)}</select>
+              <select value={storeSetup.language} onChange={e => setStoreSetup(current => ({ ...current, language: e.target.value as 'ar' | 'en' }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3"><option value="ar">العربية</option><option value="en">English</option></select>
+              <select value={storeSetup.time_zone} onChange={e => setStoreSetup(current => ({ ...current, time_zone: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 md:col-span-2"><option value="UTC">UTC</option>{storeOptions.time_zones.filter(zone => zone !== 'UTC').slice(0, 200).map(zone => <option key={zone} value={zone}>{zone}</option>)}</select>
+              <button disabled={busy || !selectedWorkspaceId || !availableStoreTemplates.length || !storeSetup.country} className="rounded-xl bg-[#D5B46B] px-4 py-3 font-black text-[#14243E] disabled:opacity-50">إنشاء متجر كمسودة</button>
+            </form>
+            <p className="mt-3 text-xs leading-6 text-slate-400">هذا ينشئ سجل متجر وإعداداته الأولية فقط. النشر، وربط التجارة الفعلية، والنطاقات، والمخزون، والطلبات، والدفع غير مفعّلة في هذه المعاينة.</p>
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
