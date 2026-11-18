@@ -10,7 +10,7 @@ type StudioUser = {
 };
 
 type StudioTemplate = { key: string; ar: string; en: string; type: string };
-type StudioService = { key: string; title?: string; titleAr?: string; name?: string; nameAr?: string; description?: string; [key: string]: unknown };
+type StudioService = { key: string; ar?: string; en?: string; title?: string; titleAr?: string; name?: string; nameAr?: string; scope?: string; requirements?: string; fields?: Array<[string, string, number, boolean, string?]>; [key: string]: unknown };
 
 const messageOf = (error: unknown): string =>
   error instanceof Error ? error.message : 'تعذر إكمال العملية. حاول مرة أخرى.';
@@ -37,6 +37,9 @@ export const StudioWorkspaceView: React.FC = () => {
   const [selectedWorkspaceId, setSelectedWorkspaceId] = useState('');
   const [storeName, setStoreName] = useState('');
   const [storeTemplateKey, setStoreTemplateKey] = useState('');
+  const [selectedServiceKey, setSelectedServiceKey] = useState('');
+  const [serviceTitle, setServiceTitle] = useState('');
+  const [servicePayload, setServicePayload] = useState<Record<string, string>>({});
   const [storeSetup, setStoreSetup] = useState<StudioStoreSetup>({ kind: 'digital', language: 'ar', country: '', currency: 'USD', time_zone: 'UTC' });
   const [workspaceName, setWorkspaceName] = useState('مساحة أعمالي');
   const [displayName, setDisplayName] = useState('');
@@ -58,7 +61,11 @@ export const StudioWorkspaceView: React.FC = () => {
       setTemplates(next);
       setTemplateKey(current => current || next[0]?.key || '');
     }
-    if (results[2].status === 'fulfilled') setServices(results[2].value.services as StudioService[]);
+    if (results[2].status === 'fulfilled') {
+      const catalog = results[2].value.services as StudioService[];
+      setServices(catalog);
+      setSelectedServiceKey(current => current || catalog[0]?.key || '');
+    }
     if (results[3].status === 'fulfilled') setRequests(results[3].value.requests || []);
     if (results[4].status === 'fulfilled') setDrafts(results[4].value.drafts || []);
     if (results[5].status === 'fulfilled') {
@@ -206,6 +213,38 @@ export const StudioWorkspaceView: React.FC = () => {
     }
   };
 
+  const createServiceRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const selected = services.find(service => service.key === selectedServiceKey);
+    if (!selected) return;
+    const missing = (selected.fields || []).find(([key, , , required]) => required && !String(servicePayload[key] || '').trim());
+    if (missing) {
+      setError(`يرجى تعبئة الحقل: ${missing[1]}`);
+      return;
+    }
+    setBusy(true);
+    setError('');
+    try {
+      await studioApi.createServiceRequest({
+        service: selected.key,
+        title: serviceTitle.trim() || selected.ar || selected.en || selected.key,
+        payload: servicePayload,
+        attempt_id: crypto.randomUUID(),
+        ...(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {})
+      });
+      setServiceTitle('');
+      setServicePayload({});
+      const refreshed = await studioApi.serviceRequests(selectedWorkspaceId ? { workspace_id: selectedWorkspaceId } : {});
+      setRequests(refreshed.requests || []);
+    } catch (createError) {
+      setError(messageOf(createError));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const selectedService = services.find(service => service.key === selectedServiceKey);
+
   const changeWorkspace = async (workspaceId: string) => {
     setSelectedWorkspaceId(workspaceId);
     setStores([]);
@@ -306,6 +345,15 @@ export const StudioWorkspaceView: React.FC = () => {
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
             <h2 className="text-lg font-black text-[#D5B46B]">طلبات الخدمات</h2>
             {requests.length ? <div className="mt-4 space-y-2">{requests.slice(0, 8).map(request => <div key={request.id} className="rounded-xl bg-[#071A2A] p-3"><div className="font-bold">{labelOf(request.title, request.service)}</div><div className="mt-1 text-xs text-slate-400">{request.status} · {request.created_at || '—'}</div></div>)}</div> : <p className="mt-3 text-sm text-slate-300">لا توجد طلبات مسجلة في هذه المساحة.</p>}
+            <form onSubmit={createServiceRequest} className="mt-5 space-y-3 border-t border-white/10 pt-4">
+              <h3 className="font-bold text-[#E8CD91]">طلب خدمة جديد</h3>
+              <select required value={selectedServiceKey} onChange={e => { setSelectedServiceKey(e.target.value); setServicePayload({}); }} className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3">{services.map(service => <option key={service.key} value={service.key}>{service.ar || service.en || service.key}</option>)}</select>
+              <input maxLength={160} value={serviceTitle} onChange={e => setServiceTitle(e.target.value)} placeholder="عنوان الطلب (اختياري)" aria-label="عنوان الطلب" className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3" />
+              {selectedService?.scope && <p className="rounded-lg bg-[#071A2A] p-3 text-xs leading-6 text-slate-300">{selectedService.scope}</p>}
+              <div className="space-y-3">{(selectedService?.fields || []).map(([key, label, maxLength, required]) => <label key={key} className="block text-sm font-bold">{label}{required ? ' *' : ' (اختياري)'}{maxLength > 300 ? <textarea required={required} maxLength={maxLength} rows={3} value={servicePayload[key] || ''} onChange={e => setServicePayload(current => ({ ...current, [key]: e.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 font-normal" /> : <input required={required} maxLength={maxLength} value={servicePayload[key] || ''} onChange={e => setServicePayload(current => ({ ...current, [key]: e.target.value }))} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 font-normal" />}</label>)}</div>
+              <button disabled={busy || !services.length || !selectedServiceKey} className="w-full rounded-xl bg-[#D5B46B] px-4 py-3 font-black text-[#14243E] disabled:opacity-50">حفظ الطلب كمسودة للمراجعة</button>
+              <p className="text-xs leading-6 text-slate-400">لن يتم تحصيل رسوم أو بدء تنفيذ تلقائي. لا تدخل كلمات مرور أو مفاتيح API أو أرقام حسابات أو مستندات هوية.</p>
+            </form>
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
