@@ -41,7 +41,13 @@ const companyFormationCopy = companyFormationStart >= 0 && nextFormationRecord >
   ? formationDataSource.slice(companyFormationStart, nextFormationRecord)
   : '';
 if (!companyFormationCopy) errors.push('Could not inspect the company-formation marketing record.');
-const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, customizerSource, serviceTemplateSource].join('\n');
+const einStart = formationDataSource.indexOf("slug: 'ein'");
+const nextEinRecord = formationDataSource.indexOf("slug:", einStart + 5);
+const einCopy = einStart >= 0 && nextEinRecord > einStart
+  ? formationDataSource.slice(einStart, nextEinRecord)
+  : '';
+if (!einCopy) errors.push('Could not inspect the EIN marketing record.');
+const marketingSource = [landingSource, formationSource, llcSource, companyFormationCopy, einCopy, customizerSource, serviceTemplateSource].join('\n');
 const forbiddenUnverifiedClaims = [
   '+1,450',
   'EIN Issuance Success',
@@ -76,7 +82,14 @@ const forbiddenUnverifiedClaims = [
   'premier sovereign digital operating platform',
   'highest standard of data encryption and strict multi-tenant isolation',
   'المنصة الرائدة في تمكين رواد الأعمال',
-  'أعلى معايير تشفير البيانات وعزل بيئات المستأجرين'
+  'أعلى معايير تشفير البيانات وعزل بيئات المستأجرين',
+  '4 – 10 business days for non-SSN founders',
+  '4 – 10 أيام عمل لغير المقيمين',
+  'Mandatory prerequisite for US fintech banking',
+  'Official EIN confirmation letter uploaded directly to your QABS Vault',
+  'Priority handling & daily follow-up',
+  'استخراج خطاب EIN الرسمي من IRS، عنوان أمريكي معتمد',
+  'تجنب الاستقطاع الضريبي التلقائي بنسبة 30%'
 ];
 for (const claim of forbiddenUnverifiedClaims) {
   if (marketingSource.toLowerCase().includes(claim.toLowerCase())) {
@@ -102,10 +115,14 @@ const requiredTruthfulCopy = [
   'does not collect payment',
   'لا يتم من هذه الصفحة تحصيل رسوم',
   'We are developing account and data-protection controls',
-  'نطوّر ضوابط لحماية الحسابات والبيانات'
+  'نطوّر ضوابط لحماية الحسابات والبيانات',
+  'لا يمكن ضمان عدد محدد من الأيام',
+  'a fixed number of days cannot be guaranteed',
+  'لا يعني ذلك قبول البنوك أو بوابات الدفع',
+  'does not imply bank or payment-provider approval'
 ];
 for (const phrase of requiredTruthfulCopy) {
-  const hasTruthfulCopy = [landingSource, companyFormationCopy, serviceTemplateSource]
+  const hasTruthfulCopy = [landingSource, companyFormationCopy, einCopy, serviceTemplateSource]
     .some(source => source.toLowerCase().includes(phrase.toLowerCase()));
   if (!hasTruthfulCopy) errors.push(`Missing truthful service disclaimer: ${phrase}`);
 }
