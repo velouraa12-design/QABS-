@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { SUBSCRIPTION_PLANS } from '../data/mockData.ts';
 import { Invoice } from '../types/index.ts';
+import { qabsApi } from '../services/qabsApi.ts';
 
 export const BillingSubscriptionView: React.FC = () => {
   const {
@@ -31,7 +32,10 @@ export const BillingSubscriptionView: React.FC = () => {
     issueRefund,
     user,
     topUpCredits,
-    showToast
+    showToast,
+    integrationsStatus,
+    backendStatus,
+    refreshWorkspace
   } = useApp();
 
   const isAr = language === 'ar';
@@ -42,6 +46,26 @@ export const BillingSubscriptionView: React.FC = () => {
   const [refundOrderNumber, setRefundOrderNumber] = useState('');
   const [refundAmount, setRefundAmount] = useState(50);
   const [refundReason, setRefundReason] = useState('');
+  const [payingInvoiceId, setPayingInvoiceId] = useState<string | null>(null);
+
+  const tapSandboxReady = backendStatus === 'connected' && integrationsStatus?.integrations.tap.sandboxConfigured === true;
+  const handleTapSandboxPayment = async (invoice: Invoice) => {
+    if (!tapSandboxReady || payingInvoiceId) {
+      showToast(isAr ? 'بوابة Tap التجريبية غير مهيأة حالياً.' : 'Tap sandbox is not currently configured.');
+      return;
+    }
+    setPayingInvoiceId(invoice.id);
+    try {
+      const session = await qabsApi.createTapSandboxCharge(invoice.id);
+      if (session.mode !== 'sandbox' || !session.redirectUrl.startsWith('https://')) {
+        throw new Error('Invalid sandbox checkout response');
+      }
+      window.location.assign(session.redirectUrl);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : (isAr ? 'تعذر بدء الدفع التجريبي.' : 'Could not start sandbox payment.'));
+      setPayingInvoiceId(null);
+    }
+  };
 
   const handleRefundSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -353,13 +377,26 @@ export const BillingSubscriptionView: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-center">
-                      <button
-                        onClick={() => setSelectedInvoice(inv)}
-                        className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-[#D4AF37] rounded text-[11px] font-medium cursor-pointer inline-flex items-center gap-1"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>{isAr ? 'عرض' : 'View'}</span>
-                      </button>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          onClick={() => setSelectedInvoice(inv)}
+                          className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-[#D4AF37] rounded text-[11px] font-medium cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>{isAr ? 'عرض' : 'View'}</span>
+                        </button>
+                        {inv.status !== 'paid' && inv.status !== 'refunded' && (
+                          <button
+                            type="button"
+                            disabled={!tapSandboxReady || payingInvoiceId !== null}
+                            onClick={() => void handleTapSandboxPayment(inv)}
+                            className="px-2.5 py-1 rounded text-[11px] font-bold border border-[#D4AF37]/50 text-[#F3E5AB] bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                            title={isAr ? 'دفع تجريبي فقط عبر بيئة Tap الاختبارية' : 'Sandbox payment only through Tap test mode'}
+                          >
+                            {payingInvoiceId === inv.id ? (isAr ? 'جارٍ التحويل…' : 'Redirecting…') : (isAr ? 'دفع تجريبي Tap' : 'Tap sandbox')}
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
