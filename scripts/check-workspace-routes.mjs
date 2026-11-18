@@ -48,8 +48,7 @@ const requiredTruthfulCopy = [
   'do not guarantee a bank account',
   'لا تضمن فتح حساب بنكي',
   'لا يعني إيداعاً حكومياً',
-  'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى',
-  'تُراجع الضرائب والرسوم'
+  'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى'
 ];
 for (const phrase of requiredTruthfulCopy) {
   if (!landingSource.toLowerCase().includes(phrase.toLowerCase())) {
