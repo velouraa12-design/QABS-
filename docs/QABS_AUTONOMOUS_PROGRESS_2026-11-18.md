@@ -601,3 +601,22 @@ Additional UI and service-copy changes were committed on the same isolated branc
 - Cloudflare acceptance Worker remains a separate codebase and has not been proven equivalent by these Express tests.
 
 No production Worker, D1 database, DNS, Shopify configuration, payment provider, or customer data was changed. No PR merge or production release was performed.
+
+
+## 14. Tenant-scoped Studio service request API — 2026-11-18
+
+Implemented in the local Express candidate (not yet in the Cloudflare acceptance Worker):
+
+- Added `studio_request_attempts` with a composite tenant/attempt primary key.
+- Added authenticated `GET /studio/api/services/catalog` and `GET /studio/api/services/requests`.
+- Added CSRF-protected `POST /studio/api/services/requests`. It creates a zero-priced request for manual review only, derives tenant and user from the authenticated session, rejects cross-tenant workspace IDs, bounds payload size, and uses idempotency to prevent duplicate requests.
+- No payment, company filing, external provider activation, or automated execution is triggered.
+- Expanded `tests/studio-server-contract.test.ts` to test synthetic Alpha/Beta tenants, service request creation, idempotent replay, tenant-filtered listing, and cross-tenant write rejection.
+- CI succeeded for commit `50ef9dcceb020538fe0a4cefea095de97af3bb64`. The subsequent documentation/session-contract commits also passed CI.
+- Latest isolated Pages preview: `https://e4f3292f.qabs-workspace-reference-preview.pages.dev`, deployment status success; home, EIN, and US LLC pages returned HTTP 200.
+
+### Important boundary
+
+This endpoint work is in `server/app.ts` + local SQLite tests. It is **not** deployed to or proven equivalent on `qabs-stores-acceptance-preview`. The Pages preview remains a static/demo shell, and AppContext remains unwired to the Studio adapter. Do not use the Express candidate as proof of production readiness.
+
+The current live Worker probes remain GET-only and unauthenticated; protected endpoints returned 401. No authenticated Worker account was created or used. No production resources were modified.
