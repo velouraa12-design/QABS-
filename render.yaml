@@ -7,7 +7,7 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    autoDeploy: false
+    autoDeployTrigger: off
     envVars:
       - key: NODE_ENV
         value: production
@@ -18,4 +18,7 @@ services:
       - key: QABS_ALLOW_SANDBOX_PAYMENTS
         value: "false"
       - key: APP_ORIGIN
-        value: https://qabs-isolated-preview-api.onrender.com
+        fromService:
+          type: web
+          name: qabs-isolated-preview-api
+          envVarKey: RENDER_EXTERNAL_URL
