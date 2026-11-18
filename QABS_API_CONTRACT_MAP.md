@@ -129,6 +129,15 @@ The isolated development branch now includes a server-side Tap hosted-checkout a
 - Initiation requires `QABS_ALLOW_SANDBOX_PAYMENTS=true`, an HTTPS `APP_ORIGIN`, and a Tap secret beginning with `sk_test`. Live credentials are rejected.
 - An atomic invoice reference reservation prevents concurrent duplicate charge creation and does not overwrite an existing bank-transfer/manual proof reference.
 - `POST /api/payments/tap/verify` retrieves the charge directly from Tap and checks captured status, sandbox mode, exact amount/currency and both invoice references before changing the invoice to paid.
-- Client API methods are available in `qabsApi`; the checkout UI/return route and webhook signature verification are not yet connected.
+- Client API methods are available in qabsApi; the billing invoice UI starts a hosted Tap sandbox checkout only when backend capability flags report the sandbox is configured. The /payment/return route verifies the provider charge server-side and refreshes invoices. The hosted charge includes post.url for the signed webhook.
 - Mocked adapter tests and an isolated Express API test cover test-key gating, provider request payload, tenant/session/CSRF, server-derived invoice amount, and provider-side verification.
 - No Tap credentials were added, no external charge was created, and no payment setting was enabled in Cloudflare. CI status for these latest commits has not yet been reported by GitHub Actions.
+
+
+### Follow-up — UI and signed webhook added
+
+- POST /api/payments/tap/webhook validates Tap HMAC-SHA256 hashstring using constant-time comparison; it rejects invalid signatures and reconciles only a matching sandbox CAPTURED charge.
+- Tap webhook events are bound to the charge ID, tenant invoice, invoice number, amount and currency; repeated notifications do not change an already-paid invoice.
+- CI run 44295529899 passed TypeScript/lint, API tests, route tests, all 34 workspace route checks, build, and secret scan.
+- Isolated Pages deployment run 44295520765 succeeded at https://7ecc2d51.qabs-workspace-reference-preview.pages.dev; direct /payment/return returned HTTP 200 and prompted sign-in when no session was present.
+- The static Pages preview does not itself prove that the Express API is routed to that hostname. No Tap key or sandbox flag has been configured; no provider transaction occurred. External sandbox acceptance remains pending secure test credentials and a routed non-production API runtime.
