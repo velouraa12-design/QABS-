@@ -23,6 +23,8 @@ if (declared.length !== sidebar.length) errors.push(`Tab/sidebar count mismatch:
 
 
 const appSource = readFileSync('src/App.tsx', 'utf8');
+const studioSource = readFileSync('src/components/StudioWorkspaceView.tsx', 'utf8');
+const studioApiSource = readFileSync('src/services/qabsStudioApi.ts', 'utf8');
 const authSource = readFileSync('src/components/AuthModal.tsx', 'utf8');
 const appContextSource = readFileSync('src/context/AppContext.tsx', 'utf8');
 const checkoutSource = readFileSync('src/components/CheckoutModal.tsx', 'utf8');
@@ -245,6 +247,21 @@ const requiredRouteContracts = [
 for (const [label, token] of requiredRouteContracts) {
   const source = label === "email verification panel state" ? authSource : appSource;
   if (!source.includes(token)) errors.push(`Missing direct route contract: ${label}`);
+}
+
+const requiredStudioContracts = [
+  [studioSource, 'studioApi.createWorkspaceStore('],
+  [studioSource, 'workspace_id: selectedWorkspaceId'],
+  [studioSource, 'attempt_id: crypto.randomUUID()'],
+  [studioSource, 'store_setup: storeSetup'],
+  [studioSource, 'studioApi.workspaceStores('],
+  [studioSource, 'غير منشور · لا نطاق ولا تحصيل مدفوعات'],
+  [studioApiSource, "'/workspace-stores'"],
+  [studioApiSource, "published: false"],
+  [studioApiSource, "payments: false"]
+];
+for (const [source, token] of requiredStudioContracts) {
+  if (!source.includes(token)) errors.push(`Missing QABS Studio multi-store safety contract: ${token}`);
 }
 
 if (errors.length) {
