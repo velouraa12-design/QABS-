@@ -169,3 +169,31 @@ Observed test results:
 Scope limitation: this proves the tested workspace membership gates and owner-filtered draft listing for two synthetic users in this one acceptance Worker. It does NOT prove every store/product/order/customer/document/domain endpoint is isolated, nor does it prove the separate auth Worker and live `qabs-stores` service are safe. Email verification is disabled in this acceptance preview, so this registration test is not an approval to onboard real users.
 
 A subsequent cross-tenant project-creation attempt was not executed because the browser tool's safety layer blocked that request. No result is claimed for cross-tenant write attempts on the project API.
+
+
+## 12. Authentication and private-document feature-gate checks
+
+Read-only inspection of the acceptance Worker settings confirms the D1 binding points to database UUID `bd839609-07d8-4155-ae5c-d7bbcf9f0ade`, whose exact database name is `qabs-stores-acceptance-preview`. The Worker has an `APP_ORIGIN` equal to its workers.dev origin and no listed Service Binding. Relevant feature flags:
+- `REGISTRATION_ENABLED=true`, `PROJECTS_ENABLED=true`, `WORKSPACE_STORES_ENABLED=true`, `STORE_LINKS_ENABLED=true`.
+- `EMAIL_LOGIN_ENABLED=false`, `GOOGLE_LOGIN_ENABLED=false`, `PASSWORD_RECOVERY_ENABLED=false`.
+- `FORMATION_DETAILS_ENABLED=false`, `FORMATION_UPLOAD_ENABLED=false`.
+- No `FORMATION_DOCUMENTS` R2 binding is present in the returned settings; the required formation-data key is not listed as a plain-text setting (secret values are not disclosed).
+
+Live, unauthenticated, non-destructive endpoint probes against the acceptance Worker:
+| Probe | Result |
+|---|---|
+| `GET /studio/api/me` | PASS — 401 `authentication_required` |
+| `POST /studio/api/auth/email/start` | PASS — 503 `email_login_not_configured`; no email sent |
+| `POST /studio/api/auth/google/start` | PASS — 503 `google_login_not_configured` |
+| `POST /studio/api/auth/password/forgot` | PASS — 503 `password_recovery_unavailable`; no reset email sent |
+| `GET /studio/api/formation-documents?request=<synthetic UUID>` | PASS — 503 `private_upload_unavailable` |
+| `POST /studio/api/formation-documents` without a session | PASS — 401 `authentication_required`; no upload accepted |
+
+Code/schema inspection:
+- Users are constrained to `client` or `admin` roles at the database level; registrations write `client`.
+- Session records store a hash, CSRF value and expiry; session cookie code uses `Secure; HttpOnly; SameSite=Strict; Path=/`.
+- Password reset stores token hashes with expiry and the code performs a transactional password/session update when enabled.
+- Private formation documents are owner-bound in D1, encrypted in R2 with AES-GCM and request/user metadata as associated data; however the upload path explicitly reports `malwareScanned:false`. Do not enable private uploads until malware scanning/quarantine and the required R2/key bindings are provided and tested.
+- Project membership roles are constrained to owner/admin/editor/viewer; project rows have a composite foreign key to the creator's workspace membership.
+
+Important status distinction: these endpoint probes PASS as negative/closed-gate security tests. They do NOT mean email login, Google login, password recovery, or document upload are operational; those capabilities are deliberately BLOCKED by configuration.
