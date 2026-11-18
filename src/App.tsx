@@ -56,6 +56,7 @@ import { CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 
 const WORKSPACE_HASH_PREFIXES = [
   '/overview',
+  '/home',
   '/orders',
   '/documents',
   '/stores',
@@ -88,7 +89,10 @@ const isWorkspaceLocation = (): boolean => {
   if (typeof window === 'undefined') return false;
   const hash = window.location.hash || '';
   const path = normalizePath(window.location.pathname || '/');
-  if (path === '/workspace' || path.startsWith('/workspace/')) return true;
+  if (
+    path === '/workspace' || path.startsWith('/workspace/') ||
+    path === '/studio' || path.startsWith('/studio/')
+  ) return true;
   return WORKSPACE_HASH_PREFIXES.some(prefix => hash.startsWith(`#${prefix}`));
 };
 
@@ -102,7 +106,10 @@ const MainLayout: React.FC = () => {
     isAuthenticated,
     isOwner,
     openClientAuth,
-    openOwnerAuth
+    openOwnerAuth,
+    setAuthMode,
+    setAuthIntent,
+    setAuthModalOpen
   } = useApp();
   const { currentPath } = useRouter();
   const isAr = language === 'ar';
@@ -158,6 +165,35 @@ const MainLayout: React.FC = () => {
     }
   }, [backendStatus, mode, isAuthenticated]);
 
+  // Deep links for customer auth are real routes, not 404 pages.
+  useEffect(() => {
+    if (backendStatus === 'checking') return;
+    const path = normalizePath(currentPath);
+    const authRoutes: Record<string, 'login' | 'register' | 'recover' | 'verify'> = {
+      '/login': 'login',
+      '/signup': 'register',
+      '/register': 'register',
+      '/forgot-password': 'recover',
+      '/recover': 'recover',
+      '/reset-password': 'recover',
+      '/verify-email': 'verify'
+    };
+    const requestedMode = authRoutes[path];
+    if (!requestedMode) return;
+    if (isAuthenticated) {
+      setMode('portal');
+      if (typeof window !== 'undefined') {
+        window.history.replaceState({ qabsWorkspace: 'overview' }, '', '/#/overview');
+        window.dispatchEvent(new HashChangeEvent('hashchange'));
+      }
+      return;
+    }
+    setMode('landing');
+    setAuthIntent('client');
+    setAuthMode(requestedMode);
+    setAuthModalOpen(true);
+  }, [backendStatus, currentPath, isAuthenticated, setMode, setAuthIntent, setAuthMode, setAuthModalOpen]);
+
   const handleOpenFormationWithState = (stateCode?: string) => {
     if (stateCode) {
       setSelectedStateCode(stateCode);
@@ -168,7 +204,11 @@ const MainLayout: React.FC = () => {
   const renderPublicRoute = (): React.ReactNode => {
     const path = normalizePath(currentPath);
 
-    if (path === '/' || path === '/workspace') {
+    if (
+      path === '/' || path === '/workspace' || path.startsWith('/workspace/') ||
+      path === '/studio' || path.startsWith('/studio/') ||
+      ['/login', '/signup', '/register', '/forgot-password', '/recover', '/reset-password', '/verify-email'].includes(path)
+    ) {
       return (
         <LandingView
           onOpenFormationModal={handleOpenFormationWithState}
