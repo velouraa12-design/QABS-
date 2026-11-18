@@ -58,8 +58,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Wyoming LLC (USA)',
     entityType: 'LLC',
     baseUsd: 249,
-    noteAr: 'الأكثر طلباً للتجارة الإلكترونية • ضريبة ولاية 0%',
-    noteEn: 'Best for e-commerce • 0% state income tax'
+    noteAr: 'خيار محتمل لبعض الأنشطة الرقمية؛ راجع الرسوم والالتزامات قبل الاختيار',
+    noteEn: 'A possible option for some digital businesses; review fees and obligations before choosing'
   },
   {
     id: 'US_DELAWARE',
@@ -250,22 +250,22 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
   const faqs = [
     {
-      qAr: 'هل يمكن لغير المقيم في أمريكا تأسيس شركة قانونية 100%؟',
-      qEn: 'Can non-US residents legally form a US company 100%?',
-      aAr: 'نعم، يتيح القانون الأمريكي لرواد الأعمال والمستثمرين من كافة دول العالم تأسيس شركات LLC أو C-Corp وامتلاكها بنسبة 100% دون اشتراط إقامة أو زيارة للولايات المتحدة أو وجود شريك أمريكي.',
-      aEn: 'Yes, US law allows global founders to form and own 100% of an LLC or C-Corp without requiring US residency, travel, or a domestic partner.'
+      qAr: 'هل يمكن لغير المقيم تأسيس شركة أمريكية؟',
+      qEn: 'Can a non-US resident form a US company?',
+      aAr: 'تسمح ولايات أمريكية عديدة لغير المقيمين بتأسيس شركات LLC أو C-Corp وتملكها بالكامل، لكن الأهلية والمتطلبات تختلف حسب الولاية ونوع النشاط ووضع المالك. يجب مراجعة الجوانب القانونية والضريبية قبل اختيار مسار التأسيس.',
+      aEn: 'Many US states allow non-residents to form and fully own an LLC or C-Corp, but eligibility and requirements vary by state, business activity, and owner circumstances. Legal and tax considerations should be reviewed before choosing a formation path.'
     },
     {
       qAr: 'ما هو الفرق بين التأسيس في وايومنغ (Wyoming) وديلاوير (Delaware)؟',
       qEn: 'What is the difference between Wyoming and Delaware formation?',
-      aAr: 'ولاية وايومنغ هي الخيار الأول للتجارة الإلكترونية والأنشطة الرقمية بفضل خصوصية الملاك العالية وانعدام ضريبة الدخل والرسوم السنوية المنخفضة ($60). بينما ولاية ديلاوير هي المعيار الذهبي للشركات التقنية الناشئة التي تخطط لجذب استثمارات ورؤوس أموال مغامرة (VC).',
-      aEn: 'Wyoming is ideal for e-commerce and digital founders due to complete privacy, zero state income tax, and low annual fees ($60). Delaware is the premier standard for tech startups seeking venture capital and institutional funding.'
+      aAr: 'تختلف وايومنغ وديلاوير في الرسوم ومتطلبات التقارير والحوكمة. قد تناسب وايومنغ بعض الأنشطة، بينما تختار شركات تستهدف الاستثمار ديلاوير. لا ينبغي اختيار الولاية بناءً على ضريبة الولاية وحدها؛ فقد تنطبق ضرائب اتحادية ورسوم والتزامات أخرى بحسب الحالة.',
+      aEn: 'Wyoming and Delaware differ in fees, reporting requirements, and corporate rules. Wyoming may suit some businesses, while companies seeking venture investment often consider Delaware. State tax alone should not determine the choice; federal taxes, fees, and other obligations may also apply.'
     },
     {
       qAr: 'كم يستغرق إصدار الرقم الضريبي الفيدرالي EIN للشركات لغير المقيمين؟',
       qEn: 'How long does IRS EIN issuance take for non-residents?',
-      aAr: 'يستغرق إصدار شهادة الرقم الضريبي الرسمي CP575 من مصلحة الضرائب الأمريكية (IRS) لغير حاملي رقم SSN عادة بين 4 إلى 10 أيام عمل عبر خط الاتصال المباشر المخصص للوكلاء المعتمدين.',
-      aEn: 'Official IRS CP575 EIN issuance for non-SSN holders typically takes 4 to 10 business days via direct authorized agent channels.'
+      aAr: 'تختلف مدة إصدار رقم EIN وخطاب CP575 بحسب حالة الطلب وطريقة تقديمه ومتطلبات مصلحة الضرائب الأمريكية (IRS). لا يمكن ضمان مدة محددة قبل مراجعة الحالة والقناة المتاحة.',
+      aEn: 'IRS EIN and CP575 processing times vary by application details, submission method, and IRS requirements. A specific timeline cannot be guaranteed before the case and available channel are reviewed.'
     },
     {
       qAr: 'كيف يساعدني الكيان في ربط بوابات الدفع Stripe والحساب البنكي؟',
