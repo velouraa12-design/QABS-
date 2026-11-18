@@ -116,7 +116,36 @@ jobs:
           const session = JSON.parse(body);
           if (!session.authenticated || session.user?.email !== "ci-customer@example.test") process.exit(1);
         '
+        # Verify tenant isolation against the real packaged production server.
         csrf="$(cat /tmp/qabs-csrf.txt)"
+        curl -fsS -b /tmp/qabs-cookies.txt -H "X-CSRF-Token: $csrf" -H 'Content-Type: application/json' \
+          -d '{"serviceSlug":"ein","serviceTitleAr":"طلب EIN اختباري","serviceTitleEn":"CI EIN Request","customerName":"CI Customer","customerEmail":"ci-customer@example.test","customerPhone":"+10000000000","status":"draft"}' \
+          http://127.0.0.1:3000/api/service-requests > /tmp/qabs-request.json
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const data = JSON.parse(fs.readFileSync("/tmp/qabs-request.json", "utf8"));
+          if (!data.request?.id || data.request.status !== "draft") throw new Error("Tenant A request creation failed");
+          fs.writeFileSync("/tmp/qabs-request-id.txt", data.request.id);
+        '
+        curl -fsS -c /tmp/qabs-beta-cookies.txt -H 'Content-Type: application/json' \
+          -d '{"name":"CI Tenant Beta","email":"ci-beta@example.test","companyName":"CI Beta Workspace","password":"Qabs-CI-Strong-2026!"}' \
+          http://127.0.0.1:3000/api/auth/register > /tmp/qabs-beta-register.json
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const data = JSON.parse(fs.readFileSync("/tmp/qabs-beta-register.json", "utf8"));
+          if (!data.authenticated || data.user?.role !== "customer" || !data.csrfToken) throw new Error("Tenant B registration failed");
+          fs.writeFileSync("/tmp/qabs-beta-csrf.txt", data.csrfToken);
+        '
+        request_id="$(cat /tmp/qabs-request-id.txt)"
+        cross_status="$(curl -sS -o /tmp/qabs-cross-tenant.json -w '%{http_code}' -b /tmp/qabs-beta-cookies.txt "http://127.0.0.1:3000/api/service-requests/$request_id")"
+        test "$cross_status" = "403"
+        curl -fsS -b /tmp/qabs-beta-cookies.txt http://127.0.0.1:3000/api/service-requests | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          if (JSON.parse(body).requests?.length !== 0) process.exit(1);
+        '
+        admin_status="$(curl -sS -o /tmp/qabs-admin-denied.json -w '%{http_code}' -b /tmp/qabs-beta-cookies.txt http://127.0.0.1:3000/api/admin/overview)"
+        test "$admin_status" = "403"
+
         curl -fsS -b /tmp/qabs-cookies.txt -H "X-CSRF-Token: $csrf" -X POST \
           http://127.0.0.1:3000/api/auth/logout | node --input-type=module -e '
           let body = ""; for await (const chunk of process.stdin) body += chunk;
