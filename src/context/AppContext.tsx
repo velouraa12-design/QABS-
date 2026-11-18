@@ -373,7 +373,7 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
 function isWorkspaceUrl(): boolean {
   const hash = window.location.hash || '';
   const path = window.location.pathname || '';
-  if (path.startsWith('/workspace')) return true;
+  if (path.startsWith('/workspace') || path === '/account') return true;
   const workspacePrefixes = [
     '/overview',
     '/orders',
