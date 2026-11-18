@@ -12,6 +12,20 @@ export interface TapSandboxChargeInput {
   webhookUrl?: string;
 }
 
+
+export function isValidTapWebhookUrl(value: string | undefined): boolean {
+  if (!value) return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' &&
+      !url.username && !url.password &&
+      url.pathname === '/api/payments/tap/webhook' &&
+      !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}
+
 export interface TapSandboxChargeResult {
   id: string;
   status: string;
@@ -42,7 +56,7 @@ export async function createTapSandboxCharge(
     throw new Error('INVALID_PAYMENT_CONTEXT');
   }
 
-  const nameParts = input.customerName.trim().split(/\\s+/).filter(Boolean);
+  const nameParts = input.customerName.trim().split(/\s+/).filter(Boolean);
   const firstName = nameParts[0] || 'QABS';
   const lastName = nameParts.slice(1).join(' ') || 'Customer';
   const response = await fetchImpl('https://api.tap.company/v2/charges/', {
