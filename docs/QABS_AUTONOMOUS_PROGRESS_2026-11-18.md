@@ -534,3 +534,16 @@ Updated areas:
 - This does **not** mean the full development dependency tree is vulnerability-free. Keep the Picomatch advisory open for reassessment when upstream publishes a fix or reliable affected-version metadata. Do not expose the Vite dev server to the public network.
 
 CI run 44242536778 completed successfully (TypeScript, tests, route/marketing checks, build, secret scan, and both audit reports). The audit step is informational/non-blocking; the five development-tool findings remain visible.
+
+
+## 14. Studio capability-advertisement hardening — 2026-11-18
+
+A concrete backend/frontend capability mismatch was found: the Express Studio /studio/api/config endpoint advertised email verification and password recovery as enabled even when the isolated Cloudflare acceptance Worker had those flows disabled and no mail credentials configured. This could make the UI offer actions the runtime cannot reliably complete.
+
+Changes committed on the isolated branch:
+- Email verification and password recovery now default to disabled.
+- Each can be enabled only when its explicit opt-in environment flag (QABS_EMAIL_VERIFICATION_ENABLED=true or QABS_PASSWORD_RECOVERY_ENABLED=true) is set AND RESEND_API_KEY is present.
+- Formation details, document upload, and private-document capabilities are explicitly reported disabled in this Express preview contract until implemented and independently verified.
+- The Studio server contract test now asserts these capabilities remain disabled under the default test environment.
+
+This is a fail-closed capability-advertisement correction only. It does not configure mail, enable authentication flows, add file storage, or alter any Cloudflare Worker. CI has not yet been observed for these new commits; the changes are not considered verified until the workflow passes.
