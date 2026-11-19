@@ -89,6 +89,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
     setInventoryProductId(productId);
     if (!productId) {
       setInventoryVariants([]);
+      setInventoryMovements([]);
       return;
     }
     const [variants, movements] = await Promise.all([
