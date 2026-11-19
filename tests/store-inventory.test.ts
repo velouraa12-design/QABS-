@@ -101,6 +101,12 @@ describe('QABS store variants and inventory ledger', () => {
       assert.equal(restock.status, 201);
       assert.equal(restock.json.stockQuantity, 8);
       assert.equal(restock.json.movements.length, 2);
+      const inventoryHistory = await owner.request('GET', `/api/stores/${storeId}/products/${productId}/inventory-movements?limit=10`);
+      assert.equal(inventoryHistory.status, 200);
+      assert.equal(inventoryHistory.json.movements.length, 2);
+      assert.equal(inventoryHistory.json.movements[0].reason, 'restock');
+      assert.equal(inventoryHistory.json.nextCursor, null);
+      assert.equal((await otherTenant.request('GET', `/api/stores/${storeId}/products/${productId}/inventory-movements`)).status, 403);
 
       const damaged = await owner.request('POST', `/api/stores/${storeId}/products/${productId}/inventory-adjustments`, {
         variantId,
