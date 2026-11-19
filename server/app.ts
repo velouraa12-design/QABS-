@@ -519,6 +519,11 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     if (userRow) {
       resetToken = generateToken(24);
       const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      // Only the newest password-reset link remains usable for this account.
+      db.prepare(
+        `UPDATE auth_tokens SET used_at = CURRENT_TIMESTAMP
+         WHERE user_id = ? AND purpose = 'password_reset' AND used_at IS NULL`
+      ).run(userRow.id);
       db.prepare(
         `INSERT INTO auth_tokens (id, user_id, purpose, token_hash, expires_at)
          VALUES (?, ?, 'password_reset', ?, ?)`
