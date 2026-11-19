@@ -904,9 +904,10 @@ export function registerStoreRoutes(
   });
 
   router.patch('/api/stores/:storeId/orders/:orderId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
     const storeId = sanitizeId(req.params.storeId);
     const orderId = sanitizeId(req.params.orderId);
-    const check = getOwnedStore(db, storeId, req.actor!);
+    const check = getOwnedStore(db, storeId, actor);
     if (!check.ok) {
       res.status(check.status).json({ error: check.message, code: check.code });
       return;
@@ -918,14 +919,83 @@ export function registerStoreRoutes(
       return;
     }
     const trackingNumber = req.body?.trackingNumber ? sanitizeText(req.body.trackingNumber, 120) : null;
-    const result = db
-      .prepare('UPDATE store_orders SET status = ?, tracking_number = COALESCE(?, tracking_number) WHERE id = ? AND store_id = ?')
-      .run(status, trackingNumber, orderId, storeId);
-    if (result.changes === 0) {
+    const existing = db.prepare(
+      'SELECT * FROM store_orders WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(orderId, storeId, String(check.store.tenant_id)) as Record<string, unknown> | undefined;
+    if (!existing) {
       res.status(404).json({ error: 'Store order not found.', code: 'ORDER_NOT_FOUND' });
       return;
     }
-    res.json({ order: db.prepare('SELECT * FROM store_orders WHERE id = ?').get(orderId) });
+    if (String(existing.status) === 'cancelled' && status !== 'cancelled') {
+      res.status(409).json({ error: 'A cancelled order cannot be reopened; create a new order instead.', code: 'ORDER_ALREADY_CANCELLED' });
+      return;
+    }
+
+    if (status === 'cancelled' && String(existing.status) !== 'cancelled') {
+      const items = db.prepare(
+        'SELECT * FROM store_order_items WHERE order_id = ? AND store_id = ? AND tenant_id = ?'
+      ).all(orderId, storeId, String(check.store.tenant_id)) as Array<Record<string, unknown>>;
+      db.exec('BEGIN IMMEDIATE');
+      try {
+        for (const item of items) {
+          const quantity = Number(item.quantity);
+          const productId = String(item.product_id);
+          const variantId = item.variant_id ? String(item.variant_id) : null;
+          if (variantId) {
+            db.prepare(
+              `UPDATE store_product_variants SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ?`
+            ).run(quantity, variantId, productId, storeId, String(check.store.tenant_id));
+            const balance = Number((db.prepare(
+              'SELECT stock_quantity FROM store_product_variants WHERE id = ?'
+            ).get(variantId) as { stock_quantity: number }).stock_quantity);
+            db.prepare(
+              `UPDATE store_products SET stock_quantity = (
+                SELECT COALESCE(SUM(stock_quantity), 0) FROM store_product_variants
+                WHERE product_id = ? AND store_id = ?
+              ), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ? AND tenant_id = ?`
+            ).run(productId, storeId, productId, storeId, String(check.store.tenant_id));
+            db.prepare(
+              `INSERT INTO store_inventory_movements (
+                id, store_id, tenant_id, product_id, variant_id, actor_user_id,
+                quantity_delta, balance_after, reason, reference_id
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'order_cancelled_restock', ?)`
+            ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), productId,
+              variantId, actor.userId, quantity, balance, orderId);
+          } else {
+            db.prepare(
+              `UPDATE store_products SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP
+               WHERE id = ? AND store_id = ? AND tenant_id = ?`
+            ).run(quantity, productId, storeId, String(check.store.tenant_id));
+            const balance = Number((db.prepare(
+              'SELECT stock_quantity FROM store_products WHERE id = ? AND store_id = ?'
+            ).get(productId, storeId) as { stock_quantity: number }).stock_quantity);
+            db.prepare(
+              `INSERT INTO store_inventory_movements (
+                id, store_id, tenant_id, product_id, actor_user_id,
+                quantity_delta, balance_after, reason, reference_id
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, 'order_cancelled_restock', ?)`
+            ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), productId,
+              actor.userId, quantity, balance, orderId);
+          }
+        }
+        db.prepare(
+          'UPDATE store_orders SET status = ?, tracking_number = COALESCE(?, tracking_number) WHERE id = ? AND store_id = ? AND tenant_id = ?'
+        ).run(status, trackingNumber, orderId, storeId, String(check.store.tenant_id));
+        db.exec('COMMIT');
+      } catch (error) {
+        db.exec('ROLLBACK');
+        throw error;
+      }
+    } else {
+      db.prepare(
+        'UPDATE store_orders SET status = ?, tracking_number = COALESCE(?, tracking_number) WHERE id = ? AND store_id = ? AND tenant_id = ?'
+      ).run(status, trackingNumber, orderId, storeId, String(check.store.tenant_id));
+    }
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `تحديث حالة الطلب (${orderId}) إلى ${status}`,
+      `Updated order status (${orderId}) to ${status}`, orderId);
+    res.json({ order: db.prepare('SELECT * FROM store_orders WHERE id = ? AND store_id = ?').get(orderId, storeId) });
   });
 
   // Store Customers, Team Members & Reports
