@@ -250,6 +250,14 @@ describe('QABS store variants and inventory ledger', () => {
       });
       assert.equal(reopen.status, 409);
       assert.equal(reopen.json.code, 'ORDER_ALREADY_CANCELLED');
+
+      const archived = await client.request('DELETE', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(archived.status, 200);
+      assert.equal(archived.json.archived, true);
+      const archivedProduct = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(archivedProduct.json.product.status, 'archived');
+      const preservedOrder = await client.request('GET', `/api/stores/${storeId}/orders/${order.json.order.id}`);
+      assert.equal(preservedOrder.json.items.length, 1);
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close(error => error ? reject(error) : resolve());
