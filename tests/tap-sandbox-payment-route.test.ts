@@ -54,7 +54,14 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
       const auth = await registration.json() as {
         user: { id: string; tenantId: string; email: string };
         csrfToken: string;
+        previewEmailVerifyToken: string;
       };
+      const verifyResponse = await originalFetch(`${baseUrl}/api/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: auth.previewEmailVerifyToken })
+      });
+      assert.equal(verifyResponse.status, 200);
       const cookie = registration.headers.get('set-cookie')?.match(/qabs_session=([^;]+)/)?.[1];
       assert.ok(cookie);
       assert.ok(auth.csrfToken);
