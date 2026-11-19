@@ -148,13 +148,18 @@ describe('QABS store variants and inventory ledger', () => {
         stock: 4
       });
       const productId = product.json.product.id;
+      const directStockEdit = await client.request('PATCH', `/api/stores/${storeId}/products/${productId}`, {
+        stock: 99
+      });
+      assert.equal(directStockEdit.status, 400);
+      assert.equal(directStockEdit.json.code, 'INVENTORY_ADJUSTMENT_REQUIRED');
       const adjustment = await client.request('POST', `/api/stores/${storeId}/products/${productId}/inventory-adjustments`, {
         quantityDelta: -1,
         reason: 'manual_adjustment'
       });
       assert.equal(adjustment.status, 201);
       assert.equal(adjustment.json.stockQuantity, 3);
-      assert.equal(adjustment.json.movements.length, 1);
+      assert.equal(adjustment.json.movements.length, 2);
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close(error => error ? reject(error) : resolve());
