@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { StoreProductVariant } from '../services/qabsApi.ts';
+import type { StoreProductVariant, StoreInventoryMovement } from '../services/qabsApi.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { DEFAULT_STORE_SECTIONS } from '../data/mockData.ts';
 import {
@@ -45,6 +45,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
     listProductVariants,
     createProductVariant,
     adjustProductInventory,
+    listInventoryMovements,
     createStoreOrder,
     storeTemplates,
     storePages,
@@ -60,6 +61,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   const [studioTab, setStudioTab] = useState<'templates' | 'sections' | 'branding' | 'pages' | 'versions' | 'inventory'>('sections');
   const [inventoryProductId, setInventoryProductId] = useState('');
   const [inventoryVariants, setInventoryVariants] = useState<StoreProductVariant[]>([]);
+  const [inventoryMovements, setInventoryMovements] = useState<StoreInventoryMovement[]>([]);
   const [variantTitle, setVariantTitle] = useState('');
   const [variantSku, setVariantSku] = useState('');
   const [variantColor, setVariantColor] = useState('');
@@ -89,8 +91,12 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
       setInventoryVariants([]);
       return;
     }
-    const result = await listProductVariants(currentStore.id, productId);
-    setInventoryVariants(result);
+    const [variants, movements] = await Promise.all([
+      listProductVariants(currentStore.id, productId),
+      listInventoryMovements(currentStore.id, productId)
+    ]);
+    setInventoryVariants(variants);
+    setInventoryMovements(movements);
   };
 
   const handleCreateVariant = async (event: React.FormEvent) => {
@@ -389,6 +395,35 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
                       {variantSaving ? '…' : isAr ? 'حفظ المتغير' : 'Save variant'}
                     </button>
                   </form>
+
+                  <section className="space-y-2">
+                    <div className="font-black text-sm">{isAr ? 'حركات المخزون' : 'Inventory activity'}</div>
+                    {inventoryMovements.length === 0 ? (
+                      <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-3 text-center text-xs text-slate-500">
+                        {isAr ? 'لا توجد حركات مسجلة' : 'No inventory activity'}
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        {inventoryMovements.slice(0, 20).map(movement => (
+                          <div key={movement.id} className="flex items-center justify-between gap-3 p-3 text-xs">
+                            <div className="min-w-0">
+                              <div className="font-bold truncate">{movement.reason}</div>
+                              <div className="text-[10px] text-slate-500">
+                                {movement.actor_name || '—'} · {new Date(movement.created_at).toLocaleString(isAr ? 'ar' : 'en')}
+                              </div>
+                              {movement.reference_id && <div className="text-[10px] text-slate-400 font-mono">{movement.reference_id}</div>}
+                            </div>
+                            <div className="shrink-0 text-end">
+                              <div className={movement.quantity_delta > 0 ? 'font-black text-emerald-600' : 'font-black text-rose-600'}>
+                                {movement.quantity_delta > 0 ? '+' : ''}{movement.quantity_delta}
+                              </div>
+                              <div className="text-[10px] text-slate-500">{isAr ? 'الرصيد' : 'Balance'}: {movement.balance_after}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
                 </>
               )}
             </div>
