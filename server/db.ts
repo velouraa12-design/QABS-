@@ -247,6 +247,23 @@ export function createDatabase(dbPath: string): DatabaseSync {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS store_order_items (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      order_id TEXT NOT NULL REFERENCES store_orders(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL REFERENCES store_products(id) ON DELETE RESTRICT,
+      variant_id TEXT REFERENCES store_product_variants(id) ON DELETE RESTRICT,
+      product_title TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price REAL NOT NULL CHECK (unit_price >= 0),
+      line_total REAL NOT NULL CHECK (line_total >= 0),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_order_items_order ON store_order_items(store_id, tenant_id, order_id);
+
     CREATE TABLE IF NOT EXISTS store_customers (
       id TEXT PRIMARY KEY,
       store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
