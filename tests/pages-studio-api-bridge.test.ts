@@ -78,13 +78,45 @@ describe('QABS Pages preview Studio API bridge', () => {
     }
   });
 
-  it('allows anonymous read-only config requests without an Origin header', async () => {
+  it('blocks direct preview registration while email verification is unavailable', async () => {
+    let called = false;
+    const env = {
+      QABS_STUDIO_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({ ok: true });
+        }
+      }
+    };
+    const request = new Request('https://preview.example.test/studio/api/auth/register', {
+      method: 'POST',
+      headers: {
+        Origin: 'https://preview.example.test',
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ email: 'preview@example.test', password: 'synthetic-only' })
+    });
+    const response = await onRequest({ request, env });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), {
+      error: 'Registration is disabled until email verification is configured.',
+      code: 'REGISTRATION_DISABLED'
+    });
+    assert.equal(called, false);
+  });
+
+  it('masks stale registration capability on anonymous preview config until email verification is ready', async () => {
     let forwardedUrl = '';
     const env = {
       QABS_STUDIO_API: {
         fetch: async (request: Request) => {
           forwardedUrl = request.url;
-          return Response.json({ registration: true, payments: false });
+          return Response.json({
+            registration: true,
+            emailVerification: false,
+            passwordRecovery: false,
+            payments: false
+          });
         }
       }
     };
@@ -92,6 +124,11 @@ describe('QABS Pages preview Studio API bridge', () => {
     const response = await onRequest({ request, env });
     assert.equal(response.status, 200);
     assert.equal(forwardedUrl, UPSTREAM_ORIGIN + '/studio/api/config');
-    assert.deepEqual(await response.json(), { registration: true, payments: false });
+    assert.deepEqual(await response.json(), {
+      registration: false,
+      emailVerification: false,
+      passwordRecovery: false,
+      payments: false
+    });
   });
 });
