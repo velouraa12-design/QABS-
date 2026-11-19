@@ -56,7 +56,7 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
         csrfToken: string;
         previewEmailVerifyToken: string;
       };
-      const verifyResponse = await originalFetch(`${baseUrl}/api/auth/verify-email`, {
+      const emailVerifyResponse = await originalFetch(`${baseUrl}/api/auth/verify-email`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token: auth.previewEmailVerifyToken })
