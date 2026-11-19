@@ -358,27 +358,43 @@ export function registerStoreRoutes(
     }
 
     const prodId = `prod_${generateToken(6)}`;
-    db.prepare(
-      `INSERT INTO store_products (
-        id, store_id, tenant_id, category_id, title_ar, title_en, sku, product_type,
-        retail_price, cost_price, stock_quantity, category_ar, category_en, status, sales_count
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
-    ).run(
-      prodId,
-      storeId,
-      String(check.store.tenant_id),
-      categoryId,
-      titleAr,
-      titleEn,
-      sku,
-      req.body?.productType === 'digital' ? 'digital' : 'physical',
-      price,
-      Math.max(0, cost),
-      stock,
-      sanitizeText(req.body?.categoryAr || 'عام', 80),
-      sanitizeText(req.body?.categoryEn || 'General', 80),
-      req.body?.status === 'draft' ? 'draft' : stock === 0 ? 'out_of_stock' : 'active'
-    );
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare(
+        `INSERT INTO store_products (
+          id, store_id, tenant_id, category_id, title_ar, title_en, sku, product_type,
+          retail_price, cost_price, stock_quantity, category_ar, category_en, status, sales_count
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`
+      ).run(
+        prodId,
+        storeId,
+        String(check.store.tenant_id),
+        categoryId,
+        titleAr,
+        titleEn,
+        sku,
+        req.body?.productType === 'digital' ? 'digital' : 'physical',
+        price,
+        cost,
+        stock,
+        sanitizeText(req.body?.categoryAr || 'عام', 80),
+        sanitizeText(req.body?.categoryEn || 'General', 80),
+        req.body?.status === 'draft' ? 'draft' : stock === 0 ? 'out_of_stock' : 'active'
+      );
+      if (stock > 0) {
+        db.prepare(
+          `INSERT INTO store_inventory_movements (
+            id, store_id, tenant_id, product_id, actor_user_id,
+            quantity_delta, balance_after, reason, reference_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'initial_stock', ?)`
+        ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id),
+          prodId, actor.userId, stock, stock, prodId);
+      }
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
 
     logAudit(db, actor.tenantId, actor.userId, actor.name, `إضافة منتج (${titleAr})`, `Added product (${titleEn})`, prodId);
     res.status(201).json({ product: db.prepare('SELECT * FROM store_products WHERE id = ?').get(prodId) });
@@ -416,8 +432,11 @@ export function registerStoreRoutes(
       return;
     }
     const price = req.body?.price !== undefined ? Number(req.body.price) : Number(existing.retail_price);
-    const rawStock = req.body?.stock !== undefined ? Number(req.body.stock) : Number(existing.stock_quantity);
-    const stock = Math.floor(rawStock);
+    if (req.body?.stock !== undefined && Number(req.body.stock) !== Number(existing.stock_quantity)) {
+      res.status(400).json({ error: 'Use the inventory adjustment endpoint to change stock so the ledger stays accurate.', code: 'INVENTORY_ADJUSTMENT_REQUIRED' });
+      return;
+    }
+    const stock = Number(existing.stock_quantity);
     const titleAr = req.body?.titleAr ? sanitizeText(req.body.titleAr, 200) : String(existing.title_ar);
     const allowedProductStatuses = new Set(['active', 'draft', 'out_of_stock', 'archived']);
     const status = req.body?.status !== undefined ? sanitizeText(req.body.status, 32) :
