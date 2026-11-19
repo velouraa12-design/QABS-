@@ -160,6 +160,15 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(blockedWorkspace.status, 403);
     assert.equal(blockedWorkspace.json.code, 'EMAIL_NOT_VERIFIED');
 
+    // The session bootstrap must not leak tenant identifiers, company details, or credits.
+    const pendingSession = await clientA.req('GET', '/api/auth/session');
+    assert.equal(pendingSession.status, 200);
+    assert.equal(pendingSession.json.authenticated, true);
+    assert.equal(pendingSession.json.user.emailVerified, false);
+    assert.equal('tenantId' in pendingSession.json.user, false);
+    assert.equal('companyName' in pendingSession.json.user, false);
+    assert.equal('credits' in pendingSession.json.user, false);
+
     // The same session may still inspect verification status and request a fresh token.
     const pendingMe = await clientA.req('GET', '/api/auth/me');
     assert.equal(pendingMe.status, 200);
