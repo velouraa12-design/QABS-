@@ -61,7 +61,7 @@ describe('Tap sandbox payment API — authenticated tenant invoice flow', () => 
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ token: auth.previewEmailVerifyToken })
       });
-      assert.equal(verifyResponse.status, 200);
+      assert.equal(emailVerifyResponse.status, 200);
       const cookie = registration.headers.get('set-cookie')?.match(/qabs_session=([^;]+)/)?.[1];
       assert.ok(cookie);
       assert.ok(auth.csrfToken);
