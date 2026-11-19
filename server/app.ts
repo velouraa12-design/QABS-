@@ -434,11 +434,18 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     }
 
     const userRow = db
-      .prepare('SELECT id, tenant_id, name, email, password_hash, role, status FROM users WHERE email = ?')
+      .prepare('SELECT id, tenant_id, name, email, password_hash, role, email_verified, status FROM users WHERE email = ?')
       .get(email) as Record<string, unknown> | undefined;
 
     if (!userRow || !verifyPassword(password, String(userRow.password_hash))) {
       res.status(401).json({ error: 'Invalid email or password.', code: 'INVALID_CREDENTIALS' });
+      return;
+    }
+    if (!userRow.email_verified) {
+      res.status(403).json({
+        error: 'Please verify your email address before signing in.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
       return;
     }
     if (userRow.status !== 'active') {
