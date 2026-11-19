@@ -178,6 +178,85 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
     }
   });
 
+  it('blocks password login until the registered email has been verified', async () => {
+    const originalFetch = globalThis.fetch;
+    const originalEnv = {
+      registration: process.env.QABS_REGISTRATION_ENABLED,
+      verification: process.env.QABS_EMAIL_VERIFICATION_ENABLED,
+      resend: process.env.RESEND_API_KEY
+    };
+    process.env.QABS_REGISTRATION_ENABLED = 'true';
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED = 'true';
+    process.env.RESEND_API_KEY = 're_synthetic_test_only';
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url === 'https://api.resend.com/emails') {
+        return new Response(JSON.stringify({ id: 'synthetic-email' }), {
+          status: 200, headers: { 'content-type': 'application/json' }
+        });
+      }
+      return originalFetch(input, init);
+    }) as typeof fetch;
+
+    const { app } = createQabsApp({ dbPath: ':memory:', exposePreviewTokens: true, rateLimitMax: 100 });
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const baseUrl = `http://127.0.0.1:${address.port}`;
+
+    try {
+      const registration = await fetch(`${baseUrl}/api/auth/register`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          name: 'Verification Gate',
+          email: 'verify.gate@example.test',
+          password: 'SyntheticStrong!2026',
+          companyName: 'Verification Gate LLC'
+        })
+      });
+      assert.equal(registration.status, 201);
+      const registered = await registration.json() as Json;
+      assert.equal(registered.user.emailVerified, false);
+      assert.equal(typeof registered.previewEmailVerifyToken, 'string');
+
+      const blockedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'verify.gate@example.test', password: 'SyntheticStrong!2026' })
+      });
+      assert.equal(blockedLogin.status, 403);
+      assert.equal((await blockedLogin.json() as Json).code, 'EMAIL_NOT_VERIFIED');
+
+      const verify = await fetch(`${baseUrl}/api/auth/verify-email`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: registered.previewEmailVerifyToken })
+      });
+      assert.equal(verify.status, 200);
+
+      const allowedLogin = await fetch(`${baseUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email: 'verify.gate@example.test', password: 'SyntheticStrong!2026' })
+      });
+      assert.equal(allowedLogin.status, 200);
+      assert.equal((await allowedLogin.json() as Json).user.emailVerified, true);
+    } finally {
+      await new Promise<void>((resolve, reject) =>
+        server.close(error => error ? reject(error) : resolve())
+      );
+      globalThis.fetch = originalFetch;
+      if (originalEnv.registration === undefined) delete process.env.QABS_REGISTRATION_ENABLED;
+      else process.env.QABS_REGISTRATION_ENABLED = originalEnv.registration;
+      if (originalEnv.verification === undefined) delete process.env.QABS_EMAIL_VERIFICATION_ENABLED;
+      else process.env.QABS_EMAIL_VERIFICATION_ENABLED = originalEnv.verification;
+      if (originalEnv.resend === undefined) delete process.env.RESEND_API_KEY;
+      else process.env.RESEND_API_KEY = originalEnv.resend;
+    }
+  });
+
   it('does not silently advertise payment activation on the Studio config endpoint', async () => {
     const { app } = createQabsApp({ dbPath: ':memory:' });
     const server = app.listen(0, '127.0.0.1');
