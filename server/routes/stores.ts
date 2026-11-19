@@ -655,6 +655,48 @@ export function registerStoreRoutes(
     res.json({ variant: db.prepare('SELECT * FROM store_product_variants WHERE id = ?').get(variantId) });
   });
 
+  router.get('/api/stores/:storeId/products/:productId/inventory-movements', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const productId = sanitizeId(req.params.productId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const product = db.prepare(
+      'SELECT id FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(productId, storeId, String(check.store.tenant_id));
+    if (!product) {
+      res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
+      return;
+    }
+    const requestedLimit = Number(req.query.limit ?? 50);
+    const limit = Number.isSafeInteger(requestedLimit) ? Math.min(100, Math.max(1, requestedLimit)) : 50;
+    const rawCursor = req.query.cursor === undefined ? null : Number(req.query.cursor);
+    if (rawCursor !== null && (!Number.isSafeInteger(rawCursor) || rawCursor < 1)) {
+      res.status(400).json({ error: 'Invalid inventory cursor.', code: 'INVALID_CURSOR' });
+      return;
+    }
+    const rows = rawCursor === null
+      ? db.prepare(
+          `SELECT m.rowid AS cursor, m.*, u.name AS actor_name
+           FROM store_inventory_movements m LEFT JOIN users u ON u.id = m.actor_user_id
+           WHERE m.product_id = ? AND m.store_id = ? AND m.tenant_id = ?
+           ORDER BY m.rowid DESC LIMIT ?`
+        ).all(productId, storeId, String(check.store.tenant_id), limit)
+      : db.prepare(
+          `SELECT m.rowid AS cursor, m.*, u.name AS actor_name
+           FROM store_inventory_movements m LEFT JOIN users u ON u.id = m.actor_user_id
+           WHERE m.product_id = ? AND m.store_id = ? AND m.tenant_id = ? AND m.rowid < ?
+           ORDER BY m.rowid DESC LIMIT ?`
+        ).all(productId, storeId, String(check.store.tenant_id), rawCursor, limit);
+    const movements = rows as Array<Record<string, unknown>>;
+    res.json({
+      movements,
+      nextCursor: movements.length === limit ? movements[movements.length - 1].cursor : null
+    });
+  });
+
   router.post('/api/stores/:storeId/products/:productId/inventory-adjustments', requireAuth, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
     const storeId = sanitizeId(req.params.storeId);
