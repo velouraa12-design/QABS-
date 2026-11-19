@@ -456,19 +456,41 @@ export function registerStoreRoutes(
   });
 
   router.delete('/api/stores/:storeId/products/:productId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
     const storeId = sanitizeId(req.params.storeId);
     const productId = sanitizeId(req.params.productId);
-    const check = getOwnedStore(db, storeId, req.actor!);
+    const check = getOwnedStore(db, storeId, actor);
     if (!check.ok) {
       res.status(check.status).json({ error: check.message, code: check.code });
       return;
     }
-    const result = db.prepare('DELETE FROM store_products WHERE id = ? AND store_id = ?').run(productId, storeId);
-    if (result.changes === 0) {
+    const product = db.prepare(
+      'SELECT id, title_ar FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(productId, storeId, String(check.store.tenant_id)) as { id: string; title_ar: string } | undefined;
+    if (!product) {
       res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
       return;
     }
-    res.json({ ok: true });
+    const hasHistory = Number((db.prepare(
+      'SELECT COUNT(*) AS count FROM store_order_items WHERE product_id = ? AND store_id = ?'
+    ).get(productId, storeId) as { count: number }).count) > 0 ||
+      Number((db.prepare(
+        'SELECT COUNT(*) AS count FROM store_inventory_movements WHERE product_id = ? AND store_id = ?'
+      ).get(productId, storeId) as { count: number }).count) > 0;
+
+    if (hasHistory) {
+      db.prepare(
+        `UPDATE store_products SET status = 'archived', updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND store_id = ? AND tenant_id = ?`
+      ).run(productId, storeId, String(check.store.tenant_id));
+    } else {
+      db.prepare(
+        'DELETE FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+      ).run(productId, storeId, String(check.store.tenant_id));
+    }
+    logAudit(db, actor.tenantId, actor.userId, actor.name,
+      `أرشفة أو حذف منتج (${product.title_ar})`, `Archived or removed product (${product.title_ar})`, productId);
+    res.json({ ok: true, archived: hasHistory });
   });
 
   // Product variants and an auditable stock ledger.
