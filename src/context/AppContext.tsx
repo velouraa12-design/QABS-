@@ -2295,24 +2295,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return placeholder;
     }
 
-    setUser(prev => ({ ...prev, credits: Math.max(0, (prev.credits || 0) - 1) }));
-    const entry: AICommandHistoryItem = {
-      id: `ai_${Date.now()}`,
+    // Offline preview must never simulate execution, append fake history, or deduct credits.
+    return {
+      id: `ai_unavailable_${Date.now()}`,
       prompt: cleanPrompt,
-      responseAr: `تم تحليل "${targetStore?.name || 'Workspace'}" في وضع المعاينة غير المتصل.`,
-      responseEn: `Analyzed "${targetStore?.name || 'Workspace'}" in offline preview mode.`,
+      responseAr: 'محرك قبس AI غير متصل؛ لم يتم تنفيذ الطلب ولم يُخصم أي رصيد.',
+      responseEn: 'QABS AI is not connected; the prompt was not executed and no credits were deducted.',
       timestamp
     };
-    setAiHistory(prev => [entry, ...prev]);
-    return entry;
   };
 
   const updateSectionSettings = <K extends keyof WorkspaceSectionSettings>(
     section: K,
     updates: Partial<WorkspaceSectionSettings[K]>
   ) => {
-    setSectionSettings(prev => ({ ...prev, [section]: { ...prev[section], ...updates } }));
-    showToast(language === 'ar' ? 'تم حفظ إعدادات القسم ✓' : 'Section settings saved ✓');
+    // These settings do not yet have a server persistence endpoint. Do not
+    // mutate browser-only state or claim that settings were saved.
+    void section;
+    void updates;
+    showToast(language === 'ar'
+      ? 'حفظ إعدادات الأقسام على الخادم غير متاح بعد؛ لم يتم حفظ أي تغيير.'
+      : 'Server-side section settings are not available yet; no changes were saved.');
   };
 
   const exportWorkspaceBackupJson = (): string => {
