@@ -161,4 +161,59 @@ describe('QABS store variants and inventory ledger', () => {
       });
     }
   });
+  it('prices order lines from the catalogue and reserves stock atomically', async () => {
+    const { app } = createQabsApp({ dbPath: ':memory:' });
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>(resolve => server.once('listening', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    const client = new ApiClient(`http://127.0.0.1:${address.port}`);
+
+    try {
+      assert.equal((await client.login('client@qabs1.store')).status, 200);
+      const store = await client.request('POST', '/api/stores', { name: 'Order Ledger Store' });
+      const storeId = store.json.store.id;
+      const product = await client.request('POST', `/api/stores/${storeId}/products`, {
+        titleAr: 'حقيبة', titleEn: 'Bag', sku: 'BAG-01', price: 35, stock: 5
+      });
+      const productId = product.json.product.id;
+
+      const order = await client.request('POST', `/api/stores/${storeId}/orders`, {
+        customerName: 'Test Buyer',
+        customerEmail: 'buyer@example.test',
+        total: 0.01,
+        items: [{ productId, quantity: 2, unitPrice: 0.01 }]
+      });
+      assert.equal(order.status, 201);
+      assert.equal(order.json.order.total_amount, 70);
+      assert.equal(order.json.items.length, 1);
+      assert.equal(order.json.items[0].unit_price, 35);
+      assert.equal(order.json.items[0].line_total, 70);
+
+      const productAfter = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(productAfter.json.product.stock_quantity, 3);
+
+      const detail = await client.request('GET', `/api/stores/${storeId}/orders/${order.json.order.id}`);
+      assert.equal(detail.status, 200);
+      assert.equal(detail.json.items.length, 1);
+
+      const insufficient = await client.request('POST', `/api/stores/${storeId}/orders`, {
+        customerName: 'Another Buyer',
+        customerEmail: 'another@example.test',
+        items: [{ productId, quantity: 4 }]
+      });
+      assert.equal(insufficient.status, 409);
+      assert.equal(insufficient.json.code, 'INSUFFICIENT_STOCK');
+
+      const afterFailure = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(afterFailure.json.product.stock_quantity, 3);
+      const orders = await client.request('GET', `/api/stores/${storeId}/orders`);
+      assert.equal(orders.json.orders.length, 1);
+    } finally {
+      await new Promise<void>((resolve, reject) => {
+        server.close(error => error ? reject(error) : resolve());
+      });
+    }
+  });
+
 });
