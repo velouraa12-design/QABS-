@@ -60,6 +60,22 @@ describe('QABS store variants and inventory ledger', () => {
       assert.equal(product.status, 201);
       const productId = product.json.product.id;
 
+      const otherStore = await otherTenant.request('POST', '/api/stores', { name: 'Other Tenant Store' });
+      const otherCategory = await otherTenant.request('POST', `/api/stores/${otherStore.json.store.id}/categories`, {
+        nameAr: 'فئة خارجية', nameEn: 'Foreign Category'
+      });
+      const crossTenantCategoryProduct = await owner.request('POST', `/api/stores/${storeId}/products`, {
+        titleAr: 'منتج غير مسموح', sku: 'FOREIGN-CAT', price: 5, categoryId: otherCategory.json.category.id
+      });
+      assert.equal(crossTenantCategoryProduct.status, 400);
+      assert.equal(crossTenantCategoryProduct.json.code, 'INVALID_PRODUCT_CATEGORY');
+
+      const duplicateSku = await owner.request('POST', `/api/stores/${storeId}/products`, {
+        titleAr: 'منتج مكرر', sku: 'SHIRT-BASE', price: 5
+      });
+      assert.equal(duplicateSku.status, 409);
+      assert.equal(duplicateSku.json.code, 'PRODUCT_SKU_TAKEN');
+
       const variant = await owner.request('POST', `/api/stores/${storeId}/products/${productId}/variants`, {
         title: 'أسود / كبير',
         sku: 'SHIRT-BLK-L',
