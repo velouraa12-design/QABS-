@@ -89,6 +89,16 @@ describe('QABS Studio server contract (isolated SQLite)', () => {
       assert.equal(betaReg.status, 201);
       assert.ok(beta.cookie);
 
+      // Workspace APIs are available only after the mailbox has been verified.
+      const alphaVerified = await alpha.request('POST', '/api/auth/verify-email', {
+        token: alphaReg.json.previewEmailVerifyToken
+      });
+      assert.equal(alphaVerified.status, 200);
+      const betaVerified = await beta.request('POST', '/api/auth/verify-email', {
+        token: betaReg.json.previewEmailVerifyToken
+      });
+      assert.equal(betaVerified.status, 200);
+
       const alphaMe = await alpha.request('GET', '/studio/api/me');
       assert.equal(alphaMe.status, 200);
       assert.equal(alphaMe.json.id, alphaReg.json.user.id);
