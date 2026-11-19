@@ -454,7 +454,12 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   const handleLogin = (req: Request, res: Response) => {
     const email = sanitizeText(req.body?.email, 200).toLowerCase();
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!checkRateLimit(`login:${email || req.ip}`)) {
+    // Apply independent account and source throttles: account-only limits can be
+    // bypassed by cycling email addresses, while IP-only limits can be bypassed
+    // by distributing attempts. Both limits must pass before password work.
+    const loginIpKey = `login_ip:${req.ip || 'local'}`;
+    const loginAccountKey = `login_account:${email || 'unknown'}`;
+    if (!checkRateLimit(loginIpKey) || !checkRateLimit(loginAccountKey)) {
       res.status(429).json({ error: 'Too many login attempts. Try again later.', code: 'RATE_LIMITED' });
       return;
     }
