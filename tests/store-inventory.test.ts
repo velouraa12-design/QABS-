@@ -244,6 +244,9 @@ describe('QABS store variants and inventory ledger', () => {
       assert.equal(repeatedCancel.status, 200);
       const afterRepeatedCancel = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
       assert.equal(afterRepeatedCancel.json.product.stock_quantity, 5);
+      const customersAfterCancel = await client.request('GET', `/api/stores/${storeId}/customers`);
+      assert.equal(customersAfterCancel.json.customers[0].orders_count, 0);
+      assert.equal(customersAfterCancel.json.customers[0].total_spent, 0);
 
       const reopen = await client.request('PATCH', `/api/stores/${storeId}/orders/${order.json.order.id}`, {
         status: 'processing'
