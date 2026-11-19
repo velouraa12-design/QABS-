@@ -197,8 +197,21 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(forgot.status, 200);
     assert.ok(forgot.json.previewResetToken);
 
-    const reset = await user.req('POST', '/api/auth/reset-password', {
+    const secondForgot = await user.req('POST', '/api/auth/forgot-password', {
+      email: 'recover.user@example.com'
+    });
+    assert.equal(secondForgot.status, 200);
+    assert.ok(secondForgot.json.previewResetToken);
+
+    const superseded = await user.req('POST', '/api/auth/reset-password', {
       token: forgot.json.previewResetToken,
+      newPassword: 'SupersededPassword!2026'
+    });
+    assert.equal(superseded.status, 400);
+    assert.equal(superseded.json.code, 'INVALID_OR_EXPIRED_TOKEN');
+
+    const reset = await user.req('POST', '/api/auth/reset-password', {
+      token: secondForgot.json.previewResetToken,
       newPassword: 'RotatedPassword!2026'
     });
     assert.equal(reset.status, 200);
