@@ -1048,6 +1048,12 @@ export function registerStoreRoutes(
           }
         }
         db.prepare(
+          `UPDATE store_customers
+           SET orders_count = MAX(0, orders_count - 1),
+               total_spent = MAX(0, ROUND(total_spent - ?, 2))
+           WHERE store_id = ? AND tenant_id = ? AND lower(email) = lower(?)`
+        ).run(Number(existing.total_amount), storeId, String(check.store.tenant_id), String(existing.customer_email));
+        db.prepare(
           'UPDATE store_orders SET status = ?, tracking_number = COALESCE(?, tracking_number) WHERE id = ? AND store_id = ? AND tenant_id = ?'
         ).run(status, trackingNumber, orderId, storeId, String(check.store.tenant_id));
         db.exec('COMMIT');
