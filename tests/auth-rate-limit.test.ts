@@ -5,6 +5,7 @@ import { createQabsApp } from '../server/app.ts';
 describe('QABS authentication rate limits', () => {
   it('limits login attempts by source even when the caller rotates email addresses', async () => {
     const { app } = createQabsApp({ dbPath: ':memory:', rateLimitMax: 1 });
+    app.set('trust proxy', true);
     const server = app.listen(0, '127.0.0.1');
     await new Promise<void>(resolve => server.once('listening', resolve));
     const address = server.address();
