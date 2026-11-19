@@ -21,7 +21,8 @@ export interface StoreProductVariant {
   status: 'active' | 'draft' | 'archived';
 }
 
-const API_BASE = (import.meta.env.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
+const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+const API_BASE = (runtimeEnv?.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
 
 let currentCsrfToken: string | null = null;
 
