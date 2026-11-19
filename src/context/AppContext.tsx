@@ -166,6 +166,13 @@ interface AppContextType {
     variantId?: string; referenceId?: string;
   }) => Promise<boolean>;
   orders: StoreOrder[];
+  createStoreOrder: (input: {
+    storeId: string;
+    customerName: string;
+    customerEmail: string;
+    customerCountry?: string;
+    items: Array<{ productId: string; variantId?: string; quantity: number }>;
+  }) => Promise<boolean>;
   addOrder: (order: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => void;
   updateOrderStatus: (id: string, status: StoreOrder['status'], trackingNumber?: string) => void;
   customers: StoreCustomer[];
@@ -1291,6 +1298,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- STORE ORDERS ---
+  const createStoreOrder = async (input: {
+    storeId: string;
+    customerName: string;
+    customerEmail: string;
+    customerCountry?: string;
+    items: Array<{ productId: string; variantId?: string; quantity: number }>;
+  }): Promise<boolean> => {
+    if (backendStatus !== 'connected') {
+      requireConnectedBackend();
+      return false;
+    }
+    try {
+      await qabsApi.createOrder(input.storeId, {
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        customerCountry: input.customerCountry,
+        items: input.items
+      });
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم إنشاء الطلب وتحديث المخزون' : 'Order created and inventory updated');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر إنشاء الطلب أو أن المخزون غير كافٍ', 'Failed to create order or insufficient stock');
+      return false;
+    }
+  };
+
   const addOrder = (orderData: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => {
     if (!requireConnectedBackend()) return;
 
@@ -2462,6 +2496,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateProductVariant,
         adjustProductInventory,
         orders,
+        createStoreOrder,
         addOrder,
         updateOrderStatus,
         customers,
