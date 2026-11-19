@@ -60,7 +60,7 @@ import {
   INITIAL_STORE_TEMPLATES,
   DEFAULT_STORE_SECTIONS
 } from '../data/mockData.ts';
-import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi } from '../services/qabsApi.ts';
+import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi, StoreProductVariant } from '../services/qabsApi.ts';
 import {
   mapApiUserToProfile,
   mapDbAuditLog,
@@ -152,6 +152,19 @@ interface AppContextType {
   addProduct: (product: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => void;
   updateProduct: (id: string, updates: Partial<StoreProduct>) => void;
   deleteProduct: (id: string) => void;
+  listProductVariants: (storeId: string, productId: string) => Promise<StoreProductVariant[]>;
+  createProductVariant: (storeId: string, productId: string, input: {
+    title: string; sku?: string; options: Record<string, string>; price?: number;
+    compareAtPrice?: number | null; stock?: number; status?: 'active' | 'draft' | 'archived';
+  }) => Promise<boolean>;
+  updateProductVariant: (storeId: string, productId: string, variantId: string, input: {
+    title?: string; sku?: string; options?: Record<string, string>; price?: number;
+    compareAtPrice?: number | null; status?: 'active' | 'draft' | 'archived';
+  }) => Promise<boolean>;
+  adjustProductInventory: (storeId: string, productId: string, input: {
+    quantityDelta: number; reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+    variantId?: string; referenceId?: string;
+  }) => Promise<boolean>;
   orders: StoreOrder[];
   addOrder: (order: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => void;
   updateOrderStatus: (id: string, status: StoreOrder['status'], trackingNumber?: string) => void;
@@ -1178,6 +1191,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     setProducts(prev => prev.map(p => (p.id === id ? { ...p, ...updates } : p)));
     showToast(language === 'ar' ? 'تم تعديل المنتج' : 'Product updated');
+  };
+
+  const listProductVariants = async (storeId: string, productId: string): Promise<StoreProductVariant[]> => {
+    if (backendStatus !== 'connected') return [];
+    try {
+      const result = await qabsApi.listProductVariants(storeId, productId);
+      return result.variants;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحميل متغيرات المنتج', 'Failed to load product variants');
+      return [];
+    }
+  };
+
+  const createProductVariant = async (
+    storeId: string,
+    productId: string,
+    input: {
+      title: string; sku?: string; options: Record<string, string>; price?: number;
+      compareAtPrice?: number | null; stock?: number; status?: 'active' | 'draft' | 'archived';
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.createProductVariant(storeId, productId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم حفظ متغير المنتج' : 'Product variant saved');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر حفظ متغير المنتج', 'Failed to save product variant');
+      return false;
+    }
+  };
+
+  const updateProductVariant = async (
+    storeId: string,
+    productId: string,
+    variantId: string,
+    input: {
+      title?: string; sku?: string; options?: Record<string, string>; price?: number;
+      compareAtPrice?: number | null; status?: 'active' | 'draft' | 'archived';
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.updateProductVariant(storeId, productId, variantId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم تحديث متغير المنتج' : 'Product variant updated');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث متغير المنتج', 'Failed to update product variant');
+      return false;
+    }
+  };
+
+  const adjustProductInventory = async (
+    storeId: string,
+    productId: string,
+    input: {
+      quantityDelta: number; reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+      variantId?: string; referenceId?: string;
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adjustProductInventory(storeId, productId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم تحديث المخزون وتسجيل الحركة' : 'Inventory updated and movement recorded');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث المخزون', 'Failed to adjust inventory');
+      return false;
+    }
   };
 
   const deleteProduct = (id: string) => {
@@ -2372,6 +2457,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProduct,
         updateProduct,
         deleteProduct,
+        listProductVariants,
+        createProductVariant,
+        updateProductVariant,
+        adjustProductInventory,
         orders,
         addOrder,
         updateOrderStatus,
