@@ -11,14 +11,6 @@
           "service": "qabs-unified-workspace-staging-v2"
         }
       ]
-    },
-    "production": {
-      "services": [
-        {
-          "binding": "QABS_STUDIO_API",
-          "service": "qabs-unified-workspace-staging-v2"
-        }
-      ]
     }
   }
 }
