@@ -1,13 +1,13 @@
 # QABS Cloudflare Preview API Bridge
 
-The isolated Pages preview uses a same-origin Functions bridge for the existing Studio API. The bridge is intentionally limited to the Pages **preview** environment.
+The isolated Pages project uses a same-origin Functions bridge for the existing Studio API. Its `production` and `preview` Pages deployment environments both point only to the dedicated QABS staging API; this Pages project's production label is not the QABS customer production site.
 
 ## Request path
 
 `Browser → qabs-workspace-reference-preview Pages Function → QABS_STUDIO_API service binding → qabs-unified-workspace-staging-v2 → API service binding → qabs-stores-acceptance-preview → isolated D1`
 
 - Pages Function route: `/studio/api/*`.
-- Preview binding: `QABS_STUDIO_API`.
+- Pages bindings: `QABS_STUDIO_API` in both `env.preview` and `env.production` of the isolated `qabs-workspace-reference-preview` project.
 - Router Worker: `qabs-unified-workspace-staging-v2`.
 - API Worker: `qabs-stores-acceptance-preview`.
 - The Pages Function forwards the request body, HttpOnly session cookie, CSRF header, and response Set-Cookie header.
@@ -24,7 +24,7 @@ The isolated Pages preview uses a same-origin Functions bridge for the existing 
 
 ## Verification
 
-The branch CI tests the Function's request forwarding, cookie and CSRF preservation, and cross-origin mutation rejection. The deployed preview's public config endpoint returns 200; unauthenticated `/studio/api/me`, `/studio/api/auth/session`, and protected workspace/service endpoints return 401 as expected.
+The branch CI tests the Function's request forwarding, cookie and CSRF preservation, and cross-origin mutation rejection. After deployment, the workflow smoke-tests the stable `https://studio-preview.qabs1.store` alias (not a stale preview-branch alias), requiring the public config endpoint to return 200, unauthenticated `/studio/api/me` to return 401, and cross-origin mutations to return 403.
 
 ## Features that remain gated by API environment
 
