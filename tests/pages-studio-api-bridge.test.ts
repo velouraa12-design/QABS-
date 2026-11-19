@@ -90,7 +90,7 @@ describe('QABS Pages preview Studio API bridge', () => {
 
   it('fails closed when the isolated API service binding is unavailable', async () => {
     const request = new Request('https://preview.example.test/studio/api/me');
-    const response = await onRequest({ request, env: {} });
+    const response = await onRequest({ request, env: {} as Parameters<typeof onRequest>[0]['env'] });
     assert.equal(response.status, 503);
     assert.deepEqual(await response.json(), { error: 'preview_api_binding_missing' });
   });
