@@ -680,3 +680,12 @@ Verification and release:
 - Isolated Pages deployment `a36e355f-4c7f-4d4c-96c1-5da87a9b60b1` completed successfully and points the `studio-preview.qabs1.store` alias to this commit.
 - Live preview checks: Studio and login shell render; `/studio/api/config` reports registration, email verification, password recovery, document access, and payments disabled; unauthenticated `/studio/api/me` returns `authentication_required`.
 - This remains an isolated static/frontend preview with a staging API bridge; it is not proof of full production API parity or a production-ready platform. No production deployment, PR merge, DNS/Shopify change, customer-data migration, or payment activation occurred.
+
+## 19. Unverified-session response minimization and preview release — 2026-11-19
+
+- The unauthenticated-session bootstrap now returns only the minimal identity fields for an unverified account. It does not expose tenant identifiers, company details, or credit balances before email verification.
+- Added a regression test for the unverified session response while retaining access to the verification-status and resend flows.
+- GitHub CI run `44437718435` completed successfully: TypeScript/lint, API and route contract tests, route verification, application build, isolated Node container build and smoke tests, and secret scan all passed.
+- Isolated Cloudflare Pages deployment run `44437709902` completed successfully. The `studio-preview.qabs1.store` alias is served by the isolated Pages project.
+- Live Firecrawl checks returned HTTP 200 for the Studio shell and config endpoint, and HTTP 401 for unauthenticated `/studio/api/me`. The live config reports registration, email verification, password recovery, documents, private documents, and payments disabled.
+- The preview remains intentionally restricted; no production deployment, PR merge, DNS/Shopify change, customer-data migration, or payment activation occurred.
