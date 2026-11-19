@@ -551,7 +551,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
 
     db.exec('BEGIN IMMEDIATE');
     try {
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), String(tokRow.user_id));
+      // A single-use reset token delivered to this mailbox also proves control of the email address.
+      db.prepare('UPDATE users SET password_hash = ?, email_verified = 1 WHERE id = ?').run(hashPassword(newPassword), String(tokRow.user_id));
       db.prepare('UPDATE auth_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?').run(String(tokRow.id));
       db.prepare('UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(String(tokRow.user_id));
       db.exec('COMMIT');
