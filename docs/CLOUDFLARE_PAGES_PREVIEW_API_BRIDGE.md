@@ -16,8 +16,7 @@ The isolated Pages project uses a same-origin Functions bridge for the existing 
 
 ## Isolation
 
-- The service binding is configured only under Pages `deployment_configs.preview.services`.
-- The production Pages configuration has no `QABS_STUDIO_API` binding.
+- The `QABS_STUDIO_API` service binding is configured in both `env.preview.services` and `env.production.services` of this dedicated Pages project. Its `production` label is isolated to this preview project and is not the real QABS production site.
 - The existing API Worker continues using its existing staging D1 database. The Express API and its `qabs_session` cookie are separate contracts; do not merge them or point the frontend at the Express API without a tested migration.
 - The preview remains non-payment: API config reports `payments:false`.
 - No live payment, Shopify checkout, domain, or production setting is enabled by this bridge.
@@ -28,4 +27,4 @@ The branch CI tests the Function's request forwarding, cookie and CSRF preservat
 
 ## Features that remain gated by API environment
 
-The API currently reports registration enabled, but email verification, password recovery, email-code login, Google sign-in, formation details, and private documents are not ready in this staging Worker. Keep those controls disabled until the required mail provider settings, encryption key, document storage binding, and end-to-end tests are available. Payment remains disabled. Do not copy secrets from another Worker or reuse a different D1 database to bypass these gates.
+The staging Worker does not have a configured transactional email provider (`RESEND_API_KEY` and `MAIL_FROM`), so email verification and password recovery are unavailable. `REGISTRATION_ENABLED` is explicitly set to `false` on `qabs-stores-acceptance-preview`; the Pages bridge independently rejects direct `/studio/api/auth/register` calls and masks any stale registration flag in the public config response. The effective preview config must report `registration:false`, `emailVerification:false`, and `passwordRecovery:false`. Email-code login, Google sign-in, formation details, and private documents also remain disabled until their required settings, bindings, and end-to-end tests are available. Payment remains disabled. Do not copy secrets from another Worker or reuse a different D1 database to bypass these gates.
