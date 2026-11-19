@@ -65,12 +65,17 @@ describe('QABS Pages preview Studio API bridge', () => {
   });
 
 
-  it('does not bind the isolated Studio staging API to production Pages deployments', () => {
+  it('binds the staging API in both deployment environments of the isolated Pages project', () => {
     const config = JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')) as {
-      env?: { preview?: { services?: Array<{ binding: string }> }; production?: { services?: Array<{ binding: string }> } };
+      env?: {
+        preview?: { services?: Array<{ binding: string; service: string }> };
+        production?: { services?: Array<{ binding: string; service: string }> };
+      };
     };
-    assert.ok(config.env?.preview?.services?.some(service => service.binding === 'QABS_STUDIO_API'));
-    assert.equal(config.env?.production?.services?.some(service => service.binding === 'QABS_STUDIO_API') ?? false, false);
+    for (const environment of [config.env?.preview, config.env?.production]) {
+      const binding = environment?.services?.find(service => service.binding === 'QABS_STUDIO_API');
+      assert.equal(binding?.service, 'qabs-unified-workspace-staging-v2');
+    }
   });
 
   it('allows anonymous read-only config requests without an Origin header', async () => {
