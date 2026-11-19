@@ -70,8 +70,19 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app: Express;
   db: DatabaseSync;
 } {
-  const dbPath =
-    options.dbPath || process.env.QABS_DB_PATH || path.join(os.tmpdir(), 'qabs_preview.sqlite');
+  // Never let a production/managed runtime silently fall back to ephemeral /tmp
+  // storage. That would make customer records disappear across restarts and can
+  // create a false impression that the API is durable. Production must provide
+  // an explicitly provisioned persistent database path; Cloudflare Workers must
+  // use the D1-backed runtime rather than this Node/SQLite adapter.
+  const configuredDbPath = options.dbPath ?? process.env.QABS_DB_PATH?.trim();
+  const managedRuntime = process.env.NODE_ENV === 'production' || Boolean(process.env.K_SERVICE);
+  if (!configuredDbPath && managedRuntime) {
+    throw new Error(
+      'QABS_DB_PATH is required for the Node API in production. Refusing ephemeral /tmp SQLite storage; use persistent storage or the D1 runtime.'
+    );
+  }
+  const dbPath = configuredDbPath || path.join(os.tmpdir(), 'qabs_preview.sqlite');
   const exposePreviewTokens =
     options.exposePreviewTokens ?? (process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE);
   const rateLimitMax = options.rateLimitMax ?? 40;
