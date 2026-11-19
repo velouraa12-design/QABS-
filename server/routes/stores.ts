@@ -425,6 +425,255 @@ export function registerStoreRoutes(
     res.json({ ok: true });
   });
 
+  // Product variants and an auditable stock ledger.
+  router.get('/api/stores/:storeId/products/:productId/variants', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const productId = sanitizeId(req.params.productId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const product = db.prepare('SELECT id FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?')
+      .get(productId, storeId, String(check.store.tenant_id));
+    if (!product) {
+      res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
+      return;
+    }
+    const variants = db.prepare(
+      'SELECT * FROM store_product_variants WHERE product_id = ? AND store_id = ? ORDER BY created_at ASC'
+    ).all(productId, storeId);
+    res.json({ variants });
+  });
+
+  router.post('/api/stores/:storeId/products/:productId/variants', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const productId = sanitizeId(req.params.productId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const product = db.prepare(
+      'SELECT * FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(productId, storeId, String(check.store.tenant_id)) as Record<string, unknown> | undefined;
+    if (!product) {
+      res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
+      return;
+    }
+
+    const title = sanitizeText(req.body?.title, 120);
+    const sku = sanitizeText(req.body?.sku || `VAR-${generateToken(4).toUpperCase()}`, 64);
+    const options = req.body?.options;
+    const price = Number(req.body?.price ?? product.retail_price);
+    const compareAtRaw = req.body?.compareAtPrice;
+    const compareAt = compareAtRaw === undefined || compareAtRaw === null || compareAtRaw === ''
+      ? null : Number(compareAtRaw);
+    const stock = req.body?.stock === undefined ? 0 : Number(req.body.stock);
+    const status = ['active', 'draft', 'archived'].includes(req.body?.status) ? req.body.status : 'active';
+
+    if (!title || !sku || !options || typeof options !== 'object' || Array.isArray(options) ||
+        !Number.isFinite(price) || price < 0 ||
+        (compareAt !== null && (!Number.isFinite(compareAt) || compareAt < 0)) ||
+        !Number.isSafeInteger(stock) || stock < 0) {
+      res.status(400).json({ error: 'Valid variant title, options, price and non-negative integer stock are required.', code: 'INVALID_VARIANT' });
+      return;
+    }
+    const duplicate = db.prepare('SELECT id FROM store_product_variants WHERE store_id = ? AND sku = ?')
+      .get(storeId, sku);
+    if (duplicate) {
+      res.status(409).json({ error: 'Variant SKU already exists in this store.', code: 'VARIANT_SKU_TAKEN' });
+      return;
+    }
+
+    const variantId = `var_${generateToken(8)}`;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare(
+        `INSERT INTO store_product_variants (
+          id, store_id, tenant_id, product_id, title, sku, options_json,
+          retail_price, compare_at_price, stock_quantity, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(
+        variantId, storeId, String(check.store.tenant_id), productId, title, sku,
+        JSON.stringify(options), price, compareAt, stock, status
+      );
+      if (stock > 0) {
+        db.prepare(
+          `INSERT INTO store_inventory_movements (
+            id, store_id, tenant_id, product_id, variant_id, actor_user_id,
+            quantity_delta, balance_after, reason, reference_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'initial_stock', ?)`
+        ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), productId,
+          variantId, actor.userId, stock, stock, variantId);
+      }
+      db.prepare(
+        `UPDATE store_products SET stock_quantity = (
+          SELECT COALESCE(SUM(stock_quantity), 0) FROM store_product_variants
+          WHERE product_id = ? AND store_id = ?
+        ), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?`
+      ).run(productId, storeId, productId, storeId);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `إضافة متغير منتج (${title})`,
+      `Added product variant (${title})`, variantId);
+    res.status(201).json({ variant: db.prepare('SELECT * FROM store_product_variants WHERE id = ?').get(variantId) });
+  });
+
+  router.patch('/api/stores/:storeId/products/:productId/variants/:variantId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const productId = sanitizeId(req.params.productId);
+    const variantId = sanitizeId(req.params.variantId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const existing = db.prepare(
+      'SELECT * FROM store_product_variants WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(variantId, productId, storeId, String(check.store.tenant_id)) as Record<string, unknown> | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Variant not found in this store.', code: 'VARIANT_NOT_FOUND' });
+      return;
+    }
+
+    const title = req.body?.title === undefined ? String(existing.title) : sanitizeText(req.body.title, 120);
+    const sku = req.body?.sku === undefined ? String(existing.sku) : sanitizeText(req.body.sku, 64);
+    const price = req.body?.price === undefined ? Number(existing.retail_price) : Number(req.body.price);
+    const compareAtRaw = req.body?.compareAtPrice === undefined ? existing.compare_at_price : req.body.compareAtPrice;
+    const compareAt = compareAtRaw === null || compareAtRaw === '' ? null : Number(compareAtRaw);
+    const options = req.body?.options === undefined ? String(existing.options_json) : JSON.stringify(req.body.options);
+    const status = req.body?.status === undefined ? String(existing.status) :
+      (['active', 'draft', 'archived'].includes(req.body.status) ? req.body.status : '');
+    if (!title || !sku || !Number.isFinite(price) || price < 0 ||
+        (compareAt !== null && (!Number.isFinite(compareAt) || compareAt < 0)) ||
+        !status || (req.body?.options !== undefined &&
+          (!req.body.options || typeof req.body.options !== 'object' || Array.isArray(req.body.options)))) {
+      res.status(400).json({ error: 'Invalid variant update.', code: 'INVALID_VARIANT' });
+      return;
+    }
+    const duplicate = db.prepare(
+      'SELECT id FROM store_product_variants WHERE store_id = ? AND sku = ? AND id != ?'
+    ).get(storeId, sku, variantId);
+    if (duplicate) {
+      res.status(409).json({ error: 'Variant SKU already exists in this store.', code: 'VARIANT_SKU_TAKEN' });
+      return;
+    }
+    db.prepare(
+      `UPDATE store_product_variants SET title = ?, sku = ?, options_json = ?,
+        retail_price = ?, compare_at_price = ?, status = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ?`
+    ).run(title, sku, options, price, compareAt, status, variantId, productId, storeId, String(check.store.tenant_id));
+    res.json({ variant: db.prepare('SELECT * FROM store_product_variants WHERE id = ?').get(variantId) });
+  });
+
+  router.post('/api/stores/:storeId/products/:productId/inventory-adjustments', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const storeId = sanitizeId(req.params.storeId);
+    const productId = sanitizeId(req.params.productId);
+    const check = getOwnedStore(db, storeId, actor);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const product = db.prepare(
+      'SELECT * FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(productId, storeId, String(check.store.tenant_id)) as Record<string, unknown> | undefined;
+    if (!product) {
+      res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
+      return;
+    }
+
+    const delta = Number(req.body?.quantityDelta);
+    const variantId = req.body?.variantId ? sanitizeId(req.body.variantId) : null;
+    const reason = sanitizeText(req.body?.reason, 64);
+    const referenceId = sanitizeText(req.body?.referenceId, 120) || null;
+    const allowedReasons = new Set(['restock', 'manual_adjustment', 'correction', 'damaged', 'returned']);
+    if (!Number.isSafeInteger(delta) || delta === 0 || !allowedReasons.has(reason)) {
+      res.status(400).json({ error: 'A non-zero integer quantityDelta and valid reason are required.', code: 'INVALID_INVENTORY_ADJUSTMENT' });
+      return;
+    }
+
+    const variantCount = Number((db.prepare(
+      'SELECT COUNT(*) AS count FROM store_product_variants WHERE product_id = ? AND store_id = ?'
+    ).get(productId, storeId) as { count: number }).count);
+    if (variantCount > 0 && !variantId) {
+      res.status(400).json({ error: 'Select a product variant for inventory changes.', code: 'VARIANT_REQUIRED' });
+      return;
+    }
+
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      let balanceAfter: number;
+      if (variantId) {
+        const variant = db.prepare(
+          'SELECT stock_quantity FROM store_product_variants WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ?'
+        ).get(variantId, productId, storeId, String(check.store.tenant_id)) as { stock_quantity: number } | undefined;
+        if (!variant) {
+          db.exec('ROLLBACK');
+          res.status(404).json({ error: 'Variant not found in this store.', code: 'VARIANT_NOT_FOUND' });
+          return;
+        }
+        const changed = db.prepare(
+          `UPDATE store_product_variants SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ? AND stock_quantity + ? >= 0`
+        ).run(delta, variantId, productId, storeId, String(check.store.tenant_id), delta);
+        if (Number(changed.changes) !== 1) {
+          db.exec('ROLLBACK');
+          res.status(409).json({ error: 'Inventory cannot become negative.', code: 'INSUFFICIENT_STOCK' });
+          return;
+        }
+        balanceAfter = Number((db.prepare(
+          'SELECT stock_quantity FROM store_product_variants WHERE id = ?'
+        ).get(variantId) as { stock_quantity: number }).stock_quantity);
+        db.prepare(
+          `UPDATE store_products SET stock_quantity = (
+            SELECT COALESCE(SUM(stock_quantity), 0) FROM store_product_variants
+            WHERE product_id = ? AND store_id = ?
+          ), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?`
+        ).run(productId, storeId, productId, storeId);
+      } else {
+        const changed = db.prepare(
+          `UPDATE store_products SET stock_quantity = stock_quantity + ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ? AND store_id = ? AND tenant_id = ? AND stock_quantity + ? >= 0`
+        ).run(delta, productId, storeId, String(check.store.tenant_id), delta);
+        if (Number(changed.changes) !== 1) {
+          db.exec('ROLLBACK');
+          res.status(409).json({ error: 'Inventory cannot become negative.', code: 'INSUFFICIENT_STOCK' });
+          return;
+        }
+        balanceAfter = Number((db.prepare(
+          'SELECT stock_quantity FROM store_products WHERE id = ? AND store_id = ?'
+        ).get(productId, storeId) as { stock_quantity: number }).stock_quantity);
+      }
+
+      db.prepare(
+        `INSERT INTO store_inventory_movements (
+          id, store_id, tenant_id, product_id, variant_id, actor_user_id,
+          quantity_delta, balance_after, reason, reference_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), productId,
+        variantId, actor.userId, delta, balanceAfter, reason, referenceId);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      throw error;
+    }
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, 'تعديل مخزون المنتج',
+      'Adjusted product inventory', variantId || productId);
+    const current = db.prepare('SELECT stock_quantity FROM store_products WHERE id = ?').get(productId) as { stock_quantity: number };
+    const movements = db.prepare(
+      'SELECT * FROM store_inventory_movements WHERE product_id = ? AND store_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 50'
+    ).all(productId, storeId);
+    res.status(201).json({ productId, variantId, stockQuantity: current.stock_quantity, movements });
+  });
+
   // Store Orders CRUD (store-scoped)
   router.get('/api/stores/:storeId/orders', requireAuth, (req: AuthedRequest, res: Response) => {
     const storeId = sanitizeId(req.params.storeId);
