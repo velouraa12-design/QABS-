@@ -45,7 +45,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
     listProductVariants,
     createProductVariant,
     adjustProductInventory,
-    addOrder,
+    createStoreOrder,
     storeTemplates,
     storePages,
     saveStorePage
@@ -76,7 +76,9 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   // Interactive Storefront Shopping Cart State
   const [cart, setCart] = useState<{ product: StoreProduct; qty: number }[]>([]);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
-  const [checkoutCustomerName, setCheckoutCustomerName] = useState('عميل متجر قبس');
+  const [checkoutCustomerName, setCheckoutCustomerName] = useState('');
+  const [checkoutCustomerEmail, setCheckoutCustomerEmail] = useState('');
+  const [checkoutSaving, setCheckoutSaving] = useState(false);
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   if (!currentStore) return null;
@@ -157,24 +159,20 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   };
 
   const cartSubtotal = cart.reduce((acc, item) => acc + item.product.price * item.qty, 0);
-  const cartTax = Math.round(cartSubtotal * ((currentStore.taxRate ?? 15) / 100));
-  const cartTotal = cartSubtotal + cartTax;
+  const cartTotal = cartSubtotal;
 
-  const handleSimulatedCheckout = (e: React.FormEvent) => {
+  const handleStorefrontOrder = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cart.length === 0) return;
-    addOrder({
+    if (cart.length === 0 || checkoutSaving) return;
+    setCheckoutSaving(true);
+    const saved = await createStoreOrder({
       storeId: currentStore.id,
-      customerName: checkoutCustomerName || 'عميل المتجر',
-      customerEmail: 'buyer@customer.sa',
-      total: cartTotal,
-      taxAmount: cartTax,
-      shippingCost: 0,
-      shippingCarrier: 'DHL Express',
-      trackingNumber: `QBS-TRK-${Math.floor(100000 + Math.random() * 900000)}`,
-      status: 'processing',
-      itemsCount: cart.reduce((a, b) => a + b.qty, 0)
+      customerName: checkoutCustomerName.trim(),
+      customerEmail: checkoutCustomerEmail.trim(),
+      items: cart.map(item => ({ productId: item.product.id, quantity: item.qty }))
     });
+    setCheckoutSaving(false);
+    if (!saved) return;
     setCart([]);
     setCheckoutSuccess(true);
     setTimeout(() => {
@@ -773,7 +771,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
               <div className="p-5 bg-slate-50 border-b border-slate-200 space-y-4">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-black text-[#004457]">
-                    {isAr ? 'سلة المشتريات وإتمام الطلب (Live Checkout)' : 'Storefront Cart & Checkout'}
+                    {isAr ? 'سلة المتجر' : 'Storefront Cart'}
                   </h4>
                   <button
                     onClick={() => setCartDrawerOpen(false)}
@@ -788,14 +786,14 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
                     <CheckCircle2 className="w-4 h-4" />
                     <span>
                       {isAr
-                        ? 'تم تسجيل الطلب بنجاح في لوحة تحكم هذا المتجر المعزول!'
-                        : 'Order placed and recorded in this store dashboard!'}
+                        ? 'تم حفظ الطلب وتحديث المخزون. لم يتم تحصيل أي مبلغ.'
+                        : 'Order saved and inventory updated. No payment was collected.'}
                     </span>
                   </div>
                 ) : cart.length === 0 ? (
                   <p className="text-xs text-slate-500">{isAr ? 'السلة فارغة — أضف منتجات من المتجر أدناه' : 'Cart is empty'}</p>
                 ) : (
-                  <form onSubmit={handleSimulatedCheckout} className="space-y-3">
+                  <form onSubmit={handleStorefrontOrder} className="space-y-3">
                     {cart.map(item => (
                       <div key={item.product.id} className="flex items-center justify-between text-xs bg-white p-2.5 rounded-xl border">
                         <span className="font-bold">
@@ -808,27 +806,41 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
                     ))}
                     <div className="flex items-center justify-between text-xs pt-2 border-t">
                       <span>
-                        {isAr ? `الإجمالي شامل الضريبة (${currentStore.taxRate ?? 15}%):` : 'Total incl. Tax:'}
+                        {isAr ? 'الإجمالي:' : 'Subtotal:'}
                       </span>
                       <span className="text-sm font-black text-[#004457]">
                         {cartTotal} {currentStore.currency}
                       </span>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <input
                         type="text"
                         required
                         value={checkoutCustomerName}
                         onChange={e => setCheckoutCustomerName(e.target.value)}
-                        placeholder={isAr ? 'اسم المشتري' : 'Buyer Name'}
-                        className="flex-1 rounded-xl border px-3 py-2 text-xs"
+                        placeholder={isAr ? 'اسم المشتري' : 'Buyer name'}
+                        className="min-w-0 rounded-xl border px-3 py-2 text-xs"
                       />
+                      <input
+                        type="email"
+                        required
+                        value={checkoutCustomerEmail}
+                        onChange={e => setCheckoutCustomerEmail(e.target.value)}
+                        placeholder={isAr ? 'البريد الإلكتروني' : 'Email address'}
+                        className="min-w-0 rounded-xl border px-3 py-2 text-xs"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[10px] text-slate-500">
+                        {isAr ? 'الدفع الإلكتروني غير مفعل في المعاينة.' : 'Online payment is disabled in preview.'}
+                      </span>
                       <button
                         type="submit"
-                        className="px-4 py-2 rounded-xl text-white text-xs font-black cursor-pointer"
+                        disabled={checkoutSaving}
+                        className="px-4 py-2 rounded-xl text-white text-xs font-black disabled:opacity-50"
                         style={{ backgroundColor: currentStore.primaryColor || '#004457' }}
                       >
-                        {isAr ? 'إتمام الشراء الآن' : 'Complete Order'}
+                        {checkoutSaving ? (isAr ? 'جارٍ الحفظ…' : 'Saving…') : (isAr ? 'إنشاء الطلب' : 'Create order')}
                       </button>
                     </div>
                   </form>
