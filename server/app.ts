@@ -300,6 +300,23 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       res.json({ authenticated: false, user: null, csrfToken: null });
       return;
     }
+    // An unverified registration session may only read its verification state.
+    // Do not expose tenant identifiers, company details, or credit balances until
+    // the email address has been verified.
+    if (!req.actor.emailVerified) {
+      res.json({
+        authenticated: true,
+        user: {
+          id: req.actor.userId,
+          name: req.actor.name,
+          email: req.actor.email,
+          role: req.actor.role,
+          emailVerified: false
+        },
+        csrfToken: req.actor.csrfToken
+      });
+      return;
+    }
     res.json({
       authenticated: true,
       user: loadSafeUserSnapshot(req.actor.userId, req.actor.tenantId),
