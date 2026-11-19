@@ -65,17 +65,17 @@ describe('QABS Pages preview Studio API bridge', () => {
   });
 
 
-  it('binds the staging API only in preview and never in production', () => {
+  it('binds the staging API in both isolated Pages project environments', () => {
     const config = JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')) as {
       env?: {
         preview?: { services?: Array<{ binding: string; service: string }> };
         production?: { services?: Array<{ binding: string; service: string }> };
       };
     };
-    const previewBinding = config.env?.preview?.services?.find(service => service.binding === 'QABS_STUDIO_API');
-    const productionBinding = config.env?.production?.services?.find(service => service.binding === 'QABS_STUDIO_API');
-    assert.equal(previewBinding?.service, 'qabs-unified-workspace-staging-v2');
-    assert.equal(productionBinding, undefined);
+    for (const environment of [config.env?.preview, config.env?.production]) {
+      const binding = environment?.services?.find(service => service.binding === 'QABS_STUDIO_API');
+      assert.equal(binding?.service, 'qabs-unified-workspace-staging-v2');
+    }
   });
 
   it('blocks direct preview registration while email verification is unavailable', async () => {
