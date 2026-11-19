@@ -662,3 +662,21 @@ Verification state at the time of this log update:
 - No production deployment, PR merge, DNS change, Shopify change, customer-data access/migration, payment activation, or paid hosting resource was performed.
 
 Remaining hard blockers are unchanged: implement and test complete API parity before connecting AppContext; select and authorize durable hosting/database infrastructure; validate the authenticated Cloudflare Worker tenant boundary; complete private-file storage/security; and complete subscription, domain, store publication, and payment acceptance tests. The current Pages preview is not the full production platform.
+
+
+## 18. Email-verification access boundary and isolated preview release — 2026-11-19
+
+Implemented on the isolated branch:
+
+- Password login is denied until the account email is verified.
+- An unverified registration session is limited to identity status, verification resend, and logout; it cannot read workspace or tenant data.
+- Password-reset issuance invalidates older unused reset tokens; successful reset invalidates outstanding reset tokens and sessions.
+- Pages preview bridge blocks direct registration while email delivery is not configured and masks stale registration capability flags.
+- The dedicated `qabs-stores-acceptance-preview` Worker has `REGISTRATION_ENABLED=false`; no mail secrets were added. Payments, documents, and private-document features remain disabled in the preview config.
+- Updated auth, recovery, API bridge, Studio contract, and Tap sandbox tests to follow the verification requirement.
+
+Verification and release:
+- Commit `e1307a5085e8ac50e89a4dab17549536cd9d2790`: GitHub CI run `44436339867` completed successfully. TypeScript/lint, API and route contract tests, workspace route checks, builds, isolated API smoke tests, and security/secret scan passed.
+- Isolated Pages deployment `a36e355f-4c7f-4d4c-96c1-5da87a9b60b1` completed successfully and points the `studio-preview.qabs1.store` alias to this commit.
+- Live preview checks: Studio and login shell render; `/studio/api/config` reports registration, email verification, password recovery, document access, and payments disabled; unauthenticated `/studio/api/me` returns `authentication_required`.
+- This remains an isolated static/frontend preview with a staging API bridge; it is not proof of full production API parity or a production-ready platform. No production deployment, PR merge, DNS/Shopify change, customer-data migration, or payment activation occurred.
