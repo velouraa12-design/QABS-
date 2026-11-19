@@ -60,7 +60,7 @@ import {
   INITIAL_STORE_TEMPLATES,
   DEFAULT_STORE_SECTIONS
 } from '../data/mockData.ts';
-import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi, StoreProductVariant } from '../services/qabsApi.ts';
+import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi, StoreProductVariant, StoreInventoryMovement } from '../services/qabsApi.ts';
 import {
   mapApiUserToProfile,
   mapDbAuditLog,
@@ -165,6 +165,7 @@ interface AppContextType {
     quantityDelta: number; reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
     variantId?: string; referenceId?: string;
   }) => Promise<boolean>;
+  listInventoryMovements: (storeId: string, productId: string) => Promise<StoreInventoryMovement[]>;
   orders: StoreOrder[];
   createStoreOrder: (input: {
     storeId: string;
@@ -1269,6 +1270,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       handleApiFailure(err, 'تعذر تحديث المخزون', 'Failed to adjust inventory');
       return false;
+    }
+  };
+
+  const listInventoryMovements = async (storeId: string, productId: string): Promise<StoreInventoryMovement[]> => {
+    if (backendStatus !== 'connected') return [];
+    try {
+      const result = await qabsApi.listInventoryMovements(storeId, productId, { limit: 50 });
+      return result.movements;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحميل سجل المخزون', 'Failed to load inventory history');
+      return [];
     }
   };
 
@@ -2495,6 +2507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createProductVariant,
         updateProductVariant,
         adjustProductInventory,
+        listInventoryMovements,
         orders,
         createStoreOrder,
         addOrder,
