@@ -155,6 +155,20 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.equal(noCsrf.status, 403);
     assert.equal(noCsrf.json.code, 'CSRF_TOKEN_INVALID');
 
+    // An unverified registration session must not read tenant workspace data.
+    const blockedWorkspace = await clientA.req('GET', '/api/workspace/bootstrap');
+    assert.equal(blockedWorkspace.status, 403);
+    assert.equal(blockedWorkspace.json.code, 'EMAIL_NOT_VERIFIED');
+
+    // The same session may still inspect verification status and request a fresh token.
+    const pendingMe = await clientA.req('GET', '/api/auth/me');
+    assert.equal(pendingMe.status, 200);
+    assert.equal(pendingMe.json.user.emailVerified, false);
+    const resent = await clientA.req('POST', '/api/auth/resend-verification', {});
+    assert.equal(resent.status, 200);
+    assert.equal(resent.json.emailDispatched, true);
+    assert.ok(resent.json.previewEmailVerifyToken);
+
     // Verify email token succeeds once and fails reuse
     const ver1 = await clientA.req('POST', '/api/auth/verify-email', {
       token: reg.json.previewEmailVerifyToken
