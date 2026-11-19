@@ -209,6 +209,26 @@ describe('QABS store variants and inventory ledger', () => {
       assert.equal(afterFailure.json.product.stock_quantity, 3);
       const orders = await client.request('GET', `/api/stores/${storeId}/orders`);
       assert.equal(orders.json.orders.length, 1);
+
+      const cancelled = await client.request('PATCH', `/api/stores/${storeId}/orders/${order.json.order.id}`, {
+        status: 'cancelled'
+      });
+      assert.equal(cancelled.status, 200);
+      const restored = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(restored.json.product.stock_quantity, 5);
+
+      const repeatedCancel = await client.request('PATCH', `/api/stores/${storeId}/orders/${order.json.order.id}`, {
+        status: 'cancelled'
+      });
+      assert.equal(repeatedCancel.status, 200);
+      const afterRepeatedCancel = await client.request('GET', `/api/stores/${storeId}/products/${productId}`);
+      assert.equal(afterRepeatedCancel.json.product.stock_quantity, 5);
+
+      const reopen = await client.request('PATCH', `/api/stores/${storeId}/orders/${order.json.order.id}`, {
+        status: 'processing'
+      });
+      assert.equal(reopen.status, 409);
+      assert.equal(reopen.json.code, 'ORDER_ALREADY_CANCELLED');
     } finally {
       await new Promise<void>((resolve, reject) => {
         server.close(error => error ? reject(error) : resolve());
