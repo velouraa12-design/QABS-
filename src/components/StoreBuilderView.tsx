@@ -57,7 +57,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   const currentPages = storePages.filter(p => p.storeId === currentStore?.id);
   const sections = currentStore?.sections || DEFAULT_STORE_SECTIONS;
 
-  const [studioTab, setStudioTab] = useState<'templates' | 'sections' | 'branding' | 'pages' | 'versions'>('sections');
+  const [studioTab, setStudioTab] = useState<'templates' | 'sections' | 'branding' | 'pages' | 'versions' | 'inventory'>('sections');
   const [inventoryProductId, setInventoryProductId] = useState('');
   const [inventoryVariants, setInventoryVariants] = useState<StoreProductVariant[]>([]);
   const [variantTitle, setVariantTitle] = useState('');
