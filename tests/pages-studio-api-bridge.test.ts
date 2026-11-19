@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { onRequest } from '../functions/studio/api/[[path]].ts';
+import { readFileSync } from 'node:fs';
 
 const API_ORIGIN = 'https://qabs-stores-acceptance-preview.qabs1store.workers.dev';
 const UPSTREAM_ORIGIN = 'https://qabs-unified-workspace-staging-v2.qabs1store.workers.dev';
@@ -61,6 +62,15 @@ describe('QABS Pages preview Studio API bridge', () => {
     assert.equal(response.status, 403);
     assert.equal(called, false);
     assert.deepEqual(await response.json(), { error: 'origin_rejected' });
+  });
+
+
+  it('does not bind the isolated Studio staging API to production Pages deployments', () => {
+    const config = JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')) as {
+      env?: { preview?: { services?: Array<{ binding: string }> }; production?: { services?: Array<{ binding: string }> } };
+    };
+    assert.ok(config.env?.preview?.services?.some(service => service.binding === 'QABS_STUDIO_API'));
+    assert.equal(config.env?.production?.services?.some(service => service.binding === 'QABS_STUDIO_API') ?? false, false);
   });
 
   it('allows anonymous read-only config requests without an Origin header', async () => {
