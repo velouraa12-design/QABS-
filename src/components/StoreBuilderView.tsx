@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { StoreProductVariant } from '../services/qabsApi.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { DEFAULT_STORE_SECTIONS } from '../data/mockData.ts';
 import {
@@ -41,6 +42,9 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
     restoreStoreSnapshot,
     submitStoreForApproval,
     products,
+    listProductVariants,
+    createProductVariant,
+    adjustProductInventory,
     addOrder,
     storeTemplates,
     storePages,
@@ -54,6 +58,15 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   const sections = currentStore?.sections || DEFAULT_STORE_SECTIONS;
 
   const [studioTab, setStudioTab] = useState<'templates' | 'sections' | 'branding' | 'pages' | 'versions'>('sections');
+  const [inventoryProductId, setInventoryProductId] = useState('');
+  const [inventoryVariants, setInventoryVariants] = useState<StoreProductVariant[]>([]);
+  const [variantTitle, setVariantTitle] = useState('');
+  const [variantSku, setVariantSku] = useState('');
+  const [variantColor, setVariantColor] = useState('');
+  const [variantSize, setVariantSize] = useState('');
+  const [variantPrice, setVariantPrice] = useState('');
+  const [variantStock, setVariantStock] = useState('0');
+  const [variantSaving, setVariantSaving] = useState(false);
   const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [activeStorefrontPage, setActiveStorefrontPage] = useState<string>('home');
   const [snapshotLabel, setSnapshotLabel] = useState('');
@@ -67,6 +80,51 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
 
   if (!currentStore) return null;
+
+  const loadInventoryVariants = async (productId: string) => {
+    setInventoryProductId(productId);
+    if (!productId) {
+      setInventoryVariants([]);
+      return;
+    }
+    const result = await listProductVariants(currentStore.id, productId);
+    setInventoryVariants(result);
+  };
+
+  const handleCreateVariant = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!inventoryProductId || !variantTitle.trim()) return;
+    setVariantSaving(true);
+    const saved = await createProductVariant(currentStore.id, inventoryProductId, {
+      title: variantTitle.trim(),
+      sku: variantSku.trim() || undefined,
+      options: {
+        ...(variantColor.trim() ? { color: variantColor.trim() } : {}),
+        ...(variantSize.trim() ? { size: variantSize.trim() } : {})
+      },
+      ...(variantPrice.trim() ? { price: Number(variantPrice) } : {}),
+      stock: Math.max(0, Math.floor(Number(variantStock) || 0))
+    });
+    if (saved) {
+      setVariantTitle('');
+      setVariantSku('');
+      setVariantColor('');
+      setVariantSize('');
+      setVariantPrice('');
+      setVariantStock('0');
+      await loadInventoryVariants(inventoryProductId);
+    }
+    setVariantSaving(false);
+  };
+
+  const adjustVariantStock = async (variant: StoreProductVariant, delta: number) => {
+    const saved = await adjustProductInventory(currentStore.id, inventoryProductId, {
+      variantId: variant.id,
+      quantityDelta: delta,
+      reason: delta > 0 ? 'restock' : 'manual_adjustment'
+    });
+    if (saved) await loadInventoryVariants(inventoryProductId);
+  };
 
   const moveSection = (index: number, direction: 'up' | 'down') => {
     const newArr = [...sections];
@@ -221,7 +279,7 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
         {/* Studio Control Panel (4 cols) */}
         <div className="lg:col-span-4 bg-white dark:bg-[#071D2B] border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4 h-fit">
           {/* Studio Tabs */}
-          <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-[11px] font-black">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-slate-100 dark:bg-slate-900 p-1 rounded-xl text-[11px] font-black">
             <button
               onClick={() => setStudioTab('sections')}
               className={`py-2 rounded-lg cursor-pointer ${
@@ -262,7 +320,81 @@ export const StoreBuilderView: React.FC<StoreBuilderViewProps> = ({ onOpenStoreM
             >
               {isAr ? 'النسخ' : 'Versions'}
             </button>
+            <button
+              onClick={() => {
+                setStudioTab('inventory');
+                const firstProductId = inventoryProductId || storeProducts[0]?.id || '';
+                if (firstProductId) void loadInventoryVariants(firstProductId);
+              }}
+              className={`py-2 rounded-lg cursor-pointer ${
+                studioTab === 'inventory' ? 'bg-[#004457] text-white' : 'text-slate-600 dark:text-slate-400'
+              }`}
+            >
+              {isAr ? 'المخزون' : 'Inventory'}
+            </button>
           </div>
+
+          {studioTab === 'inventory' && (
+            <div className="space-y-4">
+              <select
+                value={inventoryProductId}
+                onChange={event => void loadInventoryVariants(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm"
+              >
+                <option value="">{isAr ? 'اختر المنتج' : 'Select product'}</option>
+                {storeProducts.map(product => (
+                  <option key={product.id} value={product.id}>
+                    {isAr ? product.nameAr || product.titleAr : product.nameEn || product.titleEn}
+                  </option>
+                ))}
+              </select>
+
+              {inventoryProductId && (
+                <>
+                  <div className="space-y-2">
+                    {inventoryVariants.map(variant => {
+                      let options: Record<string, string> = {};
+                      try { options = JSON.parse(variant.options_json || '{}'); } catch { /* invalid legacy data */ }
+                      return (
+                        <div key={variant.id} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="font-bold text-sm">{variant.title}</div>
+                            <div className="text-[10px] text-slate-500 font-mono">{variant.sku}</div>
+                            <div className="text-[10px] text-slate-500">{Object.values(options).join(' · ')}</div>
+                            <div className="text-xs font-black mt-1">{variant.retail_price.toFixed(2)} · {isAr ? 'المخزون' : 'Stock'}: {variant.stock_quantity}</div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button type="button" onClick={() => void adjustVariantStock(variant, -1)} disabled={variant.stock_quantity < 1} className="w-8 h-8 rounded-lg border disabled:opacity-30">−</button>
+                            <button type="button" onClick={() => void adjustVariantStock(variant, 1)} className="w-8 h-8 rounded-lg bg-[#004457] text-white">+</button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {inventoryVariants.length === 0 && (
+                      <div className="rounded-xl bg-slate-50 dark:bg-slate-900 p-4 text-center text-xs text-slate-500">
+                        {isAr ? 'لا توجد متغيرات لهذا المنتج بعد' : 'No variants yet'}
+                      </div>
+                    )}
+                  </div>
+
+                  <form onSubmit={handleCreateVariant} className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2">
+                    <div className="font-black text-sm">{isAr ? 'إضافة متغير' : 'Add variant'}</div>
+                    <input required value={variantTitle} onChange={e => setVariantTitle(e.target.value)} placeholder={isAr ? 'اسم المتغير' : 'Variant name'} className="w-full rounded-lg border bg-transparent px-3 py-2 text-sm" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={variantColor} onChange={e => setVariantColor(e.target.value)} placeholder={isAr ? 'اللون' : 'Color'} className="min-w-0 rounded-lg border bg-transparent px-2 py-2 text-xs" />
+                      <input value={variantSize} onChange={e => setVariantSize(e.target.value)} placeholder={isAr ? 'المقاس' : 'Size'} className="min-w-0 rounded-lg border bg-transparent px-2 py-2 text-xs" />
+                      <input value={variantSku} onChange={e => setVariantSku(e.target.value)} placeholder="SKU" className="min-w-0 rounded-lg border bg-transparent px-2 py-2 text-xs" />
+                      <input type="number" min="0" step="0.01" value={variantPrice} onChange={e => setVariantPrice(e.target.value)} placeholder={isAr ? 'السعر' : 'Price'} className="min-w-0 rounded-lg border bg-transparent px-2 py-2 text-xs" />
+                      <input type="number" min="0" step="1" value={variantStock} onChange={e => setVariantStock(e.target.value)} placeholder={isAr ? 'الكمية' : 'Stock'} className="min-w-0 rounded-lg border bg-transparent px-2 py-2 text-xs col-span-2" />
+                    </div>
+                    <button disabled={variantSaving} className="w-full rounded-lg bg-[#004457] text-white py-2 text-xs font-bold disabled:opacity-50">
+                      {variantSaving ? '…' : isAr ? 'حفظ المتغير' : 'Save variant'}
+                    </button>
+                  </form>
+                </>
+              )}
+            </div>
+          )}
 
           {/* TAB 1: SECTIONS REORDER & VISIBILITY */}
           {studioTab === 'sections' && (
