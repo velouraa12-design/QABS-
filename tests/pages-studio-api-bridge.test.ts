@@ -65,6 +65,36 @@ describe('QABS Pages preview Studio API bridge', () => {
   });
 
 
+
+  it('rejects state-changing requests with a missing Origin header', async () => {
+    let called = false;
+    const env = {
+      QABS_STUDIO_API: {
+        fetch: async () => {
+          called = true;
+          return Response.json({ ok: true });
+        }
+      }
+    };
+    const request = new Request('https://preview.example.test/studio/api/project-workspaces', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+
+    const response = await onRequest({ request, env });
+    assert.equal(response.status, 403);
+    assert.equal(called, false);
+    assert.deepEqual(await response.json(), { error: 'origin_rejected' });
+  });
+
+  it('fails closed when the isolated API service binding is unavailable', async () => {
+    const request = new Request('https://preview.example.test/studio/api/me');
+    const response = await onRequest({ request, env: {} });
+    assert.equal(response.status, 503);
+    assert.deepEqual(await response.json(), { error: 'preview_api_binding_missing' });
+  });
+
   it('binds the staging API in both isolated Pages project environments', () => {
     const config = JSON.parse(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8')) as {
       env?: {
