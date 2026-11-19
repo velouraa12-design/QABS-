@@ -710,40 +710,197 @@ export function registerStoreRoutes(
       return;
     }
     const customerName = sanitizeText(req.body?.customerName, 160);
-    const customerEmail = sanitizeText(req.body?.customerEmail, 160);
-    const totalAmount = Number(req.body?.total ?? 0);
-    if (!customerName || !customerEmail || !Number.isFinite(totalAmount) || totalAmount < 0) {
-      res.status(400).json({ error: 'Customer name, email, and non-negative total are required.', code: 'INVALID_ORDER' });
+    const customerEmail = sanitizeText(req.body?.customerEmail, 160).toLowerCase();
+    const customerCountry = sanitizeText(req.body?.customerCountry || 'SA', 32);
+    const suppliedItems = req.body?.items;
+    const hasLineItems = suppliedItems !== undefined;
+    if (!customerName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail) ||
+        (hasLineItems && (!Array.isArray(suppliedItems) || suppliedItems.length < 1 || suppliedItems.length > 100))) {
+      res.status(400).json({ error: 'Valid customer details and up to 100 order items are required.', code: 'INVALID_ORDER' });
       return;
     }
 
+    const orderLines: Array<{
+      productId: string; variantId: string | null; title: string; sku: string;
+      quantity: number; unitPrice: number; lineTotal: number;
+    }> = [];
+    let totalAmount = 0;
+    if (hasLineItems) {
+      for (const item of suppliedItems as Array<Record<string, unknown>>) {
+        const productId = sanitizeId(item?.productId);
+        const variantId = item?.variantId ? sanitizeId(item.variantId) : null;
+        const quantity = Number(item?.quantity);
+        if (!productId || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 100000) {
+          res.status(400).json({ error: 'Each order line needs a valid product and positive integer quantity.', code: 'INVALID_ORDER_ITEM' });
+          return;
+        }
+        const product = db.prepare(
+          'SELECT * FROM store_products WHERE id = ? AND store_id = ? AND tenant_id = ?'
+        ).get(productId, storeId, String(check.store.tenant_id)) as Record<string, unknown> | undefined;
+        if (!product || String(product.status) === 'archived') {
+          res.status(400).json({ error: 'An order product is unavailable in this store.', code: 'ORDER_PRODUCT_UNAVAILABLE' });
+          return;
+        }
+        let unitPrice = Number(product.retail_price);
+        let sku = String(product.sku);
+        let title = String(product.title_ar);
+        let stock = Number(product.stock_quantity);
+        if (variantId) {
+          const variant = db.prepare(
+            'SELECT * FROM store_product_variants WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ? AND status = ?'
+          ).get(variantId, productId, storeId, String(check.store.tenant_id), 'active') as Record<string, unknown> | undefined;
+          if (!variant) {
+            res.status(400).json({ error: 'An order variant is unavailable in this store.', code: 'ORDER_VARIANT_UNAVAILABLE' });
+            return;
+          }
+          unitPrice = Number(variant.retail_price);
+          sku = String(variant.sku);
+          title = `${title} — ${String(variant.title)}`;
+          stock = Number(variant.stock_quantity);
+        } else {
+          const variants = Number((db.prepare(
+            'SELECT COUNT(*) AS count FROM store_product_variants WHERE product_id = ? AND store_id = ?'
+          ).get(productId, storeId) as { count: number }).count);
+          if (variants > 0) {
+            res.status(400).json({ error: 'Choose a variant for this product.', code: 'ORDER_VARIANT_REQUIRED' });
+            return;
+          }
+        }
+        if (stock < quantity) {
+          res.status(409).json({ error: 'Insufficient stock for an order item.', code: 'INSUFFICIENT_STOCK' });
+          return;
+        }
+        const lineTotal = Math.round(unitPrice * quantity * 100) / 100;
+        totalAmount = Math.round((totalAmount + lineTotal) * 100) / 100;
+        orderLines.push({ productId, variantId, title, sku, quantity, unitPrice, lineTotal });
+      }
+    } else {
+      totalAmount = Number(req.body?.total ?? 0);
+      if (!Number.isFinite(totalAmount) || totalAmount < 0) {
+        res.status(400).json({ error: 'A non-negative manual order total is required.', code: 'INVALID_ORDER' });
+        return;
+      }
+    }
+
     const orderId = `sord_${generateToken(6)}`;
-    const orderNumber = `ORD-${Math.floor(10000 + Math.random() * 89999)}`;
-    db.prepare(
-      `INSERT INTO store_orders (
-        id, store_id, tenant_id, order_number, customer_name, customer_email, customer_country,
-        items_count, total_amount, currency, payment_gateway, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'processing')`
-    ).run(
-      orderId,
-      storeId,
-      String(check.store.tenant_id),
-      orderNumber,
-      customerName,
-      customerEmail,
-      sanitizeText(req.body?.customerCountry || 'SA', 32),
-      Math.max(1, Math.floor(Number(req.body?.itemsCount ?? 1))),
-      totalAmount,
-      String(check.store.currency)
-    );
+    const orderNumber = `ORD-${generateToken(5).toUpperCase()}`;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      // Re-check and reserve stock inside the write transaction to avoid overselling.
+      for (const line of orderLines) {
+        if (line.variantId) {
+          const changed = db.prepare(
+            `UPDATE store_product_variants SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND product_id = ? AND store_id = ? AND tenant_id = ? AND stock_quantity >= ?`
+          ).run(line.quantity, line.variantId, line.productId, storeId, String(check.store.tenant_id), line.quantity);
+          if (Number(changed.changes) !== 1) throw new Error('ORDER_STOCK_CONFLICT');
+          const balance = Number((db.prepare('SELECT stock_quantity FROM store_product_variants WHERE id = ?')
+            .get(line.variantId) as { stock_quantity: number }).stock_quantity);
+          db.prepare(
+            `UPDATE store_products SET stock_quantity = (
+              SELECT COALESCE(SUM(stock_quantity), 0) FROM store_product_variants
+              WHERE product_id = ? AND store_id = ?
+            ), updated_at = CURRENT_TIMESTAMP WHERE id = ? AND store_id = ?`
+          ).run(line.productId, storeId, line.productId, storeId);
+          db.prepare(
+            `INSERT INTO store_inventory_movements (
+              id, store_id, tenant_id, product_id, variant_id, actor_user_id,
+              quantity_delta, balance_after, reason, reference_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'order_reserved', ?)`
+          ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), line.productId,
+            line.variantId, actor.userId, -line.quantity, balance, orderId);
+        } else {
+          const changed = db.prepare(
+            `UPDATE store_products SET stock_quantity = stock_quantity - ?, updated_at = CURRENT_TIMESTAMP
+             WHERE id = ? AND store_id = ? AND tenant_id = ? AND stock_quantity >= ?`
+          ).run(line.quantity, line.productId, storeId, String(check.store.tenant_id), line.quantity);
+          if (Number(changed.changes) !== 1) throw new Error('ORDER_STOCK_CONFLICT');
+          const balance = Number((db.prepare('SELECT stock_quantity FROM store_products WHERE id = ?')
+            .get(line.productId) as { stock_quantity: number }).stock_quantity);
+          db.prepare(
+            `INSERT INTO store_inventory_movements (
+              id, store_id, tenant_id, product_id, actor_user_id,
+              quantity_delta, balance_after, reason, reference_id
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'order_reserved', ?)`
+          ).run(`mov_${generateToken(8)}`, storeId, String(check.store.tenant_id), line.productId,
+            actor.userId, -line.quantity, balance, orderId);
+        }
+      }
 
-    const custId = `scust_${generateToken(6)}`;
-    db.prepare(
-      `INSERT INTO store_customers (id, store_id, tenant_id, name, email, country, orders_count, total_spent, last_order_date)
-       VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
-    ).run(custId, storeId, String(check.store.tenant_id), customerName, customerEmail, sanitizeText(req.body?.customerCountry || 'SA', 32), totalAmount, new Date().toISOString().split('T')[0]);
+      db.prepare(
+        `INSERT INTO store_orders (
+          id, store_id, tenant_id, order_number, customer_name, customer_email, customer_country,
+          items_count, total_amount, currency, payment_gateway, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 'processing')`
+      ).run(orderId, storeId, String(check.store.tenant_id), orderNumber, customerName, customerEmail,
+        customerCountry, orderLines.length ? orderLines.reduce((sum, line) => sum + line.quantity, 0) :
+          Math.max(1, Math.floor(Number(req.body?.itemsCount ?? 1))),
+        totalAmount, String(check.store.currency));
 
-    res.status(201).json({ order: db.prepare('SELECT * FROM store_orders WHERE id = ?').get(orderId) });
+      for (const line of orderLines) {
+        db.prepare(
+          `INSERT INTO store_order_items (
+            id, store_id, tenant_id, order_id, product_id, variant_id,
+            product_title, sku, quantity, unit_price, line_total
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        ).run(`soi_${generateToken(8)}`, storeId, String(check.store.tenant_id), orderId,
+          line.productId, line.variantId, line.title, line.sku, line.quantity, line.unitPrice, line.lineTotal);
+      }
+
+      const existingCustomer = db.prepare(
+        'SELECT id FROM store_customers WHERE store_id = ? AND tenant_id = ? AND lower(email) = ? ORDER BY rowid LIMIT 1'
+      ).get(storeId, String(check.store.tenant_id), customerEmail) as { id: string } | undefined;
+      if (existingCustomer) {
+        db.prepare(
+          `UPDATE store_customers SET name = ?, country = ?, orders_count = orders_count + 1,
+            total_spent = total_spent + ?, last_order_date = ? WHERE id = ? AND store_id = ? AND tenant_id = ?`
+        ).run(customerName, customerCountry, totalAmount, new Date().toISOString().split('T')[0],
+          existingCustomer.id, storeId, String(check.store.tenant_id));
+      } else {
+        db.prepare(
+          `INSERT INTO store_customers (id, store_id, tenant_id, name, email, country, orders_count, total_spent, last_order_date)
+           VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+        ).run(`scust_${generateToken(6)}`, storeId, String(check.store.tenant_id), customerName,
+          customerEmail, customerCountry, totalAmount, new Date().toISOString().split('T')[0]);
+      }
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      if (error instanceof Error && error.message === 'ORDER_STOCK_CONFLICT') {
+        res.status(409).json({ error: 'Stock changed while creating this order. Refresh and try again.', code: 'INSUFFICIENT_STOCK' });
+        return;
+      }
+      throw error;
+    }
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `إنشاء طلب متجر (${orderNumber})`,
+      `Created store order (${orderNumber})`, orderId);
+    const order = db.prepare('SELECT * FROM store_orders WHERE id = ? AND store_id = ? AND tenant_id = ?')
+      .get(orderId, storeId, String(check.store.tenant_id));
+    const items = db.prepare('SELECT * FROM store_order_items WHERE order_id = ? AND store_id = ? ORDER BY rowid')
+      .all(orderId, storeId);
+    res.status(201).json({ order, items });
+  });
+
+  router.get('/api/stores/:storeId/orders/:orderId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const storeId = sanitizeId(req.params.storeId);
+    const orderId = sanitizeId(req.params.orderId);
+    const check = getOwnedStore(db, storeId, req.actor!);
+    if (!check.ok) {
+      res.status(check.status).json({ error: check.message, code: check.code });
+      return;
+    }
+    const order = db.prepare(
+      'SELECT * FROM store_orders WHERE id = ? AND store_id = ? AND tenant_id = ?'
+    ).get(orderId, storeId, String(check.store.tenant_id));
+    if (!order) {
+      res.status(404).json({ error: 'Store order not found.', code: 'ORDER_NOT_FOUND' });
+      return;
+    }
+    const items = db.prepare(
+      'SELECT * FROM store_order_items WHERE order_id = ? AND store_id = ? AND tenant_id = ? ORDER BY rowid'
+    ).all(orderId, storeId, String(check.store.tenant_id));
+    res.json({ order, items });
   });
 
   router.patch('/api/stores/:storeId/orders/:orderId', requireAuth, (req: AuthedRequest, res: Response) => {
