@@ -286,13 +286,13 @@ export const StudioWorkspaceView: React.FC = () => {
     return (
       <section dir="rtl" className="min-h-[72vh] bg-[#071A2A] px-4 py-12 text-white">
         <div className="mx-auto max-w-md rounded-3xl border border-[#D5B46B]/30 bg-[#0D2639] p-7 shadow-2xl">
-          <div className="mb-6 text-center"><div className="text-sm font-bold tracking-[.25em] text-[#D5B46B]">QABS STUDIO</div><h1 className="mt-3 text-2xl font-black">مساحة أعمالك في قبس</h1><p className="mt-2 text-sm text-slate-300">سجّل الدخول لإدارة مساحات العمل وطلبات الخدمات ومسودات المتاجر.</p></div>
+          <div className="mb-6 text-center"><h1 className="text-2xl font-black">مساحة أعمالك في قبس</h1></div>
           {recoveryRoute && <p role="status" className="mb-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">استعادة كلمة المرور غير مفعّلة في بيئة المعاينة. ارجع إلى تسجيل الدخول أو تواصل مع الدعم.</p>}
           {verificationRoute && <p role="status" className="mb-4 rounded-xl border border-amber-300/20 bg-amber-300/10 p-3 text-xs leading-6 text-amber-100">التحقق من البريد غير مفعّل حالياً؛ لا يمكن إكمال توثيق الحساب من هذه البيئة.</p>}
           <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#071A2A] p-1 text-sm"><button onClick={() => setAuthMode('login')} className={`rounded-lg py-2 font-bold ${authMode === 'login' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>تسجيل الدخول</button><button onClick={() => setAuthMode('register')} disabled={!registrationReady} className={`rounded-lg py-2 font-bold disabled:opacity-40 ${authMode === 'register' ? 'bg-[#D5B46B] text-[#14243E]' : 'text-slate-300'}`}>إنشاء حساب</button></div>
           <form onSubmit={handleAuth} className="space-y-4">
             <label className="block text-sm font-bold">البريد الإلكتروني<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /></label>
-            <label className="block text-sm font-bold">كلمة المرور<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={12} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /><span className="mt-1 block text-xs text-slate-400">12 حرفاً على الأقل.</span></label>
+            <label className="block text-sm font-bold">كلمة المرور<input type="password" autoComplete={authMode === 'login' ? 'current-password' : 'new-password'} minLength={12} maxLength={128} required value={password} onChange={e => setPassword(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 text-left text-white outline-none focus:border-[#D5B46B]" /></label>
             {error && <p role="alert" className="rounded-xl border border-red-400/30 bg-red-500/10 p-3 text-sm text-red-200">{error}</p>}
             <button disabled={busy || (authMode === 'register' && !registrationReady)} className="w-full rounded-xl bg-[#D5B46B] px-5 py-3 font-black text-[#14243E] disabled:opacity-50">{busy ? 'جارٍ التنفيذ…' : authMode === 'login' ? 'تسجيل الدخول' : 'إنشاء الحساب'}</button>
           </form>
@@ -307,7 +307,7 @@ export const StudioWorkspaceView: React.FC = () => {
     <section dir="rtl" className="min-h-[75vh] bg-[#071A2A] px-4 py-8 text-white sm:px-6">
       <div className="mx-auto max-w-7xl">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#D5B46B]/25 bg-[#0D2639] p-5">
-          <div><div className="text-xs font-bold tracking-[.2em] text-[#D5B46B]">QABS STUDIO · PREVIEW</div><h1 className="mt-2 text-2xl font-black">مرحباً بك في مساحة قبس</h1><p className="mt-1 text-sm text-slate-300">{user.email} · {user.emailVerified ? 'البريد موثّق' : 'البريد غير موثّق'}</p></div>
+          <div><h1 className="text-2xl font-black">مرحباً بك في مساحة قبس</h1><p className="mt-1 text-sm text-slate-300">{user.email} · {user.emailVerified ? 'البريد موثّق' : 'البريد غير موثّق'}</p></div>
           <button onClick={handleLogout} disabled={busy} className="rounded-xl border border-[#D5B46B]/50 px-4 py-2 text-sm font-bold text-[#E8CD91] disabled:opacity-50">تسجيل الخروج</button>
         </header>
 
@@ -329,7 +329,7 @@ export const StudioWorkspaceView: React.FC = () => {
 
           <article className="rounded-2xl border border-[#D5B46B]/30 bg-[#0D2639] p-5 lg:col-span-2">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><h2 className="text-lg font-black text-[#D5B46B]">متاجري ومساحات البيع</h2><p className="mt-1 text-xs text-slate-400">إنشاء متجر مستقل كمسودة إعداد داخل مساحة العمل المختارة.</p></div>
+              <div><h2 className="text-lg font-black text-[#D5B46B]">متاجري ومساحات البيع</h2></div>
               {workspaces.length > 1 && <select aria-label="مساحة العمل" value={selectedWorkspaceId} onChange={e => void changeWorkspace(e.target.value)} className="rounded-xl border border-white/10 bg-[#071A2A] px-3 py-2 text-sm">{workspaces.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select>}
             </div>
             {stores.length ? <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{stores.map(store => <div key={store.id} className="rounded-xl border border-white/10 bg-[#071A2A] p-4"><div className="font-bold">{store.name}</div><div className="mt-2 flex flex-wrap gap-2 text-xs"><span className="rounded-full bg-amber-300/10 px-2 py-1 text-amber-200">{store.lifecycle === 'configured_draft' ? 'إعداد مبدئي مكتمل' : 'مسودة إعداد'}</span><span className="rounded-full bg-white/5 px-2 py-1 text-slate-300">{store.status === 'active' ? 'نشط داخل مساحة العمل' : 'مؤرشف'}</span></div><p className="mt-2 text-xs text-slate-400">{store.store_setup?.country || 'لم يحدد البلد'} · {store.store_setup?.currency || 'لم تحدد العملة'}</p><p className="mt-2 text-[11px] text-slate-500">غير منشور · لا نطاق ولا تحصيل مدفوعات</p></div>)}</div> : <p className="mt-4 rounded-xl bg-[#071A2A] p-4 text-sm text-slate-300">لا توجد متاجر في مساحة العمل هذه بعد.</p>}
@@ -343,14 +343,14 @@ export const StudioWorkspaceView: React.FC = () => {
               <select value={storeSetup.time_zone} onChange={e => setStoreSetup(current => ({ ...current, time_zone: e.target.value }))} className="rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3 md:col-span-2"><option value="UTC">UTC</option>{storeOptions.time_zones.filter(zone => zone !== 'UTC').slice(0, 200).map(zone => <option key={zone} value={zone}>{zone}</option>)}</select>
               <button disabled={busy || !selectedWorkspaceId || !availableStoreTemplates.length || !storeSetup.country} className="rounded-xl bg-[#D5B46B] px-4 py-3 font-black text-[#14243E] disabled:opacity-50">إنشاء متجر كمسودة</button>
             </form>
-            <p className="mt-3 text-xs leading-6 text-slate-400">هذا ينشئ سجل متجر وإعداداته الأولية فقط. النشر، وربط التجارة الفعلية، والنطاقات، والمخزون، والطلبات، والدفع غير مفعّلة في هذه المعاينة.</p>
+            <p className="mt-3 text-xs text-slate-400">مسودة فقط · النشر والنطاق والدفع غير متاحة.</p>
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
             <h2 className="text-lg font-black text-[#D5B46B]">مسودات المتاجر</h2>
             {drafts.length ? <div className="mt-4 space-y-2">{drafts.map(draft => <div key={draft.id} className="flex items-center justify-between gap-3 rounded-xl bg-[#071A2A] p-3"><div><div className="font-bold">{draft.name}</div><div className="text-xs text-slate-400">{templateLabel.get(draft.template_key) || draft.template_key}</div></div><span className="rounded-full bg-amber-400/10 px-3 py-1 text-xs text-amber-200">مسودة</span></div>)}</div> : <p className="mt-3 text-sm text-slate-300">لا توجد مسودات متاجر حتى الآن.</p>}
             <form onSubmit={createDraft} className="mt-4 space-y-3"><input required maxLength={120} value={draftName} onChange={e => setDraftName(e.target.value)} aria-label="اسم المتجر" className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3" placeholder="اسم المتجر الجديد" /><select value={templateKey} onChange={e => setTemplateKey(e.target.value)} required className="w-full rounded-xl border border-white/10 bg-[#071A2A] px-4 py-3">{templates.map(template => <option key={template.key} value={template.key}>{template.ar || template.en}</option>)}</select><button disabled={busy || !templates.length} className="rounded-xl bg-[#D5B46B] px-4 py-3 text-sm font-black text-[#14243E] disabled:opacity-50">إنشاء مسودة متجر</button></form>
-            <p className="mt-3 text-xs text-slate-400">المتجر يُنشأ كمسودة فقط؛ لا نشر ولا نطاق ولا تحصيل مدفوعات.</p>
+            
           </article>
 
           <article className="rounded-2xl border border-white/10 bg-[#0D2639] p-5">
