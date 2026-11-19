@@ -69,4 +69,52 @@ describe('QABS commerce API client', () => {
       globalThis.fetch = originalFetch;
     }
   });
+  it('exposes typed order list, detail, and catalogue-priced creation contracts', async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: Array<{ url: string; method: string; headers: Headers; body: unknown }> = [];
+    globalThis.fetch = (async (input: RequestInfo | URL, init: RequestInit = {}) => {
+      calls.push({
+        url: String(input),
+        method: String(init.method || 'GET'),
+        headers: new Headers(init.headers),
+        body: init.body
+      });
+      const payload = calls.length === 1
+        ? { orders: [] }
+        : calls.length === 2
+          ? { order: { id: 'order_1', total_amount: 70 }, items: [{ id: 'item_1', quantity: 2, unit_price: 35 }] }
+          : { order: { id: 'order_2', total_amount: 35 }, items: [{ id: 'item_2', quantity: 1, unit_price: 35 }] };
+      return Response.json(payload);
+    }) as typeof fetch;
+
+    try {
+      setCsrfToken('csrf-order-test');
+      assert.deepEqual((await qabsApi.listStoreOrders('store-1')).orders, []);
+      const detail = await qabsApi.getStoreOrder('store-1', 'order-1');
+      assert.equal(detail.items[0].line_total, undefined);
+      assert.equal(detail.items[0].quantity, 2);
+      const created = await qabsApi.createOrder('store-1', {
+        customerName: 'Buyer',
+        customerEmail: 'buyer@example.test',
+        items: [{ productId: 'product-1', quantity: 1 }]
+      });
+      assert.equal(created.items[0].unit_price, 35);
+
+      assert.equal(calls[0].url, '/api/stores/store-1/orders');
+      assert.equal(calls[0].method, 'GET');
+      assert.equal(calls[1].url, '/api/stores/store-1/orders/order-1');
+      assert.equal(calls[1].method, 'GET');
+      assert.equal(calls[2].method, 'POST');
+      assert.equal(calls[2].headers.get('X-CSRF-Token'), 'csrf-order-test');
+      assert.deepEqual(JSON.parse(String(calls[2].body)), {
+        customerName: 'Buyer',
+        customerEmail: 'buyer@example.test',
+        items: [{ productId: 'product-1', quantity: 1 }]
+      });
+    } finally {
+      setCsrfToken(null);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
 });
