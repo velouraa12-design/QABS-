@@ -470,7 +470,15 @@ export function registerStoreRoutes(
     const compareAtRaw = req.body?.compareAtPrice;
     const compareAt = compareAtRaw === undefined || compareAtRaw === null || compareAtRaw === ''
       ? null : Number(compareAtRaw);
-    const stock = req.body?.stock === undefined ? 0 : Number(req.body.stock);
+    const existingVariantCount = Number((db.prepare(
+      'SELECT COUNT(*) AS count FROM store_product_variants WHERE product_id = ? AND store_id = ?'
+    ).get(productId, storeId) as { count: number }).count);
+    const parentStock = Number(product.stock_quantity);
+    // When converting an existing simple product to variants, carry its current
+    // stock into the first variant unless an exact reconciliation is supplied.
+    const stock = req.body?.stock === undefined
+      ? (existingVariantCount === 0 ? parentStock : 0)
+      : Number(req.body.stock);
     const status = ['active', 'draft', 'archived'].includes(req.body?.status) ? req.body.status : 'active';
 
     if (!title || !sku || !options || typeof options !== 'object' || Array.isArray(options) ||
@@ -478,6 +486,13 @@ export function registerStoreRoutes(
         (compareAt !== null && (!Number.isFinite(compareAt) || compareAt < 0)) ||
         !Number.isSafeInteger(stock) || stock < 0) {
       res.status(400).json({ error: 'Valid variant title, options, price and non-negative integer stock are required.', code: 'INVALID_VARIANT' });
+      return;
+    }
+    if (existingVariantCount === 0 && parentStock > 0 && req.body?.stock !== undefined && stock !== parentStock) {
+      res.status(409).json({
+        error: 'Reconcile the existing product stock into its first variant to avoid losing inventory.',
+        code: 'INVENTORY_RECONCILIATION_REQUIRED'
+      });
       return;
     }
     const duplicate = db.prepare('SELECT id FROM store_product_variants WHERE store_id = ? AND sku = ?')
