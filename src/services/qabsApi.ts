@@ -8,6 +8,19 @@
  */
 export type ApiError = Error & { status?: number; code?: string };
 
+export interface StoreProductVariant {
+  id: string;
+  product_id: string;
+  store_id: string;
+  title: string;
+  sku: string;
+  options_json: string;
+  retail_price: number;
+  compare_at_price: number | null;
+  stock_quantity: number;
+  status: 'active' | 'draft' | 'archived';
+}
+
 const API_BASE = (import.meta.env.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
 
 let currentCsrfToken: string | null = null;
@@ -353,6 +366,45 @@ export const qabsApi = {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(input)
       }
+    ),
+  listProductVariants: (storeId: string, productId: string) =>
+    apiRequest<{ variants: StoreProductVariant[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants`
+    ),
+  createProductVariant: (storeId: string, productId: string, input: {
+    title: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    compareAtPrice?: number | null;
+    stock?: number;
+    status?: 'active' | 'draft' | 'archived';
+  }) =>
+    apiRequest<{ variant: StoreProductVariant }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
+    ),
+  updateProductVariant: (storeId: string, productId: string, variantId: string, input: {
+    title?: string;
+    sku?: string;
+    options?: Record<string, string>;
+    price?: number;
+    compareAtPrice?: number | null;
+    status?: 'active' | 'draft' | 'archived';
+  }) =>
+    apiRequest<{ variant: StoreProductVariant }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
+    ),
+  adjustProductInventory: (storeId: string, productId: string, input: {
+    quantityDelta: number;
+    reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+    variantId?: string;
+    referenceId?: string;
+  }) =>
+    apiRequest<{ productId: string; variantId: string | null; stockQuantity: number; movements: Record<string, unknown>[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/inventory-adjustments`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
     ),
   deleteProduct: (storeId: string, productId: string) =>
     apiRequest<{ ok: boolean }>(
