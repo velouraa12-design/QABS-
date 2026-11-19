@@ -81,6 +81,34 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return payload as T;
 }
 
+export interface StoreOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  variant_id: string | null;
+  product_title: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface StoreOrderSnapshot {
+  id: string;
+  store_id: string;
+  tenant_id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  items_count: number;
+  total_amount: number;
+  currency: string;
+  payment_gateway: string;
+  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  tracking_number: string | null;
+  created_at: string;
+}
+
 export interface ApiUserSnapshot {
   id: string;
   tenantId: string;
@@ -412,14 +440,20 @@ export const qabsApi = {
       `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
       { method: 'DELETE' }
     ),
+  listStoreOrders: (storeId: string) =>
+    apiRequest<{ orders: StoreOrderSnapshot[] }>(`/api/stores/${encodeURIComponent(storeId)}/orders`),
+  getStoreOrder: (storeId: string, orderId: string) =>
+    apiRequest<{ order: StoreOrderSnapshot; items: StoreOrderItem[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/orders/${encodeURIComponent(orderId)}`
+    ),
   createOrder: (storeId: string, input: Record<string, unknown>) =>
-    apiRequest<{ order: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/orders`, {
+    apiRequest<{ order: StoreOrderSnapshot; items: StoreOrderItem[] }>(`/api/stores/${encodeURIComponent(storeId)}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
     }),
   updateOrderStatus: (storeId: string, orderId: string, input: { status: string; trackingNumber?: string }) =>
-    apiRequest<{ order: Record<string, unknown> }>(
+    apiRequest<{ order: StoreOrderSnapshot }>(
       `/api/stores/${encodeURIComponent(storeId)}/orders/${encodeURIComponent(orderId)}`,
       {
         method: 'PATCH',
