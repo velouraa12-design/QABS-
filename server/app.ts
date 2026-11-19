@@ -174,6 +174,20 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       });
       return;
     }
+    // Registration may create a short-lived session so the user can verify
+    // their address, but that session must not grant access to tenant data.
+    const verificationOnlyPaths = new Set([
+      '/api/auth/me',
+      '/api/auth/resend-verification',
+      '/api/auth/logout'
+    ]);
+    if (!req.actor.emailVerified && !verificationOnlyPaths.has(req.path)) {
+      res.status(403).json({
+        error: 'Please verify your email address before accessing workspace data.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
+      return;
+    }
     next();
   };
 
