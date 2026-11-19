@@ -332,9 +332,28 @@ export function registerStoreRoutes(
     const sku = sanitizeText(req.body?.sku || `SKU-${generateToken(3).toUpperCase()}`, 64);
     const price = Number(req.body?.price ?? req.body?.retailPrice ?? 0);
     const cost = Number(req.body?.cost ?? req.body?.costPrice ?? 0);
-    const stock = Math.max(0, Math.floor(Number(req.body?.stock ?? req.body?.stockQuantity ?? 0)));
-    if (!titleAr || !Number.isFinite(price) || price < 0) {
-      res.status(400).json({ error: 'Valid product title and non-negative price required.', code: 'INVALID_PRODUCT' });
+    const rawStock = Number(req.body?.stock ?? req.body?.stockQuantity ?? 0);
+    const stock = Math.floor(rawStock);
+    const categoryId = req.body?.categoryId ? sanitizeId(req.body.categoryId) : null;
+    if (!titleAr || !sku || !Number.isFinite(price) || price < 0 ||
+        !Number.isFinite(cost) || cost < 0 || !Number.isSafeInteger(stock) || stock < 0) {
+      res.status(400).json({ error: 'Valid product title, price, cost and non-negative integer stock are required.', code: 'INVALID_PRODUCT' });
+      return;
+    }
+    if (categoryId) {
+      const category = db.prepare(
+        'SELECT id FROM store_categories WHERE id = ? AND store_id = ? AND tenant_id = ?'
+      ).get(categoryId, storeId, String(check.store.tenant_id));
+      if (!category) {
+        res.status(400).json({ error: 'Category must belong to this store.', code: 'INVALID_PRODUCT_CATEGORY' });
+        return;
+      }
+    }
+    const duplicateSku = db.prepare(
+      'SELECT id FROM store_products WHERE store_id = ? AND tenant_id = ? AND sku = ?'
+    ).get(storeId, String(check.store.tenant_id), sku);
+    if (duplicateSku) {
+      res.status(409).json({ error: 'Product SKU already exists in this store.', code: 'PRODUCT_SKU_TAKEN' });
       return;
     }
 
@@ -348,7 +367,7 @@ export function registerStoreRoutes(
       prodId,
       storeId,
       String(check.store.tenant_id),
-      req.body?.categoryId ? sanitizeId(req.body.categoryId) : null,
+      categoryId,
       titleAr,
       titleEn,
       sku,
@@ -396,10 +415,18 @@ export function registerStoreRoutes(
       res.status(404).json({ error: 'Product not found in this store.', code: 'PRODUCT_NOT_FOUND' });
       return;
     }
-    const price = req.body?.price !== undefined ? Math.max(0, Number(req.body.price)) : Number(existing.retail_price);
-    const stock = req.body?.stock !== undefined ? Math.max(0, Math.floor(Number(req.body.stock))) : Number(existing.stock_quantity);
+    const price = req.body?.price !== undefined ? Number(req.body.price) : Number(existing.retail_price);
+    const rawStock = req.body?.stock !== undefined ? Number(req.body.stock) : Number(existing.stock_quantity);
+    const stock = Math.floor(rawStock);
     const titleAr = req.body?.titleAr ? sanitizeText(req.body.titleAr, 200) : String(existing.title_ar);
-    const status = req.body?.status ? sanitizeText(req.body.status, 32) : stock === 0 ? 'out_of_stock' : String(existing.status);
+    const allowedProductStatuses = new Set(['active', 'draft', 'out_of_stock', 'archived']);
+    const status = req.body?.status !== undefined ? sanitizeText(req.body.status, 32) :
+      stock === 0 ? 'out_of_stock' : String(existing.status);
+    if (!titleAr || !Number.isFinite(price) || price < 0 || !Number.isSafeInteger(stock) || stock < 0 ||
+        !allowedProductStatuses.has(status)) {
+      res.status(400).json({ error: 'Invalid product update.', code: 'INVALID_PRODUCT' });
+      return;
+    }
 
     db.prepare(
       `UPDATE store_products SET title_ar = ?, retail_price = ?, stock_quantity = ?, status = ?, updated_at = CURRENT_TIMESTAMP
