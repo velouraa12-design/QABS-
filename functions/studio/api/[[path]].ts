@@ -25,7 +25,7 @@ export async function onRequest({ request, env }: PagesRequestContext): Promise<
   }
 
   const incomingUrl = new URL(request.url);
-  const routePath = incomingUrl.pathname.replace(/\\/+$/, '');
+  const routePath = incomingUrl.pathname.replace(/\/+$/, '');
   const isMutation = !['GET', 'HEAD', 'OPTIONS'].includes(method);
   if (isMutation && request.headers.get('Origin') !== incomingUrl.origin) {
     return Response.json({ error: 'origin_rejected' }, { status: 403 });
