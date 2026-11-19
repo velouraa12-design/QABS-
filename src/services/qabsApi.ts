@@ -81,6 +81,20 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
   return payload as T;
 }
 
+export interface StoreInventoryMovement {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  quantity_delta: number;
+  balance_after: number;
+  reason: string;
+  reference_id: string | null;
+  created_at: string;
+  cursor: number;
+}
+
 export interface StoreOrderItem {
   id: string;
   order_id: string;
@@ -425,6 +439,15 @@ export const qabsApi = {
       `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}`,
       { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
     ),
+  listInventoryMovements: (storeId: string, productId: string, options: { limit?: number; cursor?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.cursor !== undefined) params.set('cursor', String(options.cursor));
+    const query = params.toString();
+    return apiRequest<{ movements: StoreInventoryMovement[]; nextCursor: number | null }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/inventory-movements${query ? `?${query}` : ''}`
+    );
+  },
   adjustProductInventory: (storeId: string, productId: string, input: {
     quantityDelta: number;
     reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
