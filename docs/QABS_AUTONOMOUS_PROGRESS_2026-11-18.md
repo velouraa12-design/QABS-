@@ -644,3 +644,21 @@ Important acceptance boundary:
 - The Pages preview is a static frontend preview; the live scrape does not prove the Express payment API is deployed behind that hostname. Tap payment remains disabled there until the isolated backend is actually routed and configured.
 - No Tap credentials were installed, no sandbox flag was enabled, no provider charge was initiated, and no live payment, DNS, Shopify checkout, or production resource was changed.
 - External Tap sandbox acceptance remains pending a disposable test key in a secured non-production secret store and an API runtime that is routed to the frontend preview. Do not enable payment collection in production.
+
+
+## 17. Production storage fail-closed guard and preview-only API binding — 2026-11-19
+
+Implemented on the isolated branch:
+
+- The Node/Express runtime now refuses to start in production when `QABS_DB_PATH` is missing, instead of silently falling back to ephemeral `/tmp` SQLite. Explicit `:memory:` remains supported for isolated tests.
+- Added `tests/database-persistence-guard.test.ts` for the production refusal and explicit test-database behavior.
+- Removed the `QABS_STUDIO_API` service binding from the Wrangler `production` environment. The existing staging Studio API binding remains only in `preview`, matching the documented isolation boundary.
+- Added a regression test that parses `wrangler.jsonc` and asserts that the staging service binding exists in preview and is absent in production.
+- Commits: `09a9b64` (production storage guard), `f83cc90` (storage guard tests), `4600ae8` (production Pages binding removal), `e663f91` (preview-only binding regression test).
+
+Verification state at the time of this log update:
+- Commit `f83cc90`: GitHub checks `validate` and `build-and-deploy` completed successfully.
+- Commit `e663f91`: isolated preview workflow `44429206417` was running; do not claim its result until GitHub reports completion.
+- No production deployment, PR merge, DNS change, Shopify change, customer-data access/migration, payment activation, or paid hosting resource was performed.
+
+Remaining hard blockers are unchanged: implement and test complete API parity before connecting AppContext; select and authorize durable hosting/database infrastructure; validate the authenticated Cloudflare Worker tenant boundary; complete private-file storage/security; and complete subscription, domain, store publication, and payment acceptance tests. The current Pages preview is not the full production platform.
