@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import './AuthModalPortal.css';
 import { useApp } from '../context/AppContext.tsx';
 import { OWNER_USER_PROFILE } from '../data/mockData.ts';
 import { studioApi } from '../services/qabsStudioApi.ts';
@@ -155,8 +156,20 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-      <div className="bg-[#082030] border border-[#D5B46B]/50 rounded-2xl shadow-2xl max-w-md w-full text-slate-100 flex flex-col overflow-hidden">
+    <div className="qabs-auth-page" dir={isAr ? 'rtl' : 'ltr'} role="dialog" aria-modal="true" aria-label={isAr ? 'تسجيل الدخول إلى قبس' : 'Sign in to QABS'}>
+      <div className="qabs-auth-layout">
+        <aside className="qabs-auth-story" aria-label={isAr ? 'عن مساحة قبس' : 'About QABS'}>
+          <div className="qabs-auth-brand">قبس الرقمية <span>QABS DIGITAL SERVICES</span></div>
+          <p className="qabs-auth-eyebrow">{isAr ? 'مساحة أعمالك، بخطوات أوضح' : 'Your workspace, made clearer'}</p>
+          <h1>{isAr ? 'من أول فكرة، حتى آخر تسليم.' : 'From the first idea to final delivery.'}</h1>
+          <p className="qabs-auth-intro">{isAr ? 'ادخل إلى حسابك لتطلب خدمات قبس وتراجع عروضك وتتابع أعمالك من مكان واحد.' : 'Sign in to request QABS services, review proposals and follow your work in one place.'}</p>
+          <div className="qabs-auth-steps" aria-hidden="true">
+            <p><b>01</b> {isAr ? 'طلبك يبدأ باحتياجك' : 'Your requirements come first'}</p>
+            <p><b>02</b> {isAr ? 'نطاق واضح قبل التنفيذ' : 'A clear scope before work'}</p>
+            <p><b>03</b> {isAr ? 'متابعة حتى التسليم' : 'Track through to delivery'}</p>
+          </div>
+        </aside>
+        <div className="qabs-auth-panel">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-cyan-950/60 bg-[#03131D]/90">
           <div className="flex items-center gap-2.5">
@@ -254,7 +267,7 @@ export const AuthModal: React.FC = () => {
 
         {/* Tab switcher */}
         {!isOwnerIntent && (
-          <div className="flex border-b border-cyan-950/40 bg-[#051724] text-xs">
+          <div className="qabs-auth-tabs flex border-b border-cyan-950/40 bg-[#051724] text-xs">
             <button
               type="button"
               onClick={() => {
@@ -737,6 +750,8 @@ export const AuthModal: React.FC = () => {
               )}
             </>
           )}
+        </div>
+        <p className="qabs-auth-note">{isAr ? 'لا تشارك رموز التحقق أو كلمات المرور مع أحد.' : 'Never share verification codes or passwords.'}</p>
         </div>
       </div>
     </div>
