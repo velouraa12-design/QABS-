@@ -12,7 +12,7 @@ export const UsLlcPage: React.FC = () => {
   const service = getServiceBySlug('us-llc')!;
 
   const [stateSearch, setStateSearch] = useState('');
-  const [stateFilter, setStateFilter] = useState<'all' | 'popular' | 'zero_tax' | 'low_fee'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'low_fee'>('all');
   const [tierId, setTierId] = useState<'starter' | 'complete' | 'premium'>('complete');
 
   const selectedTier = QABS_FORMATION_PKGS.find(p => p.id === tierId) || QABS_FORMATION_PKGS[1];
@@ -25,8 +25,6 @@ export const UsLlcPage: React.FC = () => {
       st.nameEn.toLowerCase().includes(q) ||
       st.code.toLowerCase().includes(q);
     if (!matches) return false;
-    if (stateFilter === 'popular') return st.tags.includes('popular');
-    if (stateFilter === 'zero_tax') return st.tags.includes('zero_tax');
     if (stateFilter === 'low_fee') return st.stateFilingFee <= 100;
     return true;
   });
@@ -39,7 +37,7 @@ export const UsLlcPage: React.FC = () => {
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-[#EAE6DC] dark:border-slate-800 pb-5">
             <div>
               <h2 className="text-2xl font-black text-[#14243E] dark:text-white">
-                {isAr ? 'دليل أسعار تأسيس US LLC في جميع الولايات الـ 50' : 'All 50 US States LLC Formation Pricing'}
+                {isAr ? 'دليل إرشادي لرسوم تأسيس US LLC حسب الولاية' : 'Indicative US LLC Formation Fees by State'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {isAr
@@ -82,8 +80,6 @@ export const UsLlcPage: React.FC = () => {
               {(
                 [
                   { id: 'all', ar: 'جميع الولايات', en: 'All States' },
-                  { id: 'popular', ar: 'الأكثر طلباً', en: 'Popular' },
-                  { id: 'zero_tax', ar: '0% ضريبة دخل', en: 'Zero Income Tax' },
                   { id: 'low_fee', ar: 'رسوم ≤ $100', en: 'Fee ≤ $100' }
                 ] as const
               ).map(f => (
@@ -103,6 +99,12 @@ export const UsLlcPage: React.FC = () => {
             </div>
           </div>
 
+          <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+            {isAr
+              ? 'الرسوم المعروضة إرشادية وقد تتغير. لا تشمل بالضرورة الضرائب الفيدرالية أو رسوم الوكيل المسجل أو الجهات الخارجية؛ تحقّق من الرسوم الرسمية والالتزامات الضريبية قبل التقديم.'
+              : 'Displayed fees are indicative and may change. They may exclude federal taxes, registered-agent fees, and third-party charges; verify current official fees and tax obligations before filing.'}
+          </p>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 max-h-[500px] overflow-y-auto p-0.5">
             {filteredStates.map(st => {
               const total = st.stateFilingFee + selectedTier.price;
@@ -120,9 +122,6 @@ export const UsLlcPage: React.FC = () => {
                         {st.code}
                       </span>
                     </div>
-                    <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                      {isAr ? st.recommendedForAr : st.recommendedForEn}
-                    </p>
                     <div className="pt-2 border-t border-[#EAE6DC] dark:border-slate-800 flex items-center justify-between text-xs">
                       <span className="text-slate-500">
                         {isAr ? `الولاية: $${st.stateFilingFee}` : `State: $${st.stateFilingFee}`}

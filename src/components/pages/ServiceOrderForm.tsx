@@ -34,6 +34,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
     language,
     user,
     isAuthenticated,
+    backendStatus,
     submitServiceOrder,
     requestServiceAction
   } = useApp();
@@ -138,6 +139,12 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
 
   const submitWithStatus = async (status: 'draft' | 'new') => {
     setErrorMsg(null);
+    if (backendStatus !== 'connected') {
+      setErrorMsg(isAr
+        ? 'المعاينة غير متصلة بخدمة الطلبات؛ يمكنك مراجعة النموذج فقط ولم يتم حفظ أي طلب.'
+        : 'The preview is not connected to the request service; you can review the form, but no request can be saved.');
+      return;
+    }
 
     if (!customerName.trim() || !customerEmail.trim() || !customerPhone.trim()) {
       setErrorMsg(
@@ -316,9 +323,13 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
             {isAr ? `نموذج طلب خدمة: ${service.titleAr}` : `Order Form: ${service.titleEn}`}
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {isAr
-              ? 'يُحفظ الطلب في قاعدة البيانات مع دعم رفع المستندات الخاصة بأمان.'
-              : 'Persisted to backend storage with optional verified supporting document upload.'}
+            {backendStatus === 'connected'
+              ? isAr
+                ? 'يُرسل الطلب إلى خدمة قبس المتصلة بعد التحقق من المتطلبات.'
+                : 'The request is sent to the connected QABS service after validation.'
+              : isAr
+                ? 'المعاينة غير متصلة بخدمة الطلبات؛ النموذج للعرض فقط ولن يتم حفظ الطلب أو المستند.'
+                : 'The preview is not connected to the request service; this form is view-only and will not save requests or documents.'}
           </p>
         </div>
 
@@ -537,7 +548,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
 
           <button
             type="button"
-            disabled={submitting}
+            disabled={submitting || backendStatus !== 'connected'}
             onClick={() => void submitWithStatus('draft')}
             className="px-4 py-3 rounded-xl border border-[#EAE6DC] dark:border-slate-700 text-[#14243E] dark:text-slate-200 hover:bg-[#F8F7F2] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
           >
@@ -547,7 +558,7 @@ export const ServiceOrderForm: React.FC<ServiceOrderFormProps> = ({
 
           <button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || backendStatus !== 'connected'}
             className="px-6 py-3 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs sm:text-sm flex items-center gap-2 cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0 disabled:opacity-60"
           >
             <Send className="w-4 h-4 text-[#D5B46B]" />

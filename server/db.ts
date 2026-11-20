@@ -64,6 +64,14 @@ export function createDatabase(dbPath: string): DatabaseSync {
       reset_at INTEGER NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS studio_request_attempts (
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      attempt_id TEXT NOT NULL,
+      request_id TEXT NOT NULL REFERENCES service_requests(id) ON DELETE CASCADE,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY (tenant_id, attempt_id)
+    );
+
     CREATE TABLE IF NOT EXISTS services_catalog (
       slug TEXT PRIMARY KEY,
       category TEXT NOT NULL,
@@ -188,6 +196,40 @@ export function createDatabase(dbPath: string): DatabaseSync {
       updated_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS store_product_variants (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL REFERENCES store_products(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      options_json TEXT NOT NULL DEFAULT '{}',
+      retail_price REAL NOT NULL CHECK (retail_price >= 0),
+      compare_at_price REAL CHECK (compare_at_price IS NULL OR compare_at_price >= 0),
+      stock_quantity INTEGER NOT NULL DEFAULT 0 CHECK (stock_quantity >= 0),
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'draft', 'archived')),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (store_id, sku)
+    );
+
+    CREATE TABLE IF NOT EXISTS store_inventory_movements (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL REFERENCES store_products(id) ON DELETE CASCADE,
+      variant_id TEXT REFERENCES store_product_variants(id) ON DELETE SET NULL,
+      actor_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      quantity_delta INTEGER NOT NULL CHECK (quantity_delta != 0),
+      balance_after INTEGER NOT NULL CHECK (balance_after >= 0),
+      reason TEXT NOT NULL,
+      reference_id TEXT,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_variants_product ON store_product_variants(store_id, tenant_id, product_id);
+    CREATE INDEX IF NOT EXISTS idx_inventory_product ON store_inventory_movements(store_id, tenant_id, product_id, created_at);
+
     CREATE TABLE IF NOT EXISTS store_orders (
       id TEXT PRIMARY KEY,
       store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
@@ -204,6 +246,23 @@ export function createDatabase(dbPath: string): DatabaseSync {
       status TEXT NOT NULL DEFAULT 'processing',
       created_at TEXT DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS store_order_items (
+      id TEXT PRIMARY KEY,
+      store_id TEXT NOT NULL REFERENCES store_instances(id) ON DELETE CASCADE,
+      tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+      order_id TEXT NOT NULL REFERENCES store_orders(id) ON DELETE CASCADE,
+      product_id TEXT NOT NULL REFERENCES store_products(id) ON DELETE RESTRICT,
+      variant_id TEXT REFERENCES store_product_variants(id) ON DELETE RESTRICT,
+      product_title TEXT NOT NULL,
+      sku TEXT NOT NULL,
+      quantity INTEGER NOT NULL CHECK (quantity > 0),
+      unit_price REAL NOT NULL CHECK (unit_price >= 0),
+      line_total REAL NOT NULL CHECK (line_total >= 0),
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_order_items_order ON store_order_items(store_id, tenant_id, order_id);
 
     CREATE TABLE IF NOT EXISTS store_customers (
       id TEXT PRIMARY KEY,

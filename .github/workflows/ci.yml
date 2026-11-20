@@ -2,7 +2,7 @@ name: QABS Platform CI & Quality Check
 
 on:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, 'autonomous/**' ]
   pull_request:
     branches: [ main, master ]
 
@@ -12,21 +12,120 @@ jobs:
 
     steps:
     - name: Checkout Repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
+      with:
+        persist-credentials: false
 
     - name: Setup Node.js Environment
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v7
       with:
-        node-version: 20
+        node-version: 22
+        package-manager-cache: false
 
     - name: Install Dependencies
       run: npm install --ignore-scripts --legacy-peer-deps
 
+    - name: Report dependency advisories (non-blocking)
+      run: |
+        npm audit --json > /tmp/qabs-npm-audit.json || true
+        npm audit --omit=dev --json > /tmp/qabs-prod-audit.json || true
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const report = JSON.parse(fs.readFileSync("/tmp/qabs-npm-audit.json", "utf8"));
+          const prodReport = JSON.parse(fs.readFileSync("/tmp/qabs-prod-audit.json", "utf8"));
+          const vulnerabilities = Object.entries(report.vulnerabilities || {});
+          const productionVulnerabilities = Object.entries(prodReport.vulnerabilities || {});
+          console.log("Full dependency audit:", JSON.stringify(report.metadata?.vulnerabilities || {}));
+          console.log("Production-only dependency audit:", JSON.stringify(prodReport.metadata?.vulnerabilities || {}));
+          for (const [name, item] of vulnerabilities) {
+            const via = (item.via || []).map(advisory =>
+              typeof advisory === "string"
+                ? advisory
+                : `${advisory.title} [${advisory.url || "no advisory URL"}; affected=${advisory.range || "see advisory"}]`
+            ).join("; ");
+            console.log(`AUDIT ${item.severity}: ${name}; range=${item.range}; fixAvailable=${JSON.stringify(item.fixAvailable)}; advisories=${via}`);
+          }
+          for (const [name, item] of productionVulnerabilities) {
+            console.log(`PRODUCTION AUDIT ${item.severity}: ${name}; range=${item.range}`);
+          }
+          if (!vulnerabilities.length) console.log("npm audit: no package advisories reported.");
+          if (!productionVulnerabilities.length) console.log("Production-only audit: no package advisories reported.");
+        '
+
     - name: Run TypeScript & Lint Checks
       run: npm run lint
 
+    - name: Run API & Route Contract Tests
+      run: npm test
+
+    - name: Verify workspace routes
+      run: npm run check:routes
+
     - name: Build Application Bundle
       run: npm run build
+
+    - name: Build isolated Node preview container
+      run: docker build --pull -t qabs-preview:ci .
+
+    - name: Start isolated API container for smoke tests
+      run: |
+        docker run -d --name qabs-preview-ci -p 3000:3000 \
+          -e NODE_ENV=production \
+          -e QABS_DB_PATH=/tmp/qabs-ci.sqlite \
+          -e QABS_ALLOW_SANDBOX_PAYMENTS=false \
+          -e APP_ORIGIN=https://preview.example.test \
+          qabs-preview:ci
+
+    - name: Smoke-test container health, auth and disabled payments
+      run: |
+        for attempt in $(seq 1 30); do
+          if curl -fsS http://127.0.0.1:3000/api/health > /tmp/qabs-health.json; then
+            break
+          fi
+          sleep 2
+        done
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const health = JSON.parse(fs.readFileSync("/tmp/qabs-health.json", "utf8"));
+          if (health.status !== "ok" || health.paymentsEnabled !== false) process.exit(1);
+        '
+        curl -fsS http://127.0.0.1:3000/api/auth/session | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const session = JSON.parse(body);
+          if (session.authenticated !== false || session.user !== null) process.exit(1);
+        '
+        curl -fsS http://127.0.0.1:3000/studio/api/config | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const config = JSON.parse(body);
+          if (config.stage !== "preview-isolated" || config.registration !== false || config.emailVerification !== false || config.passwordRecovery !== false || config.payments !== false) process.exit(1);
+        '
+        # Production-mode smoke checks: unconfigured email flows must fail closed.
+        registration_status="$(curl -sS -o /tmp/qabs-register.json -w '%{http_code}' \
+          -H 'Content-Type: application/json' \
+          -d '{"name":"CI Customer","email":"ci-customer@example.test","companyName":"CI Workspace","password":"Qabs-CI-Strong-2026!","role":"super_admin"}' \
+          http://127.0.0.1:3000/api/auth/register)"
+        test "$registration_status" = "503"
+        node --input-type=module -e '
+          import fs from "node:fs";
+          const result = JSON.parse(fs.readFileSync("/tmp/qabs-register.json", "utf8"));
+          if (result.code !== "REGISTRATION_DISABLED") throw new Error("Unconfigured registration was not blocked");
+        '
+        for endpoint in forgot-password reset-password verify-email; do
+          status="$(curl -sS -o "/tmp/qabs-$endpoint.json" -w '%{http_code}' \
+            -H 'Content-Type: application/json' \
+            -d '{"email":"ci-customer@example.test","token":"synthetic-token","newPassword":"Qabs-CI-Strong-2026!"}' \
+            "http://127.0.0.1:3000/api/auth/$endpoint")"
+          test "$status" = "503"
+        done
+        curl -fsS http://127.0.0.1:3000/api/auth/session | node --input-type=module -e '
+          let body = ""; for await (const chunk of process.stdin) body += chunk;
+          const session = JSON.parse(body);
+          if (session.authenticated !== false || session.user !== null) process.exit(1);
+        '
+
+    - name: Stop isolated API container
+      if: always()
+      run: docker rm -f qabs-preview-ci || true
 
     - name: Security & Secret Scan
       run: |
@@ -35,4 +134,4 @@ jobs:
           echo "ERROR: Discovered live secret in codebase!"
           exit 1
         fi
-        echo "Security check passed: 100% clean."
+        echo "Basic secret-pattern scan passed; this is not a complete security audit."

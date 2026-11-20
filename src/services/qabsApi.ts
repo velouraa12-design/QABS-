@@ -8,7 +8,21 @@
  */
 export type ApiError = Error & { status?: number; code?: string };
 
-const API_BASE = (import.meta.env.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
+export interface StoreProductVariant {
+  id: string;
+  product_id: string;
+  store_id: string;
+  title: string;
+  sku: string;
+  options_json: string;
+  retail_price: number;
+  compare_at_price: number | null;
+  stock_quantity: number;
+  status: 'active' | 'draft' | 'archived';
+}
+
+const runtimeEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env;
+const API_BASE = (runtimeEnv?.VITE_QABS_API_BASE_URL || '').replace(/\/$/, '');
 
 let currentCsrfToken: string | null = null;
 
@@ -65,6 +79,48 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
     currentCsrfToken = payload.csrfToken;
   }
   return payload as T;
+}
+
+export interface StoreInventoryMovement {
+  id: string;
+  product_id: string;
+  variant_id: string | null;
+  actor_user_id: string | null;
+  actor_name: string | null;
+  quantity_delta: number;
+  balance_after: number;
+  reason: string;
+  reference_id: string | null;
+  created_at: string;
+  cursor: number;
+}
+
+export interface StoreOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string;
+  variant_id: string | null;
+  product_title: string;
+  sku: string;
+  quantity: number;
+  unit_price: number;
+  line_total: number;
+}
+
+export interface StoreOrderSnapshot {
+  id: string;
+  store_id: string;
+  tenant_id: string;
+  order_number: string;
+  customer_name: string;
+  customer_email: string;
+  items_count: number;
+  total_amount: number;
+  currency: string;
+  payment_gateway: string;
+  status: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  tracking_number: string | null;
+  created_at: string;
 }
 
 export interface ApiUserSnapshot {
@@ -133,8 +189,8 @@ export interface IntegrationsStatusResponse {
   paymentsEnabled: boolean;
   environment: string;
   integrations: {
-    tap: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
-    moyasar: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
+    tap: { configured: boolean; sandboxConfigured?: boolean; secretConfigured?: boolean; region: string; methods: string[]; mode: string };
+    moyasar: { configured: boolean; sandboxConfigured?: boolean; secretConfigured?: boolean; region: string; methods: string[]; mode: string };
     stripe: { configured: boolean; secretConfigured: boolean; region: string; methods: string[]; mode: string };
     shopify: { configured: boolean; mode: string };
     gemini: { configured: boolean; model: string };
@@ -354,19 +410,73 @@ export const qabsApi = {
         body: JSON.stringify(input)
       }
     ),
+  listProductVariants: (storeId: string, productId: string) =>
+    apiRequest<{ variants: StoreProductVariant[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants`
+    ),
+  createProductVariant: (storeId: string, productId: string, input: {
+    title: string;
+    sku?: string;
+    options: Record<string, string>;
+    price?: number;
+    compareAtPrice?: number | null;
+    stock?: number;
+    status?: 'active' | 'draft' | 'archived';
+  }) =>
+    apiRequest<{ variant: StoreProductVariant }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
+    ),
+  updateProductVariant: (storeId: string, productId: string, variantId: string, input: {
+    title?: string;
+    sku?: string;
+    options?: Record<string, string>;
+    price?: number;
+    compareAtPrice?: number | null;
+    status?: 'active' | 'draft' | 'archived';
+  }) =>
+    apiRequest<{ variant: StoreProductVariant }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/variants/${encodeURIComponent(variantId)}`,
+      { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
+    ),
+  listInventoryMovements: (storeId: string, productId: string, options: { limit?: number; cursor?: number } = {}) => {
+    const params = new URLSearchParams();
+    if (options.limit !== undefined) params.set('limit', String(options.limit));
+    if (options.cursor !== undefined) params.set('cursor', String(options.cursor));
+    const query = params.toString();
+    return apiRequest<{ movements: StoreInventoryMovement[]; nextCursor: number | null }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/inventory-movements${query ? `?${query}` : ''}`
+    );
+  },
+  adjustProductInventory: (storeId: string, productId: string, input: {
+    quantityDelta: number;
+    reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+    variantId?: string;
+    referenceId?: string;
+  }) =>
+    apiRequest<{ productId: string; variantId: string | null; stockQuantity: number; movements: Record<string, unknown>[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}/inventory-adjustments`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input) }
+    ),
   deleteProduct: (storeId: string, productId: string) =>
     apiRequest<{ ok: boolean }>(
       `/api/stores/${encodeURIComponent(storeId)}/products/${encodeURIComponent(productId)}`,
       { method: 'DELETE' }
     ),
+  listStoreOrders: (storeId: string) =>
+    apiRequest<{ orders: StoreOrderSnapshot[] }>(`/api/stores/${encodeURIComponent(storeId)}/orders`),
+  getStoreOrder: (storeId: string, orderId: string) =>
+    apiRequest<{ order: StoreOrderSnapshot; items: StoreOrderItem[] }>(
+      `/api/stores/${encodeURIComponent(storeId)}/orders/${encodeURIComponent(orderId)}`
+    ),
   createOrder: (storeId: string, input: Record<string, unknown>) =>
-    apiRequest<{ order: Record<string, unknown> }>(`/api/stores/${encodeURIComponent(storeId)}/orders`, {
+    apiRequest<{ order: StoreOrderSnapshot; items: StoreOrderItem[] }>(`/api/stores/${encodeURIComponent(storeId)}/orders`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
     }),
   updateOrderStatus: (storeId: string, orderId: string, input: { status: string; trackingNumber?: string }) =>
-    apiRequest<{ order: Record<string, unknown> }>(
+    apiRequest<{ order: StoreOrderSnapshot }>(
       `/api/stores/${encodeURIComponent(storeId)}/orders/${encodeURIComponent(orderId)}`,
       {
         method: 'PATCH',
@@ -470,6 +580,34 @@ export const qabsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
+    }),
+
+  // Tap hosted checkout — test-mode only; server derives amount and tenant from invoice.
+  createTapSandboxCharge: (invoiceId: string) =>
+    apiRequest<{
+      provider: 'tap';
+      mode: 'sandbox';
+      invoiceId: string;
+      chargeId: string;
+      providerStatus: string;
+      redirectUrl: string;
+      paymentConfirmed: false;
+    }>('/api/payments/tap/charges', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId })
+    }),
+  verifyTapSandboxPayment: (invoiceId: string, chargeId: string) =>
+    apiRequest<{
+      provider: 'tap';
+      mode: 'sandbox';
+      providerStatus: string;
+      paymentConfirmed: boolean;
+      invoice: Record<string, unknown>;
+    }>('/api/payments/tap/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoiceId, chargeId })
     }),
 
   // Billing, Invoices, Subscriptions & AI Credits

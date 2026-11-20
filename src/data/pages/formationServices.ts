@@ -10,65 +10,65 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     titleAr: 'تأسيس الشركات الأمريكية والبريطانية الدولية',
     titleEn: 'US & UK International Company Formation',
     subtitleAr:
-      'أسّس شركتك القانونية في الولايات المتحدة (50 ولاية) أو المملكة المتحدة بنسبة ملكية 100% لغير المقيمين، مع ملف قانوني جاهز للبنوك وبوابات الدفع.',
+      'ابدأ طلب تأسيس كيان في الولايات المتحدة أو المملكة المتحدة. أهلية الملكية الأجنبية ومتطلبات التأسيس والضرائب تختلف حسب الولاية ونوع الكيان والنشاط؛ كما أن التسجيل لا يضمن فتح حساب بنكي أو قبول بوابة دفع.',
     subtitleEn:
-      'Incorporate your legal entity in any of the 50 US states or the UK with 100% non-resident ownership, built for global banking and payment processing.',
+      'Request US or UK entity formation. Foreign-ownership eligibility, filing, and tax requirements vary by jurisdiction, entity type, and activity; incorporation does not guarantee a bank account or payment-processor approval.',
     seoTitleAr: 'تأسيس الشركات الأمريكية والبريطانية | منصة قبس QABS',
     seoTitleEn: 'US & UK Company Formation Services | QABS Digital Platform',
     seoDescriptionAr:
-      'خدمة تأسيس الشركات الأمريكية LLC و C-Corp والبريطانية LTD عبر منصة قبس مع استخراج الوثائق الرسمية والوكيل المسجل وتجهيز بوابات الدفع.',
+      'معلومات عن المساعدة في تأسيس بعض الكيانات الأمريكية والبريطانية، مع مراجعة الأهلية والرسوم والمتطلبات قبل قبول الطلب.',
     seoDescriptionEn:
-      'Form a US LLC, C-Corp, or UK LTD remotely with QABS. Full state filing, registered agent, operating agreement, and banking readiness.',
+      'Formation assistance for eligible US and UK entities, subject to jurisdictional requirements, provider availability, and confirmation of the service scope.',
     detailedDescriptionAr: [
-      'توفر منصة قبس الرقمية خدمة تأسيس الشركات الدولية عن بُعد لرواد الأعمال والتجار والمستقلين من جميع أنحاء العالم دون الحاجة إلى سفر أو إقامة في الولايات المتحدة أو بريطانيا.',
-      'تتولى قبس إعداد وتدقيق مسودة التأسيس، والتحقق من توفر الاسم التجاري، وإيداع عقد التأسيس (Articles of Organization / Incorporation) لدى سكرتير الولاية أو سجل Companies House، مع تسليم كافة المستندات الرسمية داخل خزينة الوثائق في حسابك.'
+      'توفر منصة قبس الرقمية خدمة مساعدة في تأسيس الشركات الدولية عن بُعد للمتقدمين المؤهلين. تختلف متطلبات الإقامة والتحقق والحضور بحسب الاختصاص ونوع الكيان والنشاط.',
+      'تساعد قبس في إعداد المستندات ومراجعتها وتجهيز الإيداع لدى الجهة المختصة بعد قبول الطلب وتأكيد نطاق الخدمة. يصدر السجل الحكومي المستندات الرسمية، ويُحدد وقتها وإمكانية تسليمها بحسب الجهة وتفعيل قناة الوثائق.'
     ],
     detailedDescriptionEn: [
-      'QABS provides end-to-end remote company formation for global founders, e-commerce merchants, and agencies without requiring US or UK residency or physical travel.',
-      'Our specialists handle name availability screening, statutory document drafting, Secretary of State or UK Companies House filing, and digital delivery of your certified corporate kit directly into your QABS Document Vault.'
+      'QABS provides remote formation assistance for eligible applicants. Residency, identity verification, and in-person requirements vary by jurisdiction, entity type, and activity.',
+      'QABS can assist with document preparation and filing coordination after eligibility review and service-scope confirmation. The relevant registry issues official records and controls processing times and document delivery.'
     ],
-    deliveryTimeAr: '1 – 3 أيام عمل للإيداع الحكومي',
-    deliveryTimeEn: '1 – 3 business days for state filing',
+    deliveryTimeAr: 'المدة تقديرية وتتغير حسب الجهة الحكومية واكتمال المستندات',
+    deliveryTimeEn: 'Estimated timing varies by registry and document completeness',
     startingPriceUsd: 179,
-    pricingNoteAr: 'الرسوم الحكومية لبعض الولايات تُضاف بشفافية حسب الولاية المختارة',
-    pricingNoteEn: 'State filing fees vary transparently by selected jurisdiction',
+    pricingNoteAr: 'رسوم الإيداع الحكومية تُضاف حسب الاختصاص. الخدمة تخضع لمراجعة الأهلية والمستندات وتأكيد التوفر والسعر قبل التنفيذ؛ لا تضمن قبس إصدار EIN أو فتح حساب أو موافقة أي مزود.',
+    pricingNoteEn: 'Government filing fees vary by jurisdiction. Service is subject to eligibility, document review, availability, and price confirmation; QABS does not guarantee EIN issuance, account opening, or provider approval.',
     features: [
       {
-        titleAr: 'ملكية أجنبية كاملة 100%',
-        titleEn: '100% Foreign Ownership',
-        descriptionAr: 'تأسيس وتملك كامل للشركة باسمك دون الحاجة لشريك محلي أو رقم إقامة أمريكي.',
-        descriptionEn: 'Full legal ownership without requiring a local partner, SSN, or residency.'
+        titleAr: 'إمكانية الملكية لغير المقيمين',
+        titleEn: 'Non-Resident Ownership Eligibility',
+        descriptionAr: 'قد تسمح بعض الولايات والهياكل بملكية غير المقيمين؛ تُراجع أهلية المالك والنشاط ومتطلبات الإفصاح قبل التقديم.',
+        descriptionEn: 'Some jurisdictions and entity structures may permit non-resident ownership; owner eligibility, business activity, and disclosure rules must be reviewed before filing.'
       },
       {
-        titleAr: 'موافقة قانونية للبنوك والدفع',
-        titleEn: 'Banking & Gateway Ready',
-        descriptionAr: 'وثائق متوافقة مع متطلبات Mercury و Wise و Stripe و PayPal.',
-        descriptionEn: 'Documentation structured specifically for Mercury, Wise, Stripe, and PayPal verification.'
+        titleAr: 'مستندات مساعدة لطلبات الحسابات والدفع',
+        titleEn: 'Banking & Payment Application Support',
+        descriptionAr: 'نساعد في تنظيم مستندات الشركة لطلبات مقدمي الخدمات؛ لكل مزود شروطه وفحوصه وقراره المستقل.',
+        descriptionEn: 'We help organize company documents for provider applications; each provider applies its own eligibility checks and makes independent approval decisions.'
       },
       {
         titleAr: 'اتفاقية تشغيل وصلاحيات مخصصة',
         titleEn: 'Custom Operating Agreement',
-        descriptionAr: 'صياغة احترافية لاتفاقية التشغيل وقرارات التوقيع البنكي جاهزة للاعتماد.',
-        descriptionEn: 'Professionally drafted Operating Agreement and Banking Resolution ready for signing.'
+        descriptionAr: 'يمكن إعداد مسودة اتفاقية تشغيل أو قرار بنكي إذا شملهما نطاق الخدمة؛ يراجع العميل ومستشاره المختص المسودة قبل التوقيع أو الاعتماد.',
+        descriptionEn: 'An Operating Agreement or banking-resolution draft may be prepared if included in the agreed scope; the client and qualified adviser must review it before signing or adoption.'
       },
       {
         titleAr: 'خزينة مستندات موثقة',
         titleEn: 'Digital Corporate Vault',
-        descriptionAr: 'أرشفة دائمة لجميع شهادات التأسيس وعقود التشغيل داخل مساحة عملك.',
-        descriptionEn: 'Permanent cloud access to all certified articles, filings, and corporate records.'
+        descriptionAr: 'تُسلّم المستندات عبر القناة المتاحة بعد اكتمال الخدمة وتأكيد تفعيل خزينة الوثائق.',
+        descriptionEn: 'Documents are delivered through the available channel after service completion and confirmation that the document vault is enabled.'
       }
     ],
     benefitsAr: [
-      'فصل الذمة المالية والشخصية وحماية الأصول القانونية.',
+      'قد يوفر الكيان فصلاً قانونياً بين أصول الشركة والأصول الشخصية عند الالتزام بالقوانين والإدارة السليمة؛ لا يُعد ذلك حماية مطلقة.',
       'إمكانية التقديم على بوابات الدفع العالمية مثل Stripe و PayPal.',
-      'البيع في الأسواق الأمريكية والأوروبية ومنصات أمازون وشوبيفاي باسم شركة رسمية.',
-      'إدارة التأسيس والمتاجر والفوترة من لوحة تحكم موحدة.'
+      'قد يساعد وجود كيان مسجل في التقديم لبعض الأسواق والمنصات، مع خضوع القبول لشروط كل منصة ومزود.',
+      'تُعرض معلومات الطلب عبر القنوات المتاحة؛ تكامل لوحة العمل والوثائق يعتمد على تفعيل الخدمة وربطها فعلياً.'
     ],
     benefitsEn: [
-      'Limited liability protection separating personal and business assets.',
+      'An entity may provide legal separation between business and personal assets when properly maintained; this is not absolute protection.',
       'Eligibility to apply for global payment processors like Stripe and PayPal.',
-      'Sell on Amazon US, Shopify, and B2B global contracts under a registered entity.',
-      'Unified QABS workspace linking corporate compliance with online store operations.'
+      'A registered entity may support applications to some marketplaces and providers, subject to each platform’s independent requirements and approval.',
+      'Request information is shown through available channels; unified workspace and document features depend on verified service integration.'
     ],
     steps: [
       {
@@ -84,28 +84,28 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         stepNumber: '02',
         titleAr: 'مراجعة البيانات وفحص الاسم',
         titleEn: 'Name Screening & KYC Review',
-        descriptionAr: 'يتحقق فريق الامتثال في قبس من توفر الاسم التجاري ومطابقة بيانات المؤسسين.',
-        descriptionEn: 'Our compliance desk verifies corporate name availability and founder documentation.',
-        durationAr: 'نفس اليوم',
-        durationEn: 'Same day'
+        descriptionAr: 'تُراجع البيانات الأولية ومتطلبات الاسم؛ التحقق الرسمي من توفر الاسم وقبول الطلب يعود إلى السجل المختص.',
+        descriptionEn: 'Initial details and naming requirements are reviewed; the relevant registry performs the official name-availability and filing checks.',
+        durationAr: 'بعد اكتمال المراجعة',
+        durationEn: 'After review is completed'
       },
       {
         stepNumber: '03',
-        titleAr: 'الإيداع الرسمي وإصدار الشهادة',
-        titleEn: 'Official State Filing & Issuance',
-        descriptionAr: 'رفع ملف التأسيس لدى الولاية واستلام شهادة التأسيس المعتمدة وتوقيع اتفاقية التشغيل.',
-        descriptionEn: 'Official submission to the state registry and delivery of certified formation documents.',
-        durationAr: '1 – 3 أيام عمل',
-        durationEn: '1 – 3 business days'
+        titleAr: 'تنسيق الإيداع وإصدار السجل الحكومي',
+        titleEn: 'Filing Coordination & Registry Issuance',
+        descriptionAr: 'يُنسّق الإيداع بعد قبول الطلب وتأكيد نطاق التنفيذ وتوفر جهة الإيداع؛ الجهة الحكومية وحدها تصدر المستندات الرسمية وتحدد وقت المعالجة.',
+        descriptionEn: 'Filing coordination occurs only after request acceptance, scope confirmation, and filing-service availability; the government registry alone issues official records and controls processing time.',
+        durationAr: 'حسب مدة معالجة الجهة الحكومية',
+        durationEn: 'Subject to government processing times'
       },
       {
         stepNumber: '04',
         titleAr: 'استخراج EIN وتجهيز الحسابات',
         titleEn: 'EIN & Banking Readiness',
-        descriptionAr: 'متابعة استخراج الرقم الضريبي الفيدرالي وتجهيز ملف التقديم على البنك وبوابات الدفع.',
-        descriptionEn: 'Proceed with Federal EIN issuance and prepare your commercial banking and gateway files.',
-        durationAr: '4 – 10 أيام عمل',
-        durationEn: '4 – 10 business days'
+        descriptionAr: 'متابعة طلب EIN عند انطباق الأهلية، وتنظيم المستندات المطلوبة لتقديمات الحسابات والدفع دون ضمان الموافقة.',
+        descriptionEn: 'Assist with the EIN request where eligible and organize documents for banking and payment applications without guaranteeing approval.',
+        durationAr: 'تختلف حسب معالجة IRS واكتمال الطلب',
+        durationEn: 'Varies with IRS processing and application completeness'
       }
     ],
     packages: [
@@ -119,16 +119,16 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         descriptionAr: 'مناسبة لمن يحتاج تأسيس الكيان الرسمي في بريطانيا أو الولايات الاقتصادية.',
         descriptionEn: 'Ideal for founders seeking official registration with essential compliance.',
         featuresAr: [
-          'فحص توفر الاسم التجاري',
-          'إيداع عقد التأسيس الرسمي',
-          'وكيل مسجل مجاني لمدة شهرين',
-          'نسخة رقمية في خزينة الوثائق'
+          'مراجعة أولية لاسم الشركة المقترح',
+          'تجهيز مستندات التقديم بعد قبول نطاق الخدمة',
+          'مراجعة متطلبات الوكيل المسجل وتأكيد توفره وسعره',
+          'تسليم المخرجات عبر القناة المتاحة بعد اكتمال الخدمة'
         ],
         featuresEn: [
-          'Corporate name availability check',
-          'Official Articles of Organization filing',
-          '2 months complimentary Registered Agent',
-          'Digital delivery in QABS Vault'
+          'Initial review of the proposed company name',
+          'Prepare filing documents after service-scope acceptance',
+          'Review registered-agent requirements and confirm availability and price',
+          'Deliver outputs through the available channel after completion'
         ]
       },
       {
@@ -138,22 +138,22 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 299,
         billingNoteAr: '+ رسوم الولاية الحكومية',
         billingNoteEn: '+ statutory state fee',
-        descriptionAr: 'الباقة المعتمدة للتجارة الإلكترونية، تشمل التأسيس والرقم الضريبي والوكيل.',
-        descriptionEn: 'Recommended e-commerce package including EIN, Operating Agreement, and Agent.',
+        descriptionAr: 'خيار إرشادي قد يشمل تنسيق التأسيس ومساعدة طلب EIN ومسودة اتفاقية تشغيل ومتطلبات الوكيل؛ يخضع كل عنصر للأهلية والتوفر والتأكيد.',
+        descriptionEn: 'An indicative option that may include formation coordination, EIN application assistance, an Operating Agreement draft, and agent requirements; each item is subject to eligibility, availability, and confirmation.',
         recommended: true,
         featuresAr: [
-          'تأسيس الشركة في الولاية المختارة',
-          'استخراج الرقم الضريبي الفيدرالي EIN',
-          'صياغة اتفاقية التشغيل Operating Agreement',
-          'وكيل مسجل وعنوان رسمي لمدة شهرين مجاناً',
-          'قرار التوقيع البنكي Banking Resolution'
+          'تنسيق طلب التأسيس بعد قبول نطاق الخدمة',
+          'مساعدة في إعداد طلب EIN وفق أهلية ومتطلبات IRS دون ضمان الإصدار',
+          'مسودة اتفاقية تشغيل إذا شملها العرض',
+          'التحقق من متطلبات الوكيل المسجل وتكلفته قبل الطلب',
+          'مسودة قرار بنكي إذا شملها العرض'
         ],
         featuresEn: [
-          'Full state entity incorporation',
-          'Federal IRS EIN Tax ID issuance',
-          'Custom Operating Agreement drafting',
-          'Registered Agent & street address (2 months free)',
-          'Official Banking Resolution'
+          'Coordinate the formation request after scope acceptance',
+          'Assist with EIN application preparation subject to IRS eligibility; issuance is not guaranteed',
+          'Operating Agreement draft if included in the quote',
+          'Confirm registered-agent requirements and cost before ordering',
+          'Draft banking resolution if included in the quote'
         ]
       },
       {
@@ -161,23 +161,23 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة الانطلاقة الشاملة (Turnkey)',
         nameEn: 'Turnkey Executive',
         priceUsd: 599,
-        billingNoteAr: 'تشمل أولوية التنفيذ وسنة وكيل',
-        billingNoteEn: 'Includes priority filing & 1-yr agent',
-        descriptionAr: 'حل متكامل يشمل سنة وكيل مسجل وتجهيز ملف البنك وبوابات الدفع وأولوية التنفيذ.',
-        descriptionEn: 'All-inclusive launch with 1 full year registered agent, banking prep, and priority queue.',
+        billingNoteAr: 'نطاق مخصص؛ تُراجع المدة والوكيل والتكلفة في عرض منفصل',
+        billingNoteEn: 'Custom scope; timing, agent, and fees confirmed in a separate quote',
+        descriptionAr: 'خيار مخصص يخضع لعرض سعر منفصل؛ لا تُعد أولوية المعالجة أو سنة الوكيل أو تجهيز الحسابات أو قبول بوابات الدفع مضمونة قبل التأكيد الكتابي.',
+        descriptionEn: 'A custom option requiring a separate quote; priority processing, a one-year agent, account preparation, and payment-provider acceptance are not guaranteed until confirmed in writing.',
         featuresAr: [
-          'جميع مزايا الباقة المتكاملة',
-          'وكيل مسجل وعنوان أمريكي لسنة كاملة',
-          'أولوية معالجة سريعة للإيداع',
-          'تجهيز ملف Mercury / Wise و Stripe',
-          'دعم استشاري مخصص بعد التأسيس'
+          'مراجعة نطاق الخدمات الإضافية قبل التسعير',
+          'التحقق من توفر الوكيل ومدته وتكلفته',
+          'تحديد ما إذا كانت متابعة الإيداع متاحة',
+          'تنظيم مستندات التقديم للحسابات عند انطباق الأهلية',
+          'تحديد الدعم اللاحق كتابياً ضمن العرض'
         ],
         featuresEn: [
-          'All Complete package deliverables',
-          'Full 1-year Registered Agent & US address',
-          'Priority state filing handling',
-          'Mercury / Wise & Stripe readiness file',
-          'Dedicated post-formation specialist support'
+          'Review and quote additional service scope',
+          'Confirm agent availability, term, and cost',
+          'Confirm whether filing coordination is available',
+          'Organize provider application documents where eligible',
+          'Define post-formation support in writing'
         ]
       }
     ],
@@ -185,8 +185,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل أحتاج إلى تأشيرة أو سفر لأمريكا لتأسيس الشركة؟',
         questionEn: 'Do I need a US visa or travel to form a company?',
-        answerAr: 'لا، يتم التأسيس إلكترونياً بالكامل بنسبة 100% عبر قبس دون الحاجة لأي سفر أو حضور شخصي.',
-        answerEn: 'No, the entire incorporation process is completed 100% remotely without travel or physical presence.'
+        answerAr: 'غالباً يمكن إنجاز أجزاء كبيرة عن بُعد، لكن قد تتطلب بعض الحالات توثيقاً أو تحققاً إضافياً أو إجراءات حضور وفق الجهة والكيان.',
+        answerEn: 'Much of the process can often be handled remotely, but some cases may require notarization, additional verification, or in-person steps depending on the registry and entity.'
       },
       {
         questionAr: 'ما هي المستندات المطلوبة لبدء طلب التأسيس؟',
@@ -197,8 +197,8 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل تشمل الباقة استخراج الرقم الضريبي EIN؟',
         questionEn: 'Does the package include Federal EIN issuance?',
-        answerAr: 'نعم، الباقة المتكاملة وباقة الانطلاقة الشاملة تشملان استخراج الرقم الضريبي الفيدرالي EIN رسمياً من IRS.',
-        answerEn: 'Yes, both our Complete and Turnkey packages include official IRS EIN issuance for non-US residents.'
+        answerAr: 'قد تشمل الباقة مساعدة في إعداد طلب EIN إذا انطبقت متطلبات IRS وتم تأكيد ذلك في العرض؛ قرار الإصدار يعود إلى IRS ولا نضمنه.',
+        answerEn: 'A package may include EIN application assistance where IRS requirements are met and the scope is confirmed in writing; the IRS decides issuance and QABS does not guarantee it.'
       }
     ],
     formFields: [
@@ -234,151 +234,151 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     category: 'formation',
     categoryLabelAr: 'تأسيس الشركات',
     categoryLabelEn: 'Company Formation',
-    titleAr: 'استخراج الرقم الضريبي الفيدرالي الأمريكي (EIN)',
-    titleEn: 'Federal IRS EIN Tax ID Issuance',
+    titleAr: 'المساعدة في طلب الرقم الضريبي الفيدرالي الأمريكي (EIN)',
+    titleEn: 'Federal EIN Application Assistance',
     subtitleAr:
-      'احصل على الرقم التعريفي لصاحب العمل (EIN) من مصلحة الضرائب الأمريكية IRS لغير المقيمين دون رقم SSN، مع تسليم خطاب CP575 الرسمي.',
+      'نساعد في مراجعة أهلية طلب رقم EIN وتجهيز نموذج SS-4 والمستندات المطلوبة عند انطباق متطلبات IRS؛ قرار الإصدار ووقت المعالجة يعودان إلى المصلحة.',
     subtitleEn:
-      'Obtain your official IRS Employer Identification Number (EIN) as a non-US resident without an SSN, including official IRS confirmation.',
-    seoTitleAr: 'استخراج الرقم الضريبي الأمريكي EIN لغير المقيمين | قبس',
-    seoTitleEn: 'Federal EIN Application for Non-US Residents | QABS',
+      'We help review EIN eligibility and prepare Form SS-4 and supporting information where IRS requirements are met; the IRS controls issuance and processing time.',
+    seoTitleAr: 'مساعدة في طلب الرقم الضريبي الأمريكي EIN | قبس',
+    seoTitleEn: 'Federal EIN Application Assistance for Eligible Applicants | QABS',
     seoDescriptionAr:
-      'خدمة استخراج الرقم الضريبي الفيدرالي EIN للشركات الأمريكية المملوكة لغير المقيمين عبر نموذج SS-4 الرسمي لفتح الحسابات البنكية وربط Stripe.',
+      'مساعدة في إعداد طلب EIN للشركات الأمريكية وفق أهلية المتقدم ومتطلبات IRS، دون ضمان الإصدار أو فتح حساب بنكي أو قبول بوابة دفع.',
     seoDescriptionEn:
-      'Fast, compliant IRS Form SS-4 filing and EIN retrieval for international founders without an SSN or ITIN.',
+      'EIN application preparation support for eligible international founders, subject to IRS requirements and processing.',
     detailedDescriptionAr: [
       'يُعد الرقم الضريبي الفيدرالي (Employer Identification Number - EIN) بمثابة الهوية الضريبية والمالية الرسمية لشركتك الأمريكية لدى مصلحة الضرائب الفيدرالية (IRS).',
-      'يتعذر على المؤسسين خارج الولايات المتحدة التقديم عبر البوابة الإلكترونية الفورية لـ IRS لعدم امتلاكهم رقم ضمان اجتماعي (SSN). تتولى قبس إعداد نموذج SS-4 بدقة، والتواصل المباشر مع قسم الشركات الدولية في IRS حتى صدور الخطاب الرسمي.'
+      'قد تختلف قنوات التقديم ومتطلبات SSN أو ITIN بحسب حالة مقدم الطلب. تساعد قبس في إعداد نموذج SS-4 ومراجعة المستندات وتنسيق التقديم عبر قناة متاحة بعد قبول الطلب؛ لا تتحكم قبس في قرار IRS أو مدة المعالجة.'
     ],
     detailedDescriptionEn: [
       'The Employer Identification Number (EIN) serves as your US company’s federal tax identity, functioning like a national business ID for banking, taxes, and compliance.',
-      'Because non-US residents without an SSN or ITIN cannot use the IRS online portal, QABS prepares IRS Form SS-4 accurately and coordinates directly with the IRS International desk until your official EIN notice is issued.'
+      'Application channels and SSN or ITIN requirements vary by applicant. QABS can assist with Form SS-4 and document preparation and coordinate submission through an available channel after request acceptance; the IRS controls the decision and processing time.'
     ],
-    deliveryTimeAr: '4 – 10 أيام عمل لغير المقيمين',
-    deliveryTimeEn: '4 – 10 business days for non-SSN founders',
+    deliveryTimeAr: 'المدة غير مضمونة وتخضع لمعالجة IRS واكتمال الطلب والقناة المتاحة',
+    deliveryTimeEn: 'Timing is not guaranteed and depends on IRS processing, application completeness, and the available channel',
     startingPriceUsd: 70,
-    pricingNoteAr: 'رسوم الخدمة المستقلة — ومشمولة تلقائياً في الباقة المتكاملة',
-    pricingNoteEn: 'Standalone service fee — included automatically in Complete package',
+    pricingNoteAr: 'السعر إرشادي؛ تشمل الخدمة المساعدة في إعداد الطلب فقط عند تأكيد النطاق والأهلية، ولا تضمن إصدار EIN أو قبول مزود حسابات أو دفع.',
+    pricingNoteEn: 'Indicative fee; scope is application-preparation assistance subject to eligibility and confirmation, with no guarantee of EIN issuance or provider approval.',
     features: [
       {
-        titleAr: 'لا يتطلب رقم SSN أو ITIN',
-        titleEn: 'No SSN or ITIN Required',
-        descriptionAr: 'إجراءات مخصصة بالكامل لملاك الشركات الدوليين من خارج الولايات المتحدة.',
-        descriptionEn: 'Specialized filing workflow designed specifically for international founders.'
+        titleAr: 'مراجعة متطلبات SSN أو ITIN',
+        titleEn: 'SSN or ITIN Requirements Review',
+        descriptionAr: 'تُراجع متطلبات SSN أو ITIN وقناة التقديم وفق حالة مقدم الطلب وتعليمات IRS.',
+        descriptionEn: 'SSN or ITIN requirements and application channels are reviewed against the applicant’s circumstances and IRS instructions.'
       },
       {
-        titleAr: 'إعداد احترافي لنموذج SS-4',
+        titleAr: 'المساعدة في إعداد نموذج SS-4',
         titleEn: 'Accurate Form SS-4 Preparation',
-        descriptionAr: 'صياغة قانونية خالية من الأخطاء التي تتسبب برفض أو تأخير ملفات IRS.',
-        descriptionEn: 'Error-free preparation preventing common IRS rejections or multi-week delays.'
+        descriptionAr: 'مساعدة في إعداد ومراجعة نموذج SS-4 والبيانات المقدمة؛ لا يمكن ضمان خلو الطلب من الملاحظات أو تأخر المعالجة.',
+        descriptionEn: 'Assistance preparing and reviewing Form SS-4; comments, rejection, or processing delays cannot be ruled out.'
       },
       {
-        titleAr: 'مؤهل لـ Mercury و Stripe و Amazon',
-        titleEn: 'Required for Banking & Stripe',
-        descriptionAr: 'المتطلب الأساسي لفتح حسابات البنوك الأمريكية وتفعيل بوابات الدفع.',
-        descriptionEn: 'Mandatory prerequisite for US fintech banking, Stripe, PayPal, and Amazon.'
+        titleAr: 'مستندات مساعدة لطلبات الحسابات والدفع',
+        titleEn: 'Banking & Payment Application Documents',
+        descriptionAr: 'قد يطلب بعض مزودي الحسابات والدفع رقم EIN؛ وجوده وحده لا يضمن أهلية الحساب أو الموافقة.',
+        descriptionEn: 'Some account and payment providers may request an EIN; having one does not by itself establish eligibility or approval.'
       },
       {
-        titleAr: 'متابعة مباشرة وتسليم PDF',
-        titleEn: 'Direct Tracking & Digital Delivery',
-        descriptionAr: 'رفع شهادة الرقم الضريبي الرسمية مباشرة في خزينة مستندات قبس.',
-        descriptionEn: 'Official EIN confirmation letter uploaded directly to your QABS Vault.'
+        titleAr: 'تنسيق التقديم وتسليم المستندات المتاحة',
+        titleEn: 'Submission Coordination & Available Document Handover',
+        descriptionAr: 'تُسلّم نسخة المستند الرسمي بعد صدوره عبر قناة التسليم المتاحة إذا كانت مفعّلة.',
+        descriptionEn: 'The official notice is handed over after issuance through the available delivery channel, if enabled.'
       }
     ],
     benefitsAr: [
-      'إمكانية فتح الحساب البنكي التجاري الأمريكي للشركة.',
-      'تعبئة نماذج W-9 / W-8BEN-E للمنصات والشركات الأمريكية.',
-      'توظيف متعاقدين وموظفين وإصدار فواتير نظامية.',
-      'تجنب الاستقطاع الضريبي التلقائي بنسبة 30% في بعض الحالات التجارية.'
+      'قد يكون EIN أحد المستندات المطلوبة لدى بعض مزودي الحسابات؛ يطبق كل مزود شروطه وقراره المستقل.',
+      'قد تطلب بعض الجهات نماذج ضريبية مثل W-9 أو W-8BEN-E؛ تحديد النموذج الصحيح يحتاج مراجعة ضريبية مستقلة.',
+      'قد يُستخدم EIN في بعض إجراءات التوظيف والضرائب والفوترة بحسب نشاط الشركة والتزاماتها.',
+      'تحديد النماذج والالتزامات الضريبية المناسبة يحتاج مراجعة مستقلة وفق حالة الشركة والمعاملة.'
     ],
     benefitsEn: [
-      'Unlock eligibility for US business bank accounts (Mercury, Relay, Wise).',
-      'Complete vendor and marketplace tax forms cleanly.',
-      'Hire contractors and issue formal US corporate invoices.',
-      'Prevent improper tax withholding across US B2B partners.'
+      'An EIN may be one of the documents requested by some providers; each provider applies independent eligibility checks and decisions.',
+      'Some counterparties may request tax forms such as W-9 or W-8BEN-E; selecting the correct form requires separate tax review.',
+      'An EIN may be used for certain employment, tax, and invoicing processes depending on the business and its obligations.',
+      'Tax forms and withholding treatment require separate review based on the entity and transaction.'
     ],
     steps: [
       {
         stepNumber: '01',
         titleAr: 'تزويدنا بعقد التأسيس',
         titleEn: 'Provide Articles of Organization',
-        descriptionAr: 'ارفع نسخة شهادة التأسيس واسم المدير المسؤول (Responsible Party).',
-        descriptionEn: 'Upload your certified state formation document and designate the Responsible Party.',
+        descriptionAr: 'تُراجع مستندات التأسيس وبيانات الشخص المسؤول وفق متطلبات IRS، عبر قناة آمنة عند الحاجة.',
+        descriptionEn: 'Formation records and responsible-party details are reviewed against IRS requirements through an approved secure channel when needed.',
         durationAr: '5 دقائق',
         durationEn: '5 mins'
       },
       {
         stepNumber: '02',
-        titleAr: 'إعداد وتوقيع نموذج SS-4',
-        titleEn: 'Prepare & Sign Form SS-4',
-        descriptionAr: 'نقوم بتعبئة النموذج الفيدرالي وإرساله لك للتوقيع الإلكتروني المعتمد.',
-        descriptionEn: 'We populate IRS Form SS-4 and send it for your quick digital signature.',
-        durationAr: 'خلال 24 ساعة',
-        durationEn: 'Within 24h'
+        titleAr: 'إعداد ومراجعة نموذج SS-4',
+        titleEn: 'Prepare & Review Form SS-4',
+        descriptionAr: 'تساعد قبس في إعداد نموذج SS-4 ومراجعته؛ تُحدد طريقة التوقيع والتقديم وفق القناة والمتطلبات المعمول بها.',
+        descriptionEn: 'QABS can assist with Form SS-4 preparation and review; signing and submission methods depend on the applicable channel and requirements.',
+        durationAr: 'بعد قبول الطلب ومراجعة المتطلبات',
+        durationEn: 'After request acceptance and requirements review'
       },
       {
         stepNumber: '03',
-        titleAr: 'الإيداع لدى قسم IRS الدولي',
-        titleEn: 'IRS International Submission',
-        descriptionAr: 'إرسال الطلب للقناة المعتمدة ومتابعة استخراج الرقم الضريبي.',
-        descriptionEn: 'Submission to the IRS international unit with active status follow-up.',
-        durationAr: '4 – 10 أيام عمل',
-        durationEn: '4 – 10 business days'
+        titleAr: 'تنسيق قناة التقديم المتاحة لدى IRS',
+        titleEn: 'Coordinate an Available IRS Submission Channel',
+        descriptionAr: 'يُنسّق التقديم عبر قناة متاحة بعد قبول الطلب؛ تحدد IRS إجراءات المعالجة والرد.',
+        descriptionEn: 'Submission is coordinated through an available channel after acceptance; the IRS determines processing and response.',
+        durationAr: 'حسب معالجة IRS والقناة المتاحة',
+        durationEn: 'Subject to IRS processing and available channel'
       },
       {
         stepNumber: '04',
         titleAr: 'استلام الخطاب الرسمي',
         titleEn: 'Official Letter Delivery',
-        descriptionAr: 'تسليم خطاب CP575 / 147C بصيغة PDF جاهز للبنوك وبوابات الدفع.',
-        descriptionEn: 'Digital delivery of your official EIN confirmation notice ready for verification.',
-        durationAr: 'فوري عند الإصدار',
-        durationEn: 'Instant upon issuance'
+        descriptionAr: 'تُسلّم نسخة CP575 أو 147C إذا أصدرتها IRS وكانت متاحة، ولا يعني ذلك قبول البنوك أو بوابات الدفع.',
+        descriptionEn: 'A CP575 or 147C copy is handed over if issued by the IRS and available; this does not imply bank or payment-provider approval.',
+        durationAr: 'بعد صدور الخطاب وتوفره',
+        durationEn: 'After the notice is issued and available'
       }
     ],
     packages: [
       {
         id: 'ein_standard',
-        nameAr: 'استخراج EIN القياسي',
-        nameEn: 'Standard EIN Filing',
+        nameAr: 'مساعدة طلب EIN القياسي',
+        nameEn: 'Standard EIN Application Assistance',
         priceUsd: 70,
-        billingNoteAr: 'دفعة واحدة لشركة قائمة',
-        billingNoteEn: 'One-time fee for existing LLC/Corp',
-        descriptionAr: 'إعداد نموذج SS-4 وإيداعه لدى IRS ومتابعة صدور الرقم الضريبي.',
-        descriptionEn: 'Complete Form SS-4 preparation, submission, and IRS follow-up.',
+        billingNoteAr: 'سعر إرشادي لمساعدة إعداد الطلب؛ لا يشمل رسوماً حكومية أو يضمن إصداراً',
+        billingNoteEn: 'Indicative application-preparation assistance fee; no issuance guarantee',
+        descriptionAr: 'مساعدة في إعداد نموذج SS-4 ومراجعة المستندات وتنسيق التقديم عند تأكيد الأهلية والتوفر.',
+        descriptionEn: 'Assist with Form SS-4 and document review and coordinate submission subject to eligibility and availability.',
         recommended: true,
         featuresAr: [
           'إعداد ومراجعة نموذج IRS SS-4',
-          'تقديم الطلب لقسم غير المقيمين',
-          'نسخة PDF أصلية للخطاب الرسمي',
-          'مراجعة جاهزية التقديم البنكي'
+          'تنسيق التقديم عبر قناة IRS متاحة بعد مراجعة المتطلبات',
+          'تسليم نسخة من خطاب IRS إذا صدر وكان متاحاً',
+          'مراجعة قائمة المستندات التي قد يطلبها مزود الحساب دون ضمان القبول'
         ],
         featuresEn: [
           'IRS Form SS-4 preparation & audit',
-          'Non-resident international filing',
-          'Official PDF EIN confirmation letter',
-          'Banking verification readiness check'
+          'Coordinate submission through an available IRS channel after requirements review',
+          'Provide a copy of the IRS notice if issued and available',
+          'Review documents a provider may request without guaranteeing approval'
         ]
       },
       {
         id: 'ein_express',
-        nameAr: 'خدمة EIN السريعة + 147C',
-        nameEn: 'Priority EIN + 147C Verification',
+        nameAr: 'مساعدة طلب EIN أو مراجعة خطاب 147C',
+        nameEn: 'EIN Application or 147C Review Assistance',
         priceUsd: 119,
-        billingNoteAr: 'أولوية قصوى + خطاب تحقق إضافي',
-        billingNoteEn: 'Priority queue + verification letter',
-        descriptionAr: 'مخصصة للشركات التي تحتاج خطاب التحقق 147C أو تصحيح بيانات سابقة لدى IRS.',
-        descriptionEn: 'Ideal for urgent applications, lost EIN retrieval (147C), or IRS record updates.',
+        billingNoteAr: 'خدمة إضافية حسب الأهلية والتوفر',
+        billingNoteEn: 'Additional service subject to eligibility and availability',
+        descriptionAr: 'طلب مساعدة لمراجعة متطلبات خطاب 147C أو تحديث بيانات سابقة لدى IRS؛ توفر الإجراء ونتيجته يخضعان للمصلحة.',
+        descriptionEn: 'Assistance reviewing a 147C request or prior IRS record update; availability and outcome are determined by the IRS.',
         featuresAr: [
-          'أولوية تنفيذ ومتابعة يومية',
-          'استخراج خطاب 147C عند الحاجة',
-          'تحديث اسم أو عنوان الشركة لدى IRS',
-          'مرافقة فنية عند ربط Stripe'
+          'تحديد نطاق المتابعة الممكنة قبل قبول العرض',
+          'مراجعة متطلبات طلب خطاب 147C؛ الإصدار يعود إلى IRS',
+          'مراجعة إجراءات تحديث بيانات الكيان لدى IRS دون ضمان قبول التحديث',
+          'مراجعة مستندات التقديم لمزود الدفع دون ضمان القبول أو الربط'
         ],
         featuresEn: [
-          'Priority handling & daily follow-up',
-          'IRS Letter 147C retrieval if needed',
-          'IRS entity address/name update guidance',
-          'Technical support for Stripe EIN verification'
+          'Confirm the available follow-up scope before accepting the quote',
+          'Review requirements for requesting IRS Letter 147C; issuance is determined by the IRS',
+          'Review IRS entity-record update procedures without guaranteeing acceptance',
+          'Review payment-provider application documents without guaranteeing approval or integration'
         ]
       }
     ],
@@ -386,14 +386,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'كم المدة الفعلية لصدور الرقم الضريبي EIN؟',
         questionEn: 'How long does it actually take to get an EIN?',
-        answerAr: 'في الظروف القياسية لغير المقيمين تستغرق المعالجة ما بين 4 إلى 10 أيام عمل حسب ضغط مصلحة الضرائب الأمريكية.',
-        answerEn: 'Standard non-resident processing takes 4 to 10 business days depending on IRS processing volume.'
+        answerAr: 'تختلف مدة المعالجة بحسب قناة التقديم واكتمال الطلب وحجم العمل لدى IRS؛ لا يمكن ضمان عدد محدد من الأيام.',
+        answerEn: 'Processing time varies by submission channel, application completeness, and IRS workload; a fixed number of days cannot be guaranteed.'
       },
       {
         questionAr: 'هل ينتهي مفعول الرقم الضريبي EIN؟',
         questionEn: 'Does an EIN expire?',
-        answerAr: 'لا، الرقم الضريبي الفيدرالي دائم ولا ينتهي مفعوله طالما الشركة قائمة ولا يتطلب رسوم تجديد سنوية.',
-        answerEn: 'No, an EIN is permanent for the life of your entity and has zero annual renewal fees.'
+        answerAr: 'لا يُعاد عادةً تخصيص رقم EIN لكيان آخر، لكن إغلاق النشاط أو تغيير هيكله قد يستلزم إبلاغ IRS أو طلب رقم جديد في حالات محددة؛ راجع تعليمات IRS بحسب الحالة.',
+        answerEn: 'An EIN is generally not reassigned to another entity, but closing a business or changing its structure may require IRS notification or a new EIN in specific cases; check IRS guidance for the situation.'
       }
     ],
     formFields: [
@@ -425,67 +425,67 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     categoryLabelAr: 'تأسيس الشركات',
     categoryLabelEn: 'Company Formation',
     titleAr: 'الوكيل المسجل والعنوان القانوني الأمريكي (Registered Agent)',
-    titleEn: 'US Registered Agent & Official Business Address',
+    titleEn: 'US Registered-Agent Application Assistance',
     subtitleAr:
-      'تمثيل قانوني معتمد وعنوان فعلي داخل ولاية التأسيس لاستلام المراسلات الحكومية والإشعارات القضائية ومسحها ضوئياً وإرسالها إليك فوراً.',
+      'مساعدة في مراجعة متطلبات الوكيل المسجل في الولاية والتنسيق مع مزود متاح عند تأكيد الأهلية والتوفر؛ استلام البريد ومسحه وإعادة توجيهه يخضع لشروط المزود.',
     subtitleEn:
-      'Authorized statutory representation and physical street address in your state of formation with instant mail scanning and compliance alerts.',
+      'Assistance reviewing state registered-agent requirements and coordinating with an available provider after eligibility and availability are confirmed; mail receipt, scanning, and forwarding depend on provider terms.',
     seoTitleAr: 'خدمة الوكيل المسجل الأمريكي Registered Agent | قبس',
     seoTitleEn: 'US Registered Agent & Street Address Service | QABS',
     seoDescriptionAr:
-      'احصل على وكيل مسجل رسمي وعنوان فعلي لشركتك الأمريكية في كافة الولايات الخمسين مع مسح ضوئي فوري للبريد الحكومي وتنبيهات الامتثال.',
+      'معلومات ومساعدة لطلب وكيل مسجل في الولايات المتاحة بعد مراجعة الولاية والتكلفة والخدمات التي يقدمها المزود.',
     seoDescriptionEn:
-      'Compliant Registered Agent representation in all 50 US states with same-day mail scanning and privacy protection.',
+      'Registered-agent application assistance in supported jurisdictions, subject to state review, provider availability, fees, and service terms.',
     detailedDescriptionAr: [
-      'يشترط القانون الأمريكي في جميع الولايات الخمسين وجود وكيل مسجل (Registered Agent) يمتلك عنواناً فعلياً داخل الولاية ويتواجد خلال ساعات العمل الرسمية لاستلام الإشعارات الحكومية والقانونية نيابة عن الشركة.',
-      'تقدم منصة قبس خدمة الوكيل المسجل المعتمد في كافة الولايات، مع حماية خصوصية عنوانك الشخصي، وأرشفة جميع المراسلات الواردة ضوئياً داخل لوحة التحكم الخاصة بك.'
+      'تتطلب الولايات عادةً وجود وكيل مسجل للكيانات المحلية، لكن تفاصيل العنوان والقبول والاستلام تختلف حسب الولاية ونوع الكيان؛ يجب التحقق من المتطلبات الرسمية قبل التقديم.',
+      'يمكن لقبس المساعدة في مراجعة متطلبات الوكيل ومقارنة الخيارات المتاحة. عنوان الوكيل لا يستبدل بالضرورة كل عناوين الشركة المطلوبة في السجلات، كما أن المسح وإعادة التوجيه والأرشفة تعتمد على مزود الخدمة وتكامله.'
     ],
     detailedDescriptionEn: [
       'Every US state legally requires an LLC or Corporation to maintain a Registered Agent with a physical street address in the state of formation during standard business hours.',
-      'QABS provides reliable Registered Agent coverage across all 50 states, keeping your personal address off public registries while scanning and forwarding official state notices directly to your dashboard.'
+      'QABS can help review registered-agent requirements and available options. An agent address does not necessarily replace every company address required in public records; scanning, forwarding, and dashboard delivery depend on the provider and verified integration.'
     ],
-    deliveryTimeAr: 'تفعيل فوري خلال 24 ساعة',
-    deliveryTimeEn: 'Activated within 24 hours',
+    deliveryTimeAr: 'المدة وتاريخ التفعيل يعتمدان على الولاية ومزود الوكيل وتأكيد الطلب',
+    deliveryTimeEn: 'Activation timing depends on the jurisdiction, agent provider, and confirmed order',
     startingPriceUsd: 99,
-    pricingNoteAr: 'اشتراك سنوي شامل مسح البريد الرسمي والإشعارات',
-    pricingNoteEn: 'Annual subscription including official mail scanning & alerts',
+    pricingNoteAr: 'السعر إرشادي لكل ولاية وقد تختلف رسوم الوكيل وخدمات البريد والمسح وإعادة التوجيه؛ لا يبدأ الاشتراك قبل تأكيد المزود والنطاق.',
+    pricingNoteEn: 'Indicative per-state pricing; agent, mail, scanning, and forwarding fees vary. No subscription starts until provider and scope are confirmed.',
     features: [
       {
-        titleAr: 'تغطية جميع الولايات الـ 50',
-        titleEn: 'All 50 States Coverage',
-        descriptionAr: 'عناوين فعلية معتمدة في وايومنغ، ديلاوير، نيو مكسيكو، تكساس وغيرها.',
-        descriptionEn: 'Verified physical addresses in Wyoming, Delaware, New Mexico, Texas, and all 50 states.'
+        titleAr: 'التحقق من التغطية حسب الولاية',
+        titleEn: 'Jurisdiction Availability Review',
+        descriptionAr: 'تُراجع تغطية مزود الوكيل للولاية المطلوبة وشروط العنوان قبل تأكيد الخدمة.',
+        descriptionEn: 'The selected provider’s coverage and address requirements are checked for the requested jurisdiction before confirmation.'
       },
       {
-        titleAr: 'حماية خصوصية الملاك',
+        titleAr: 'فهم أثر عنوان الوكيل على السجلات',
         titleEn: 'Founder Privacy Shield',
-        descriptionAr: 'إظهار عنوان الوكيل المسجل في السجلات العامة بدلاً من عنوانك الخاص.',
-        descriptionEn: 'Keep your personal home address private from public corporate records.'
+        descriptionAr: 'قد يظهر عنوان الوكيل في بعض السجلات، لكن قد تظل هناك متطلبات لعناوين أخرى أو إفصاحات عن المالك.',
+        descriptionEn: 'An agent address may appear in some records, but other company-address or owner-disclosure requirements may still apply.'
       },
       {
-        titleAr: 'مسح ضوئي فوري للبريد',
-        titleEn: 'Same-Day Mail Scanning',
-        descriptionAr: 'رفع أي خطاب حكومي أو إشعار ولاية بصيغة PDF إلى حسابك فور استلامه.',
-        descriptionEn: 'Official state notices scanned and uploaded to your Vault on the same day.'
+        titleAr: 'خدمات البريد وفق مزود الوكيل',
+        titleEn: 'Provider-Based Mail Services',
+        descriptionAr: 'تختلف آلية استلام الخطابات ومسحها وإرسالها ومدتها ورسومها حسب المزود؛ لا يُفترض وجود ربط تلقائي بلوحة قبس.',
+        descriptionEn: 'Mail receipt, scanning, forwarding times, and fees depend on the provider; automatic QABS dashboard integration is not assumed.'
       },
       {
-        titleAr: 'نقل مجاني من وكيل سابق',
-        titleEn: 'Seamless Agent Change Filing',
-        descriptionAr: 'إمكانية تعيين قبس كوكيل مسجل جديد لشركة قائمة بكل سهولة.',
-        descriptionEn: 'Easy Change of Agent filing if you are switching from another provider.'
+        titleAr: 'مساعدة في تغيير الوكيل عند التوفر',
+        titleEn: 'Registered-Agent Change Assistance',
+        descriptionAr: 'قد تتوفر مساعدة في تجهيز طلب تغيير الوكيل؛ قبول الطلب ورسوم الإيداع وتوفر المزود تخضع للولاية.',
+        descriptionEn: 'Assistance preparing a change-of-agent request may be available; registry acceptance, filing fees, and provider availability depend on the state.'
       }
     ],
     benefitsAr: [
-      'الحفاظ على وضع الشركة القانوني (Good Standing) وتجنب الحل الإداري.',
-      'عدم تفويت أي إشعارات ضريبية أو تقارير سنوية صادرة عن سكرتير الولاية.',
+      'استلام الإشعارات في الوقت المناسب قد يساعد على متابعة الالتزامات، لكنه لا يضمن Good Standing ولا يغني عن مسؤولية الشركة عن المواعيد.',
+      'قد تساعد خدمة الوكيل على استلام بعض الإشعارات؛ تبقى متابعة المواعيد والتقارير مسؤولية الشركة.',
       'إمكانية استخدام العنوان القانوني في نماذج التأسيس وبعض متطلبات الامتثال.',
-      'تجديد سلس تلقائي مع تنبيهات مسبقة قبل 30 يوماً من انتهاء السنة.'
+      'تُراجع مواعيد التجديد وشروط التنبيه وفق مزود الخدمة؛ لا يُفترض وجود تجديد أو تنبيه تلقائي.'
     ],
     benefitsEn: [
-      'Maintain continuous Good Standing and prevent administrative dissolution.',
-      'Never miss critical tax notices or Secretary of State compliance deadlines.',
+      'Timely receipt of notices may support compliance tracking but does not guarantee Good Standing or remove the company’s responsibility for deadlines.',
+      'An agent service may help receive certain notices; the company remains responsible for tracking deadlines and filings.',
       'Protect founder privacy across public corporate lookups.',
-      'Predictable annual billing with 30-day advance renewal alerts.'
+      'Renewal terms and reminders depend on the provider; automatic renewal or advance alerts are not assumed.'
     ],
     steps: [
       {
@@ -499,21 +499,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '02',
-        titleAr: 'إصدار بيانات العنوان والتفويض',
+        titleAr: 'مراجعة العنوان والتفويض',
         titleEn: 'Address Assignment & Authorization',
-        descriptionAr: 'تسليم تفاصيل العنوان المعتمد داخل الولاية وإعداد نموذج تعيين الوكيل.',
-        descriptionEn: 'Receive your assigned in-state address and sign the Change of Agent consent if transferring.',
-        durationAr: '24 ساعة',
-        durationEn: '24 hours'
+        descriptionAr: 'تُراجع بيانات العنوان وموافقة الوكيل قبل أي تعيين؛ لا يُعتمد العنوان قبل تأكيد المزود.',
+        descriptionEn: 'Review the proposed address and agent consent; the address is not assigned until the provider confirms availability.',
+        durationAr: 'بعد تأكيد المزود',
+        durationEn: 'After provider confirmation'
       },
       {
         stepNumber: '03',
-        titleAr: 'التفعيل والربط مع الخزينة',
+        titleAr: 'تأكيد التفعيل وقناة المراسلات',
         titleEn: 'Activation & Vault Sync',
-        descriptionAr: 'تفعيل لوحة استلام المراسلات وتنبيهات التجديد السنوية تلقائياً.',
-        descriptionEn: 'Activate digital mail forwarding and automated annual compliance reminders.',
-        durationAr: 'فوري بعد الاعتماد',
-        durationEn: 'Immediate'
+        descriptionAr: 'يُؤكد التفعيل وقناة تسليم المراسلات والتنبيهات إذا كانت متاحة لدى المزود ومربوطة تقنياً.',
+        descriptionEn: 'Activation, mail delivery, and reminders are confirmed only where the provider offers them and the integration is technically connected.',
+        durationAr: 'حسب إجراءات المزود',
+        durationEn: 'Subject to provider procedures'
       }
     ],
     packages: [
@@ -524,20 +524,20 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 99,
         billingNoteAr: 'سنوياً لكل ولاية',
         billingNoteEn: 'Per year / per state',
-        descriptionAr: 'تمثيل قانوني معتمد مع مسح البريد الحكومي وتنبيهات الامتثال.',
-        descriptionEn: 'Full statutory representation with government mail scanning and compliance alerts.',
+        descriptionAr: 'طلب وكيل مسجل وفق شروط الولاية والمزود، مع خدمات البريد التي يتم تأكيدها كتابياً.',
+        descriptionEn: 'Registered-agent request subject to state and provider terms, with only the mail services confirmed in writing.',
         recommended: true,
         featuresAr: [
-          'عنوان فعلي معتمد لدى سكرتير الولاية',
-          'استلام الإشعارات الحكومية والقضائية',
-          'مسح ضوئي وإرسال فوري عبر المنصة والبريد',
-          'تنبيهات مواعيد التقرير السنوي'
+          'تأكيد العنوان والقبول لدى الولاية قبل التعيين',
+          'خدمات استلام الإشعارات وفق شروط المزود',
+          'مسح وإرسال البريد إذا كانت الخدمة متاحة ومشمولة في العرض',
+          'معلومات عن مواعيد التقرير السنوي دون ضمان تنبيه آلي'
         ],
         featuresEn: [
-          'Physical street address registered with state',
-          'Official Service of Process acceptance',
-          'Same-day PDF scanning & dashboard upload',
-          'Annual report deadline reminders'
+          'Confirm address and state acceptance before appointment',
+          'Notice-receipt services subject to provider terms',
+          'Scanning and delivery only if available and included in the quote',
+          'Annual-report date information; automated alerts are not guaranteed'
         ]
       },
       {
@@ -547,19 +547,19 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         priceUsd: 169,
         billingNoteAr: 'سنوياً شامل إعادة توجيه البريد البنكي',
         billingNoteEn: 'Per year incl. commercial mail scans',
-        descriptionAr: 'يشمل استلام المراسلات البنكية وبطاقات البنوك وخطابات IRS بالإضافة للوكيل.',
-        descriptionEn: 'Includes Registered Agent plus commercial mail scanning for bank cards and IRS letters.',
+        descriptionAr: 'خدمات بريد تجاري إضافية قد تكون متاحة لدى بعض المزودين برسوم وشروط منفصلة؛ يجب تأكيد قبول كل نوع من البريد قبل الطلب.',
+        descriptionEn: 'Additional commercial-mail services may be offered by some providers at separate fees and terms; acceptance of each mail type must be confirmed before ordering.',
         featuresAr: [
           'جميع مزايا الوكيل المسجل السنوي',
-          'استلام خطابات البنوك و Stripe و IRS',
-          'مسح ضوئي غير محدود للرسائل التجارية',
-          'أرشفة رقمية منظمة طوال العام'
+          'قبول أنواع المراسلات التجارية بعد تأكيد المزود',
+          'حدود المسح ورسوم البريد تحددها شروط المزود',
+          'التسليم والأرشفة عبر القناة المتاحة إذا كانت مفعّلة'
         ],
         featuresEn: [
           'All Annual Registered Agent features',
-          'Accepts bank cards, IRS, and Stripe letters',
-          'Unlimited commercial mail PDF scans',
-          'Year-round organized digital mail archive'
+          'Commercial mail types accepted only after provider confirmation',
+          'Scanning limits and mail fees follow provider terms',
+          'Delivery and archiving through the available channel if enabled'
         ]
       }
     ],
@@ -567,14 +567,14 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'هل يختلف عنوان الوكيل المسجل عن عنوان مكتب العمل التجاري؟',
         questionEn: 'Is a Registered Agent address different from a commercial mail address?',
-        answerAr: 'الوكيل المسجل مخصص لاستلام الإشعارات الرسمية والقانونية من الولاية، أما باقة بريد الأعمال فتضيف إمكانية استلام بطاقات البنوك والرسائل التجارية.',
-        answerEn: 'A standard Registered Agent receives statutory state notices, while our Mail Forwarding tier also accepts commercial mail and bank cards.'
+        answerAr: 'يقتصر دور الوكيل المسجل عادةً على الإشعارات الرسمية وخدمة الإجراءات وفق قانون الولاية. أما البريد التجاري وبطاقات البنوك فيتطلبان خدمة منفصلة وتأكيداً صريحاً من المزود.',
+        answerEn: 'A standard Registered Agent generally receives statutory notices and service of process under state law. Commercial mail and bank cards require a separate service and explicit provider confirmation.'
       },
       {
         questionAr: 'هل يمكنني نقل شركتي الحالية لوكيل قبس المسجل؟',
         questionEn: 'Can I transfer my existing US LLC to QABS Registered Agent?',
-        answerAr: 'نعم، نتولى تقديم طلب تغيير الوكيل المسجل (Change of Registered Agent) لدى سكرتير الولاية دون أي تعقيدات.',
-        answerEn: 'Yes, we handle the official Change of Registered Agent filing with your Secretary of State.'
+        answerAr: 'قد نساعد في تجهيز طلب تغيير الوكيل وتنسيقه عند توفر الخدمة؛ رسوم الإيداع وقبول الولاية وموعد السريان تخضع للجهة المختصة.',
+        answerEn: 'We may assist with preparing and coordinating a change-of-agent request where available; filing fees, state acceptance, and effective date are controlled by the relevant authority.'
       }
     ],
     formFields: [
@@ -610,73 +610,73 @@ export const FORMATION_SERVICES: ServicePageData[] = [
     titleAr: 'تأسيس شركة ذات مسؤولية محدودة أمريكية (US LLC)',
     titleEn: 'US Limited Liability Company (US LLC) Formation',
     subtitleAr:
-      'الكيان الأمثل للتجارة الإلكترونية، الوكالات الرقمية، والمتاجر العالمية — شفافية كاملة في أسعار جميع الولايات الخمسين ومزايا ضريبية مرنة.',
+      'معلومات ومساعدة في مراجعة خيار US LLC بحسب نشاطك ومكان ممارسة الأعمال ومتطلبات الولاية؛ لا يوجد اختصاص واحد مناسب للجميع وتخضع الرسوم والأهلية للتحقق.',
     subtitleEn:
-      'The optimal legal structure for e-commerce brands, digital agencies, and SaaS founders — transparent 50-state pricing with pass-through flexibility.',
-    seoTitleAr: 'تأسيس شركة US LLC أمريكية لغير المقيمين | أسعار الـ 50 ولاية — قبس',
-    seoTitleEn: 'Form a US LLC for Non-Residents | All 50 States Pricing — QABS',
+      'Information and assistance reviewing a US LLC option against business activity, operating location, and state requirements; no single jurisdiction fits every founder and fees and eligibility require verification.',
+    seoTitleAr: 'مساعدة تأسيس شركة US LLC أمريكية | قبس',
+    seoTitleEn: 'US LLC Formation Assistance for Eligible Applicants | QABS',
     seoDescriptionAr:
-      'تأسيس شركة US LLC في وايومنغ، ديلاوير، نيو مكسيكو وجميع الولايات الخمسين مع مقارنة الرسوم الحكومية واستخراج EIN وفتح الحسابات البنكية.',
+      'مساعدة في مراجعة خيارات US LLC وتجهيز طلب التأسيس في الاختصاصات المتاحة، مع توضيح الرسوم والمتطلبات قبل قبول نطاق الخدمة؛ لا نضمن إصدار EIN أو فتح حساب بنكي.',
     seoDescriptionEn:
-      'Incorporate your US LLC in Wyoming, Delaware, New Mexico, or any of the 50 states with transparent filing fees and turnkey compliance.',
+      'US LLC formation assistance in supported jurisdictions, with requirements and fees reviewed before the service scope is accepted; EIN issuance and bank-account opening are not guaranteed.',
     detailedDescriptionAr: [
-      'الشركة ذات المسؤولية المحدودة الأمريكية (LLC) هي الهيكل القانوني الأكثر مرونة وانتشاراً لرواد الأعمال الدوليين؛ إذ تجمع بين حماية الأصول الشخصية وسهولة الإدارة دون تعقيدات مجالس الإدارة.',
-      'تتيح لك قبس المقارنة الدقيقة بين جميع الولايات الأمريكية الخمسين (مثل وايومنغ ذات الخصوصية العالية و 0% ضريبة ولاية، وديلاوير المعيارية، ونيو مكسيكو بدون تقرير سنوي) واختيار الأنسب لنشاطك وميزانيتك.'
+      'الشركة ذات المسؤولية المحدودة (LLC) أحد الأشكال القانونية المتاحة في الولايات المتحدة. تختلف آثارها القانونية والضريبية بحسب الولاية والملكية والنشاط ومكان ممارسة الأعمال؛ لا تمثل حماية مطلقة أو استشارة قانونية أو ضريبية.',
+      'تساعد قبس في مراجعة بعض الاختصاصات المتاحة ومقارنة المتطلبات والرسوم المعلنة. الضرائب والتقارير والإفصاحات تختلف حسب الحالة وقد تتطلب التزامات في أكثر من ولاية؛ يجب التحقق من المصادر الرسمية قبل الاختيار.'
     ],
     detailedDescriptionEn: [
-      'A US Limited Liability Company (LLC) is the most flexible, cost-effective entity for international founders, combining personal asset protection with streamlined governance.',
-      'QABS lets you compare filing fees and annual costs across all 50 US states—from privacy-focused zero-tax Wyoming to $0-annual-report New Mexico—and launch your LLC in days.'
+      'A US Limited Liability Company (LLC) is one available US entity type. Legal and tax effects depend on the state, ownership, activity, and operating locations; it does not provide absolute protection or replace professional advice.',
+      'QABS can help review selected jurisdictions and published requirements and fees. Tax, reporting, and disclosure obligations vary by circumstances and may apply in more than one state; verify official sources before choosing.'
     ],
-    deliveryTimeAr: '1 – 3 أيام عمل في معظم الولايات',
-    deliveryTimeEn: '1 – 3 business days in most states',
+    deliveryTimeAr: 'المدة غير مضمونة وتختلف حسب الولاية واكتمال المستندات ومعالجة السجل',
+    deliveryTimeEn: 'Timing is not guaranteed and varies by state, document completeness, and registry processing',
     startingPriceUsd: 339,
-    pricingNoteAr: 'تشمل رسوم الخدمة + الرسوم الحكومية (تبدأ من $339 شاملة كنتاكي أو $349 نيو مكسيكو)',
-    pricingNoteEn: 'Total package including state filing fees (starts at $339 KY / $349 NM)',
+    pricingNoteAr: 'الأسعار إرشادية وتخضع لمراجعة الأهلية والتوفر؛ تُحدد الرسوم الحكومية ورسوم الوكيل وأي خدمات إضافية في عرض مكتوب قبل التنفيذ.',
+    pricingNoteEn: 'Prices are indicative and subject to eligibility and availability review; state filing, agent, and optional service fees are confirmed in a written quote before work begins.',
     features: [
       {
-        titleAr: 'تغطية شاملة لجميع الولايات الـ 50',
-        titleEn: 'All 50 US States Supported',
-        descriptionAr: 'رسوم حكومية واضحة بدون تكاليف مخفية من وايومنغ حتى نيويورك.',
-        descriptionEn: 'Upfront state filing fees across all 50 states with zero hidden charges.'
+        titleAr: 'مراجعة الاختصاصات المتاحة',
+        titleEn: 'Supported Jurisdictions Review',
+        descriptionAr: 'تُراجع الرسوم الحكومية ومتطلبات الولاية المختارة من المصدر الرسمي قبل اعتماد عرض الخدمة.',
+        descriptionEn: 'Government fees and requirements for the selected state are checked against official sources before the service quote is confirmed.'
       },
       {
-        titleAr: 'ضرائب مرنة لغير المقيمين',
-        titleEn: 'Pass-Through Tax Efficiency',
-        descriptionAr: 'هيكل ضريبي مرن مع إعفاء ضريبة الولاية في ولايات مثل وايومنغ.',
-        descriptionEn: 'Flexible pass-through taxation with 0% state income tax in top states.'
+        titleAr: 'مراجعة الآثار الضريبية حسب الحالة',
+        titleEn: 'Tax Treatment Depends on Circumstances',
+        descriptionAr: 'المعاملة الضريبية تعتمد على نوع الكيان والمالك ومصدر الدخل ومكان ممارسة النشاط؛ لا يعني اختيار الولاية الإعفاء من الضرائب.',
+        descriptionEn: 'Tax treatment depends on entity type, owner, income source, and operating locations; selecting a state does not eliminate tax obligations.'
       },
       {
-        titleAr: 'مناسب لـ Shopify و Stripe و Amazon',
-        titleEn: 'Built for Commerce Platforms',
-        descriptionAr: 'جاهزية كاملة لتوثيق حسابات التجار على بوابات الدفع العالمية.',
-        descriptionEn: 'Structured to pass merchant onboarding on Stripe, PayPal, and Amazon.'
+        titleAr: 'مراجعة متطلبات المنصات ومزودي الدفع',
+        titleEn: 'Marketplace and Payment Provider Requirements',
+        descriptionAr: 'قد تساعد وثائق الشركة في تجهيز بعض الطلبات؛ لكل منصة ومزود شروطه وقراره المستقل ولا نضمن القبول.',
+        descriptionEn: 'Company documents may help prepare some applications; each platform and provider applies independent requirements and decisions, with no approval guarantee.'
       },
       {
-        titleAr: 'متابعة امتثال سنوية تلقائية',
-        titleEn: 'Automated Compliance Calendar',
-        descriptionAr: 'تذكير آلي بمواعيد التقرير السنوي وإقرار 5472 السنوي للشركات المملوكة أجنبياً.',
-        descriptionEn: 'Automated alerts for state annual reports and Form 5472 compliance.'
+        titleAr: 'مراجعة التزامات الامتثال السنوية',
+        titleEn: 'Annual Compliance Requirements Review',
+        descriptionAr: 'تُراجع مواعيد التقارير والنماذج التي قد تنطبق على الشركة؛ لا توجد متابعة أو تنبيهات آلية ما لم تُفعّل خدمة مستقلة وتُؤكد.',
+        descriptionEn: 'Applicable report and form deadlines are reviewed; automated tracking or alerts are not provided unless a separate service is activated and confirmed.'
       }
     ],
     benefitsAr: [
-      'حماية قانونية كاملة لأموالك الشخصية عن التزامات الشركة.',
-      'تأسيس سريع خلال أيام مع استلام رقم الملف الحكومي File Number.',
-      'توسيع نشاطك التجاري بفتح حسابات بنكية أمريكية بالدولار.',
-      'مرونة إضافة أو تعديل الشركاء عبر اتفاقية التشغيل.'
+      'قد يوفر الكيان فصلاً قانونياً بين الأصول عند الالتزام بالقوانين والإدارة السليمة؛ لا يمثل ذلك حماية مطلقة.',
+      'يصدر رقم الملف أو السجل من الجهة المختصة بعد قبول الإيداع؛ لا يمكن ضمان مدة الإصدار.',
+      'قد تساعد مستندات الكيان في تجهيز طلب حساب تجاري؛ قرار فتح الحساب يعود للمزود ولا نضمنه.',
+      'يمكن أن تحدد اتفاقية التشغيل بعض ترتيبات الإدارة والملكية وفق القانون المعمول به؛ إعدادها أو تعديلها يخضع لنطاق خدمة مستقل.'
     ],
     benefitsEn: [
-      'Full liability shield separating personal wealth from business risk.',
-      'Fast state filing with verified Secretary of State File Number.',
-      'Unlock USD commercial banking and global vendor payouts.',
-      'Simple governance without rigid corporate board formalities.'
+      'An entity may provide legal separation of assets when properly maintained; this is not absolute protection.',
+      'The relevant registry issues a filing or record number after accepting the submission; timing is not guaranteed.',
+      'Entity documents may support a business-account application; the provider decides approval and QABS does not guarantee it.',
+      'An operating agreement may set out management and ownership arrangements subject to applicable law and the agreed scope.'
     ],
     steps: [
       {
         stepNumber: '01',
         titleAr: 'اختيار الولاية المناسبة',
         titleEn: 'Pick Your US State',
-        descriptionAr: 'قارن بين وايومنغ وديلاوير ونيو مكسيكو أو أي من الولايات الـ 50 واختر الأنسب.',
-        descriptionEn: 'Compare Wyoming, Delaware, New Mexico, or any of the 50 states.',
+        descriptionAr: 'راجع الاختصاصات المتاحة مثل وايومنغ وديلاوير ونيو مكسيكو، وتحقق من متطلبات ورسوم أي خيار آخر قبل الاختيار.',
+        descriptionEn: 'Review selected jurisdictions such as Wyoming, Delaware, and New Mexico; other options require separate availability and fee confirmation.',
         durationAr: '5 دقائق',
         durationEn: '5 mins'
       },
@@ -691,12 +691,12 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       },
       {
         stepNumber: '03',
-        titleAr: 'التأسيس وإصدار الوثائق',
-        titleEn: 'State Filing & EIN Issuance',
-        descriptionAr: 'تودع قبس المستندات رسمياً وتستخرج شهادة التأسيس والـ EIN واتفاقية التشغيل.',
-        descriptionEn: 'We complete state filing, issue your Operating Agreement, and obtain your IRS EIN.',
-        durationAr: '3 – 10 أيام عمل',
-        durationEn: '3 – 10 business days'
+        titleAr: 'تنسيق التأسيس ومراجعة طلب EIN',
+        titleEn: 'Formation Coordination & EIN Application Assistance',
+        descriptionAr: 'تُنسّق قبس تجهيز طلب الإيداع بعد قبول الأهلية والنطاق وتوفر جهة التنفيذ؛ السجل الحكومي يصدر شهادة التأسيس، ويخضع طلب EIN لمتطلبات IRS.',
+        descriptionEn: 'QABS coordinates filing preparation after eligibility and scope acceptance and service availability; the registry issues formation records, and any EIN request is subject to IRS requirements.',
+        durationAr: 'المدة غير مضمونة وتخضع لمعالجة السجل واكتمال المستندات',
+        durationEn: 'Timing is not guaranteed and depends on registry processing and document completeness'
       }
     ],
     packages: [
@@ -705,22 +705,22 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة وايومنغ LLC المتكاملة',
         nameEn: 'Wyoming LLC Complete',
         priceUsd: 399,
-        billingNoteAr: 'شاملة $100 رسوم ولاية وايومنغ',
-        billingNoteEn: 'Includes $100 WY state fee',
-        descriptionAr: 'الخيار الأول للتجارة الإلكترونية: سرية تامة، 0% ضريبة ولاية، تأسيس + EIN + وكيل.',
-        descriptionEn: '#1 choice for e-commerce: privacy, 0% state tax, formation + EIN + Registered Agent.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة أهلية التأسيس في وايومنغ؛ الضرائب والإفصاحات والوكيل وطلب EIN تخضع لمتطلبات مستقلة وتأكيد النطاق.',
+        descriptionEn: 'An indicative option for reviewing Wyoming formation eligibility; tax, disclosure, agent, and EIN requirements are separate and subject to scope confirmation.',
         recommended: true,
         featuresAr: [
-          'تأسيس LLC في ولاية وايومنغ ($100 رسوم حكومية مشمولة)',
-          'استخراج الرقم الضريبي EIN من IRS',
-          'اتفاقية التشغيل + قرار البنك',
-          'وكيل مسجل وعنوان رسمي لمدة شهرين مجاناً'
+          'مساعدة في تجهيز طلب LLC في وايومنغ بعد مراجعة الأهلية والرسوم',
+          'مساعدة في إعداد طلب EIN وفق متطلبات IRS دون ضمان الإصدار',
+          'مسودة اتفاقية تشغيل أو قرار بنكي إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومدته وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'Wyoming LLC formation ($100 state fee included)',
-          'Federal IRS EIN Tax ID',
-          'Operating Agreement & Banking Resolution',
-          'Registered Agent & street address (2 months free)'
+          'Assistance preparing a Wyoming LLC application subject to eligibility and fee review',
+          'EIN application assistance subject to IRS requirements; issuance is not guaranteed',
+          'Operating Agreement or banking-resolution draft if included in the quote',
+          'Confirm agent availability, term, and cost before ordering'
         ]
       },
       {
@@ -728,21 +728,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة نيو مكسيكو LLC الاقتصادية',
         nameEn: 'New Mexico LLC Value',
         priceUsd: 349,
-        billingNoteAr: 'شاملة $50 رسوم ولاية نيو مكسيكو',
-        billingNoteEn: 'Includes $50 NM state fee',
-        descriptionAr: 'أقل تكلفة سنوية ($0 تقرير سنوي) مع سرية ملاك تامة وتأسيس متكامل.',
-        descriptionEn: 'Lowest maintenance ($0 annual report) with owner privacy and full formation.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة متطلبات نيو مكسيكو؛ تختلف التقارير والإفصاحات والضرائب حسب النشاط والمالك والجهات الأخرى.',
+        descriptionEn: 'An indicative option for reviewing New Mexico requirements; reporting, disclosure, and tax obligations vary by activity, owner, and other jurisdictions.',
         featuresAr: [
-          'تأسيس LLC في نيو مكسيكو ($50 رسوم حكومية مشمولة)',
-          'لا يوجد تقرير سنوي إلزامي للولاية ($0)',
-          'استخراج EIN واتفاقية التشغيل',
-          'وكيل مسجل مجاني لشهرين'
+          'مساعدة في تجهيز طلب LLC في نيو مكسيكو بعد مراجعة الأهلية والرسوم',
+          'مراجعة التقارير والالتزامات التي تنطبق على الشركة',
+          'مساعدة في طلب EIN ومسودة اتفاقية تشغيل إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومدته وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'New Mexico LLC formation ($50 state fee included)',
-          '$0 state annual report requirement',
-          'IRS EIN & Operating Agreement included',
-          '2 months free Registered Agent'
+          'Assistance preparing a New Mexico LLC application subject to eligibility and fee review',
+          'Review reporting obligations that apply to the company',
+          'EIN application assistance and Operating Agreement draft if included in the quote',
+          'Confirm agent availability, term, and cost before ordering'
         ]
       },
       {
@@ -750,21 +750,21 @@ export const FORMATION_SERVICES: ServicePageData[] = [
         nameAr: 'باقة ديلاوير LLC الاستثمارية',
         nameEn: 'Delaware LLC Standard',
         priceUsd: 389,
-        billingNoteAr: 'شاملة $90 رسوم ولاية ديلاوير',
-        billingNoteEn: 'Includes $90 DE state fee',
-        descriptionAr: 'المعيار القانوني المفضل للشركات التقنية والمستثمرين والبنوك الدولية.',
-        descriptionEn: 'Premier corporate jurisdiction trusted by institutional partners and banks.',
+        billingNoteAr: 'رسوم الولاية تُراجع وتُؤكد وقت عرض السعر',
+        billingNoteEn: 'State fee reviewed and confirmed at quote',
+        descriptionAr: 'خيار إرشادي لمراجعة ملاءمة ديلاوير وفق نوع الكيان والنشاط وخطة العمل؛ لا يضمن قبول المستثمرين أو البنوك.',
+        descriptionEn: 'An indicative option to review Delaware suitability against entity type and business plans; investor or bank acceptance is not guaranteed.',
         featuresAr: [
-          'تأسيس LLC في ديلاوير ($90 رسوم حكومية مشمولة)',
-          'الاستفادة من محاكم Chancery المتخصصة',
-          'استخراج EIN واتفاقية التشغيل',
-          'وكيل مسجل في ويلمنجتون ديلاوير'
+          'مساعدة في تجهيز طلب LLC في ديلاوير بعد مراجعة الأهلية والرسوم',
+          'مراجعة خصائص النظام القانوني في ديلاوير مع مستشار مؤهل',
+          'مساعدة في طلب EIN ومسودة اتفاقية تشغيل إذا شملهما العرض',
+          'مراجعة توفر الوكيل ومتطلبات العنوان وتكلفته قبل الطلب'
         ],
         featuresEn: [
-          'Delaware LLC formation ($90 state fee included)',
-          'Access to Delaware Court of Chancery framework',
-          'IRS EIN & Operating Agreement included',
-          'Registered Agent in Wilmington, DE'
+          'Assistance preparing a Delaware LLC application subject to eligibility and fee review',
+          'Review jurisdiction-specific legal framework with a qualified adviser',
+          'EIN application assistance and Operating Agreement draft if included in the quote',
+          'Confirm agent availability, address requirements, and cost before ordering'
         ]
       }
     ],
@@ -772,20 +772,20 @@ export const FORMATION_SERVICES: ServicePageData[] = [
       {
         questionAr: 'ما هي أفضل ولاية أمريكية لتأسيس شركة تجارة إلكترونية؟',
         questionEn: 'Which US state is best for an e-commerce LLC?',
-        answerAr: 'ولاية وايومنغ (Wyoming) هي الأفضل لغالبية المتاجر الإلكترونية بسبب 0% ضريبة دخل، وسرية أسماء الملاك، ورسوم تجديد سنوي منخفضة ($60 فقط).',
-        answerEn: 'Wyoming is the top choice for most e-commerce founders thanks to 0% state income tax, owner privacy, and a low $60 annual report fee.'
+        answerAr: 'لا توجد ولاية هي الأفضل لكل الشركات. يعتمد الاختيار على مكان النشاط والعملاء والمالك والضرائب والرسوم والتقارير؛ ينبغي مراجعة المصادر الرسمية ومستشار مختص قبل القرار.',
+        answerEn: 'No state is best for every company. Selection depends on operations, customers, owners, taxes, fees, and reporting; review official sources and consult a qualified adviser before deciding.'
       },
       {
         questionAr: 'هل يمكن تأسيس LLC بشريك واحد (Single-Member) أم أكثر؟',
         questionEn: 'Can I form a Single-Member or Multi-Member LLC?',
-        answerAr: 'يدعم نظام قبس تأسيس شركة بمالك واحد (Single-Member LLC) أو بعدة شركاء (Multi-Member LLC) مع توثيق نسب الحصص في اتفاقية التشغيل.',
-        answerEn: 'QABS supports both Single-Member and Multi-Member LLCs, documenting ownership percentages clearly in your Operating Agreement.'
+        answerAr: 'تسمح كثير من الولايات بهياكل LLC بمالك واحد أو عدة أعضاء؛ تُراجع متطلبات الولاية والملكية واتفاقية التشغيل قبل التقديم.',
+        answerEn: 'Many states allow single-member or multi-member LLC structures; state, ownership, and operating-agreement requirements should be reviewed before filing.'
       }
     ],
     formFields: [
       {
         name: 'preferredState',
-        labelAr: 'الولاية المختارة (من الـ 50 ولاية)',
+        labelAr: 'الولاية أو الاختصاص المطلوب',
         labelEn: 'Preferred US State',
         type: 'text',
         required: true,

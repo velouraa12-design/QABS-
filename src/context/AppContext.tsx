@@ -60,7 +60,7 @@ import {
   INITIAL_STORE_TEMPLATES,
   DEFAULT_STORE_SECTIONS
 } from '../data/mockData.ts';
-import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi } from '../services/qabsApi.ts';
+import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusResponse, qabsApi, StoreProductVariant, StoreInventoryMovement } from '../services/qabsApi.ts';
 import {
   mapApiUserToProfile,
   mapDbAuditLog,
@@ -152,7 +152,28 @@ interface AppContextType {
   addProduct: (product: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => void;
   updateProduct: (id: string, updates: Partial<StoreProduct>) => void;
   deleteProduct: (id: string) => void;
+  listProductVariants: (storeId: string, productId: string) => Promise<StoreProductVariant[]>;
+  createProductVariant: (storeId: string, productId: string, input: {
+    title: string; sku?: string; options: Record<string, string>; price?: number;
+    compareAtPrice?: number | null; stock?: number; status?: 'active' | 'draft' | 'archived';
+  }) => Promise<boolean>;
+  updateProductVariant: (storeId: string, productId: string, variantId: string, input: {
+    title?: string; sku?: string; options?: Record<string, string>; price?: number;
+    compareAtPrice?: number | null; status?: 'active' | 'draft' | 'archived';
+  }) => Promise<boolean>;
+  adjustProductInventory: (storeId: string, productId: string, input: {
+    quantityDelta: number; reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+    variantId?: string; referenceId?: string;
+  }) => Promise<boolean>;
+  listInventoryMovements: (storeId: string, productId: string) => Promise<StoreInventoryMovement[]>;
   orders: StoreOrder[];
+  createStoreOrder: (input: {
+    storeId: string;
+    customerName: string;
+    customerEmail: string;
+    customerCountry?: string;
+    items: Array<{ productId: string; variantId?: string; quantity: number }>;
+  }) => Promise<boolean>;
   addOrder: (order: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => void;
   updateOrderStatus: (id: string, status: StoreOrder['status'], trackingNumber?: string) => void;
   customers: StoreCustomer[];
@@ -268,8 +289,8 @@ interface AppContextType {
   completeServiceCheckout: (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => void;
   authModalOpen: boolean;
   setAuthModalOpen: (open: boolean) => void;
-  authMode: 'login' | 'register' | 'recover';
-  setAuthMode: (mode: 'login' | 'register' | 'recover') => void;
+  authMode: 'login' | 'register' | 'recover' | 'verify';
+  setAuthMode: (mode: 'login' | 'register' | 'recover' | 'verify') => void;
   login: (email: string, role: UserRole, password?: string) => Promise<boolean>;
   loginOwner: (email?: string, password?: string) => Promise<boolean>;
   register: (
@@ -296,8 +317,6 @@ interface AppContextType {
   showToast: (msg: string) => void;
 }
 
-const STORAGE_KEY = 'qabs_workspace_state_v1';
-
 export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   overview: {
     showKpiCards: true,
@@ -307,48 +326,48 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
   },
   orders: {
     orderPrefix: 'QBS-',
-    autoDeductInventory: true,
+    autoDeductInventory: false,
     defaultCarrier: 'DHL Express / SMSA',
     defaultShippingRate: 25,
     enabledStatuses: ['paid', 'processing', 'shipped', 'delivered', 'refunded']
   },
   documents: {
     officialTemplateStyle: 'executive_gold',
-    companyStampText: 'معتمد رسمياً — منصة قبس الرقمية QABS',
+    companyStampText: '',
     logoDataUrl: '',
     stampDataUrl: '',
     allowedExportFormats: ['PDF', 'JSON', 'CSV'],
-    autoArchiveIssuedInvoices: true
+    autoArchiveIssuedInvoices: false
   },
   billing: {
-    taxNumber: '310492819400003',
+    taxNumber: '',
     enableStripe: false,
     enablePayPal: false,
-    enableBankTransfer: true,
+    enableBankTransfer: false,
     enableMoyasarTap: false,
-    bankIban: 'SA4480000492608010492811'
+    bankIban: ''
   },
   qabsAi: {
-    autoExecuteEnabled: true,
-    allowPriceModification: true,
-    allowOrderFulfillment: true,
-    monthlyCreditLimit: 500,
+    autoExecuteEnabled: false,
+    allowPriceModification: false,
+    allowOrderFulfillment: false,
+    monthlyCreditLimit: 0,
     lowCreditAlertThreshold: 25
   },
   crypto: {
-    usdtTrc20Address: 'CONFIGURE_TRC20_ADDRESS_IN_ADMIN',
-    usdtErc20Address: 'CONFIGURE_ERC20_ADDRESS_IN_ADMIN',
-    btcAddress: 'CONFIGURE_BTC_ADDRESS_IN_ADMIN',
-    enabledNetworks: ['TRC20', 'ERC20', 'BTC'],
+    usdtTrc20Address: '',
+    usdtErc20Address: '',
+    btcAddress: '',
+    enabledNetworks: [],
     minTransferUsd: 50
   },
   support: {
-    officialPhone: '+966 11 510 8890',
-    officialEmail: 'support@qabs1.store',
-    workingHoursAr: 'الأحد - الخميس | 9:00 صباحاً - 6:00 مساءً (GMT+3)',
-    workingHoursEn: 'Sun - Thu | 9:00 AM - 6:00 PM (GMT+3)',
-    autoReplyEnabled: true,
-    autoReplyMessageAr: 'تم استلام تذكرتك بنجاح، سيتواصل معك فريق دعم قبس خلال أقل من ساعتين.'
+    officialPhone: '',
+    officialEmail: '',
+    workingHoursAr: 'تُحدد بعد اعتماد قنوات الدعم الرسمية',
+    workingHoursEn: 'To be configured after official support channels are approved',
+    autoReplyEnabled: false,
+    autoReplyMessageAr: ''
   },
   companyFormation: {
     baseServiceFeeUsd: 199,
@@ -362,53 +381,15 @@ export const DEFAULT_SECTION_SETTINGS: WorkspaceSectionSettings = {
     einFeeUsd: 70,
     registeredAgentFeeUsd: 99,
     annualRenewalAlertDays: 30,
-    autoAnnualReportReminder: true,
-    autoAgentRenewalReminder: true,
+    autoAnnualReportReminder: false,
+    autoAgentRenewalReminder: false,
     requiredDocuments: ['passport'],
     operatingAgreementTemplate:
       'اتفاقية التشغيل القياسية لقبس (Operating Agreement): يقر المؤسس والأعضاء بتوزيع الحصص والصلاحيات الكاملة لإدارة الحسابات البنكية والتجارة الإلكترونية وفق أنظمة الولاية المعتمدة.',
-    autoCreateStoreOnCompletion: true,
-    autoCreateDocsFolderOnCompletion: true
+    autoCreateStoreOnCompletion: false,
+    autoCreateDocsFolderOnCompletion: false
   }
 };
-
-interface PersistedWorkspaceState {
-  isAuthenticated?: boolean;
-  pendingServiceOrder?: PendingServiceOrder | null;
-  isProductionMode?: boolean;
-  user?: UserProfile;
-  companies?: CompanyFormation[];
-  stores?: StoreInstance[];
-  activeStoreId?: string;
-  products?: StoreProduct[];
-  orders?: StoreOrder[];
-  customers?: StoreCustomer[];
-  discounts?: StoreDiscount[];
-  shippingZones?: StoreShippingZone[];
-  storePages?: StorePageItem[];
-  storeApps?: StoreAppAddon[];
-  storeTemplates?: StoreTemplatePreset[];
-  banking?: BankingAccount[];
-  tickets?: SupportTicket[];
-  staff?: StaffMember[];
-  auditLogs?: AuditLogItem[];
-  subscription?: UserSubscription;
-  invoices?: Invoice[];
-  refunds?: RefundRecord[];
-  aiHistory?: AICommandHistoryItem[];
-  sectionSettings?: WorkspaceSectionSettings;
-  submittedServiceOrders?: SubmittedServiceOrder[];
-}
-
-function loadPersistedState(): PersistedWorkspaceState {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as PersistedWorkspaceState;
-  } catch {
-    return {};
-  }
-}
 
 function isWorkspaceUrl(): boolean {
   const hash = window.location.hash || '';
@@ -435,8 +416,6 @@ function isWorkspaceUrl(): boolean {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [persisted] = useState<PersistedWorkspaceState>(() => loadPersistedState());
-
   const [language, setLanguageState] = useState<Language>(() => {
     return (localStorage.getItem('qabs_lang') as Language) || 'ar';
   });
@@ -488,43 +467,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [refunds, setRefunds] = useState<RefundRecord[]>(INITIAL_REFUNDS);
   const [aiHistory, setAiHistory] = useState<AICommandHistoryItem[]>([]);
   const [sectionSettings, setSectionSettings] = useState<WorkspaceSectionSettings>(() => ({
-    overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...(persisted.sectionSettings?.overview || {}) },
-    orders: { ...DEFAULT_SECTION_SETTINGS.orders, ...(persisted.sectionSettings?.orders || {}) },
-    documents: { ...DEFAULT_SECTION_SETTINGS.documents, ...(persisted.sectionSettings?.documents || {}) },
-    billing: { ...DEFAULT_SECTION_SETTINGS.billing, ...(persisted.sectionSettings?.billing || {}) },
-    qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi, ...(persisted.sectionSettings?.qabsAi || {}) },
-    crypto: { ...DEFAULT_SECTION_SETTINGS.crypto, ...(persisted.sectionSettings?.crypto || {}) },
-    support: { ...DEFAULT_SECTION_SETTINGS.support, ...(persisted.sectionSettings?.support || {}) },
+    overview: { ...DEFAULT_SECTION_SETTINGS.overview },
+    orders: { ...DEFAULT_SECTION_SETTINGS.orders },
+    documents: { ...DEFAULT_SECTION_SETTINGS.documents },
+    billing: { ...DEFAULT_SECTION_SETTINGS.billing },
+    qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi },
+    crypto: { ...DEFAULT_SECTION_SETTINGS.crypto },
+    support: { ...DEFAULT_SECTION_SETTINGS.support },
     companyFormation: {
       ...DEFAULT_SECTION_SETTINGS.companyFormation,
-      ...(persisted.sectionSettings?.companyFormation || {}),
-      stateFees: {
-        ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees,
-        ...(persisted.sectionSettings?.companyFormation?.stateFees || {})
-      }
+      stateFees: { ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees }
     }
   }));
 
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
-  const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover'>('login');
+  const [authMode, setAuthMode] = useState<'login' | 'register' | 'recover' | 'verify'>('login');
   const [authIntent, setAuthIntent] = useState<'client' | 'owner'>('client');
-  const [pendingServiceOrder, setPendingServiceOrder] = useState<PendingServiceOrder | null>(
-    persisted.pendingServiceOrder ?? null
-  );
+  const [pendingServiceOrder, setPendingServiceOrder] = useState<PendingServiceOrder | null>(null);
   const [checkoutModalOpen, setCheckoutModalOpen] = useState<boolean>(false);
-  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>(() => {
-    const raw = persisted.submittedServiceOrders ?? [];
-    return raw.map(item => ({
-      ...item,
-      status: ((item.status as string) === 'received'
-        ? 'new'
-        : (item.status as string) === 'in_review'
-        ? 'under_review'
-        : (item.status as string) === 'awaiting_payment'
-        ? 'needs_info'
-        : item.status) as ServiceOrderStatus
-    }));
-  });
+  const [submittedServiceOrders, setSubmittedServiceOrders] = useState<SubmittedServiceOrder[]>([]);
 
   const isOwner = isAuthenticated && PRIVILEGED_ROLES.has(user.role);
   const unreadNotificationsCount = notifications.filter(n => !n.isRead).length;
@@ -659,21 +620,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch {
         if (!active) return;
-        // Static CDN deployment fallback (explicitly marked preview_offline)
+        // Fail closed on static/offline previews: never restore a browser-stored
+        // identity, role, customer record, or operational data as an authenticated session.
         setBackendStatus('preview_offline');
-        if (persisted.isAuthenticated && persisted.user) {
-          setIsAuthenticated(true);
-          setUser(persisted.user);
-          if (isWorkspaceUrl()) setMode('portal');
-        }
-        if (persisted.companies) setCompanies(persisted.companies);
-        if (persisted.stores) setStores(persisted.stores);
-        if (persisted.activeStoreId) setActiveStoreId(persisted.activeStoreId);
-        if (persisted.products) setProducts(persisted.products);
-        if (persisted.orders) setOrders(persisted.orders);
-        if (persisted.customers) setCustomers(persisted.customers);
-        if (persisted.tickets) setTickets(persisted.tickets);
-        if (persisted.invoices) setInvoices(persisted.invoices);
+        setIsAuthenticated(false);
+        setUser(INITIAL_USER);
+        setMode('landing');
+        setCompanies([]);
+        setStores([]);
+        setProducts([]);
+        setOrders([]);
+        setCustomers([]);
+        setDiscounts([]);
+        setShippingZones([]);
+        setStorePages([]);
+        setStoreApps([]);
+        setStoreTemplates([]);
+        setBanking([]);
+        setTickets([]);
+        setStaff([]);
+        setAuditLogs([]);
+        setNotifications([]);
+        setInvoices([]);
+        setRefunds([]);
+        setAiHistory([]);
+        setWorkspaceBackups([]);
+        setSubmittedServiceOrders([]);
+        setPendingServiceOrder(null);
+        setCheckoutModalOpen(false);
+        setAdminOverview(null);
       }
     })();
     return () => {
@@ -681,69 +656,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [applyBootstrapPayload]);
 
-  // Persist local fallback state ONLY when running in static preview_offline mode
-  useEffect(() => {
-    if (backendStatus !== 'preview_offline') return;
-    try {
-      const payload: PersistedWorkspaceState = {
-        isAuthenticated,
-        pendingServiceOrder,
-        isProductionMode,
-        user,
-        companies,
-        stores,
-        activeStoreId,
-        products,
-        orders,
-        customers,
-        discounts,
-        shippingZones,
-        storePages,
-        storeApps,
-        storeTemplates,
-        banking,
-        tickets,
-        staff,
-        auditLogs,
-        subscription,
-        invoices,
-        refunds,
-        aiHistory,
-        sectionSettings,
-        submittedServiceOrders
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {
-      // Ignore quota errors
-    }
-  }, [
-    backendStatus,
-    isAuthenticated,
-    pendingServiceOrder,
-    isProductionMode,
-    user,
-    companies,
-    stores,
-    activeStoreId,
-    products,
-    orders,
-    customers,
-    discounts,
-    shippingZones,
-    storePages,
-    storeApps,
-    storeTemplates,
-    banking,
-    tickets,
-    staff,
-    auditLogs,
-    subscription,
-    invoices,
-    refunds,
-    aiHistory,
-    sectionSettings,
-    submittedServiceOrders
-  ]);
+  // Offline previews do not persist authenticated or operational workspace state.
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -778,6 +691,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(msg);
   };
 
+  const requireConnectedBackend = (): boolean => {
+    if (backendStatus === 'connected') return true;
+    showToast(language === 'ar'
+      ? 'خدمة الخلفية غير متصلة في هذه المعاينة؛ لم يتم حفظ أي تغيير أو إنشاء أي طلب.'
+      : 'The backend is not connected in this preview; no change or request was saved.');
+    return false;
+  };
+
+
   const appendAudit = (actionAr: string, actionEn: string, target: string, status: AuditLogItem['status'] = 'success') => {
     setAuditLogs(prev => [
       {
@@ -794,33 +716,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const switchRole = (newRole: UserRole) => {
-    if (backendStatus === 'connected') {
-      showToast(
-        language === 'ar'
-          ? 'تبديل الصلاحيات يتطلب تسجيل دخول فعلي بحساب يمتلك الدور المطلوب.'
-          : 'Role changes require authenticating with an account holding that role.'
-      );
-      if (newRole === 'super_admin') openOwnerAuth();
-      else openClientAuth('login');
-      return;
-    }
-    if (newRole === 'super_admin') {
-      setUser(OWNER_USER_PROFILE);
-      setIsAuthenticated(true);
-      showToast(language === 'ar' ? 'وضع المعاينة غير المتصل: المالك (Super Admin)' : 'Offline preview: Super Admin');
-    } else {
-      setUser(prev => ({
-        ...prev,
-        id: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'usr_client_01' : prev.id,
-        role: 'customer',
-        name: prev.id === 'owner_anwar' || prev.id === 'guest' ? 'عميل منصة قبس' : prev.name
-      }));
-      setIsAuthenticated(true);
-    }
+    setAuthError(
+      language === 'ar'
+        ? 'تبديل الأدوار غير متاح في المعاينة غير المتصلة. سجّل الدخول بحساب موثّق عندما تتصل خدمة المصادقة.'
+        : 'Role switching is disabled in offline preview. Sign in with a verified account when the authentication service is connected.'
+    );
+    if (newRole === 'super_admin') openOwnerAuth();
+    else openClientAuth('login');
   };
 
   // --- COMPANIES ---
   const addCompany = (comp: Omit<CompanyFormation, 'id' | 'filingDate' | 'status' | 'documents'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -882,31 +790,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCompanyStatus = (id: string, status: CompanyFormation['status']) => {
-    setCompanies(prev => prev.map(c => (c.id === id ? { ...c, status } : c)));
+    void id; void status;
+    showToast(language === 'ar' ? 'تحديث حالة التأسيس غير متصل بخدمة الخادم؛ لم يتم تغيير الحالة.' : 'Formation status updates are not connected to the server; no status was changed.');
   };
+
 
   const advanceCompanyStage = (id: string, nextStage?: 1 | 2 | 3 | 4 | 5) => {
-    const target = companies.find(c => c.id === id);
-    if (!target) return;
-    const computedStage = (nextStage ?? Math.min(5, (target.formationStage ?? 1) + 1)) as 1 | 2 | 3 | 4 | 5;
-    setCompanies(prev =>
-      prev.map(c =>
-        c.id === id
-          ? {
-              ...c,
-              formationStage: computedStage,
-              status: computedStage === 5 ? 'approved' : computedStage >= 2 ? 'submitted_to_state' : 'under_review'
-            }
-          : c
-      )
-    );
-    appendAudit(`ترقية مرحلة التأسيس (${target.companyName}) إلى ${computedStage}/5`, `Advanced formation (${target.companyName}) to ${computedStage}/5`, target.companyName);
+    void id; void nextStage;
+    showToast(language === 'ar' ? 'تحديث مرحلة التأسيس غير متاح حتى ربط واجهة الخادم.' : 'Formation-stage updates are unavailable until the server API is connected.');
   };
 
-  // --- STORES (TENANT & ADMIN GATED) ---
+
   const addStore = (
     storeData: Omit<StoreInstance, 'id' | 'productsCount' | 'ordersCount' | 'totalRevenue' | 'createdAt'>
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -960,6 +859,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStoreTheme = (id: string, newTheme: StoreInstance['theme'], customDomain?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -979,6 +880,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateStoreDetails = (id: string, updates: Partial<StoreInstance>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1008,6 +911,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const submitStoreForApproval = (storeId: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1035,6 +940,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     decision: 'approved_published' | 'changes_requested' | 'rejected',
     feedback?: string
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1076,6 +983,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       merchantReference?: string;
     }
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1114,6 +1023,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const approveStorePayment = (storeId: string, approved: boolean) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1138,6 +1049,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const requestDomainVerification = (storeId: string, customDomain: string) => {
+    if (!requireConnectedBackend()) return;
+
     const cleanDomain = customDomain.trim().toLowerCase().replace(/^https?:\/\//, '');
     if (backendStatus === 'connected') {
       updateStoreDetails(storeId, { customDomain: cleanDomain });
@@ -1149,81 +1062,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyStoreDomain = (storeId: string) => {
-    if (backendStatus === 'connected') {
-      void (async () => {
-        try {
-          await qabsApi.adminVerifyStoreDomain(storeId, true);
-          await refreshWorkspace();
-          showToast(language === 'ar' ? 'تم توثيق سجل النطاق في قاعدة البيانات (بدون تعديل DNS فعلي).' : 'Domain status verified in database.');
-        } catch (err) {
-          handleApiFailure(err, 'تعذر توثيق النطاق', 'Failed to verify store domain');
-        }
-      })();
-      return;
-    }
-    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, domainVerified: true } : s)));
+    void storeId;
+    showToast(language === 'ar' ? 'التحقق من النطاق يتطلب تحققاً خادمياً؛ لم يتم اعتماد أي نطاق.' : 'Domain verification requires a server-side check; no domain was verified.');
   };
+
 
   const saveStoreSnapshot = (storeId: string, label: string) => {
-    const target = stores.find(s => s.id === storeId);
-    const newSnap = {
-      id: `ver_${Date.now()}`,
-      label: label || `نسخة (${new Date().toLocaleTimeString()})`,
-      savedAt: new Date().toISOString().replace('T', ' ').slice(0, 16),
-      theme: target?.theme || 'gold_executive',
-      primaryColor: target?.primaryColor || '#004457',
-      accentColor: target?.accentColor || '#C8A24A',
-      fontFamily: target?.fontFamily || 'Cairo',
-      sections: (target?.sections || DEFAULT_STORE_SECTIONS).map(sec => ({ ...sec }))
-    };
-    const nextVersions = [newSnap, ...(target?.designVersions || [])];
-    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, designVersions: nextVersions } : s)));
-    if (backendStatus === 'connected' && target) {
-      void qabsApi
-        .updateStore(storeId, { settings: { designVersions: nextVersions } })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
-    showToast(language === 'ar' ? 'تم حفظ نسخة التصميم' : 'Design snapshot saved');
+    void storeId; void label;
+    showToast(language === 'ar' ? 'حفظ نسخة المتجر غير متصل بخدمة النسخ الاحتياطي؛ لم تُنشأ نسخة وهمية.' : 'Store snapshots are not connected to backup storage; no local-only snapshot was created.');
   };
+
 
   const restoreStoreSnapshot = (storeId: string, snapshotId: string) => {
-    const target = stores.find(s => s.id === storeId);
-    const snap = (target?.designVersions || []).find(v => v.id === snapshotId);
-    if (!snap) return;
-    const restoredSections = snap.sections.map(sec => ({ ...sec }));
-    setStores(prev =>
-      prev.map(s =>
-        s.id === storeId
-          ? {
-              ...s,
-              theme: snap.theme,
-              primaryColor: snap.primaryColor,
-              accentColor: snap.accentColor,
-              fontFamily: snap.fontFamily,
-              sections: restoredSections
-            }
-          : s
-      )
-    );
-    if (backendStatus === 'connected') {
-      void qabsApi
-        .updateStore(storeId, {
-          theme: snap.theme,
-          settings: {
-            primaryColor: snap.primaryColor,
-            accentColor: snap.accentColor,
-            fontFamily: snap.fontFamily,
-            sections: restoredSections
-          }
-        })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
-    showToast(language === 'ar' ? 'تم استعادة نسخة التصميم' : 'Design restored');
+    void storeId; void snapshotId;
+    showToast(language === 'ar' ? 'استعادة نسخ التصميم غير متصلة بخدمة التخزين الخادمي؛ لم يتغير المتجر.' : 'Design snapshot restore is not connected to server storage; the store was not changed.');
   };
 
+
   const updateStoreSections = (storeId: string, sections: StoreSectionBlock[]) => {
+    if (!requireConnectedBackend()) return;
+
     setStores(prev => prev.map(s => (s.id === storeId ? { ...s, sections } : s)));
     if (backendStatus === 'connected') {
       void qabsApi
@@ -1234,6 +1092,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addStoreCategory = async (storeId: string, nameAr: string, nameEn?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.createCategory(storeId, { nameAr, nameEn });
@@ -1254,6 +1114,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     storeId: string,
     input: { name: string; email: string; role: 'admin' | 'staff' | 'support'; permissions?: string[] }
   ) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.addStoreTeamMember(storeId, input);
@@ -1280,6 +1142,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- PRODUCTS ---
   const addProduct = (p: Omit<StoreProduct, 'id' | 'salesCount' | 'storeId'> & { storeId?: string }) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = p.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1312,6 +1176,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateProduct = (id: string, updates: Partial<StoreProduct>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       const target = products.find(p => p.id === id);
       if (!target) return;
@@ -1335,7 +1201,92 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast(language === 'ar' ? 'تم تعديل المنتج' : 'Product updated');
   };
 
+  const listProductVariants = async (storeId: string, productId: string): Promise<StoreProductVariant[]> => {
+    if (backendStatus !== 'connected') return [];
+    try {
+      const result = await qabsApi.listProductVariants(storeId, productId);
+      return result.variants;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحميل متغيرات المنتج', 'Failed to load product variants');
+      return [];
+    }
+  };
+
+  const createProductVariant = async (
+    storeId: string,
+    productId: string,
+    input: {
+      title: string; sku?: string; options: Record<string, string>; price?: number;
+      compareAtPrice?: number | null; stock?: number; status?: 'active' | 'draft' | 'archived';
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.createProductVariant(storeId, productId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم حفظ متغير المنتج' : 'Product variant saved');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر حفظ متغير المنتج', 'Failed to save product variant');
+      return false;
+    }
+  };
+
+  const updateProductVariant = async (
+    storeId: string,
+    productId: string,
+    variantId: string,
+    input: {
+      title?: string; sku?: string; options?: Record<string, string>; price?: number;
+      compareAtPrice?: number | null; status?: 'active' | 'draft' | 'archived';
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.updateProductVariant(storeId, productId, variantId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم تحديث متغير المنتج' : 'Product variant updated');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث متغير المنتج', 'Failed to update product variant');
+      return false;
+    }
+  };
+
+  const adjustProductInventory = async (
+    storeId: string,
+    productId: string,
+    input: {
+      quantityDelta: number; reason: 'restock' | 'manual_adjustment' | 'correction' | 'damaged' | 'returned';
+      variantId?: string; referenceId?: string;
+    }
+  ): Promise<boolean> => {
+    if (backendStatus !== 'connected') return false;
+    try {
+      await qabsApi.adjustProductInventory(storeId, productId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم تحديث المخزون وتسجيل الحركة' : 'Inventory updated and movement recorded');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث المخزون', 'Failed to adjust inventory');
+      return false;
+    }
+  };
+
+  const listInventoryMovements = async (storeId: string, productId: string): Promise<StoreInventoryMovement[]> => {
+    if (backendStatus !== 'connected') return [];
+    try {
+      const result = await qabsApi.listInventoryMovements(storeId, productId, { limit: 50 });
+      return result.movements;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحميل سجل المخزون', 'Failed to load inventory history');
+      return [];
+    }
+  };
+
   const deleteProduct = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     const prod = products.find(p => p.id === id);
     if (backendStatus === 'connected' && prod) {
       void (async () => {
@@ -1359,7 +1310,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- STORE ORDERS ---
+  const createStoreOrder = async (input: {
+    storeId: string;
+    customerName: string;
+    customerEmail: string;
+    customerCountry?: string;
+    items: Array<{ productId: string; variantId?: string; quantity: number }>;
+  }): Promise<boolean> => {
+    if (backendStatus !== 'connected') {
+      requireConnectedBackend();
+      return false;
+    }
+    try {
+      await qabsApi.createOrder(input.storeId, {
+        customerName: input.customerName,
+        customerEmail: input.customerEmail,
+        customerCountry: input.customerCountry,
+        items: input.items
+      });
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم إنشاء الطلب وتحديث المخزون' : 'Order created and inventory updated');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر إنشاء الطلب أو أن المخزون غير كافٍ', 'Failed to create order or insufficient stock');
+      return false;
+    }
+  };
+
   const addOrder = (orderData: Omit<StoreOrder, 'id' | 'orderNumber' | 'date'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1389,6 +1369,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateOrderStatus = (id: string, status: StoreOrder['status'], trackingNumber?: string) => {
+    if (!requireConnectedBackend()) return;
+
     const existing = orders.find(o => o.id === id);
     if (backendStatus === 'connected' && existing) {
       void (async () => {
@@ -1410,25 +1392,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueOrderInvoice = (orderId: string): Invoice | null => {
-    const targetOrder = orders.find(o => o.id === orderId);
-    if (!targetOrder) return null;
-    const store = stores.find(s => s.id === targetOrder.storeId);
-    const newInvoice: Invoice = {
-      id: `inv_${Date.now()}`,
-      invoiceNumber: `INV-${targetOrder.orderNumber}`,
-      date: new Date().toISOString().split('T')[0],
-      amount: targetOrder.total,
-      currency: targetOrder.currency || store?.currency || 'SAR',
-      status: 'pending_verification',
-      descriptionAr: `فاتورة طلب متجر (${store?.name || 'متجر قبس'}) — ${targetOrder.orderNumber}`,
-      descriptionEn: `Store order invoice (${store?.name || 'QABS Store'}) — ${targetOrder.orderNumber}`,
-      clientName: targetOrder.customerName
-    };
-    setInvoices(prev => [newInvoice, ...prev]);
-    return newInvoice;
+    void orderId;
+    showToast(language === 'ar' ? 'إصدار فواتير الطلبات غير متصل بنظام الفوترة؛ لم تُنشأ فاتورة.' : 'Order invoicing is not connected to the billing service; no invoice was created.');
+    return null;
   };
 
+
   const addCustomer = (c: Omit<StoreCustomer, 'id' | 'ordersCount' | 'totalSpent' | 'lastOrderDate'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = c.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1458,6 +1430,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addDiscount = (d: Omit<StoreDiscount, 'id' | 'usedCount'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = d.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1495,6 +1469,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setDiscounts(prev => prev.map(d => (d.id === id ? { ...d, status: d.status === 'active' ? 'expired' : 'active' } : d)));
   };
   const addShippingZone = (z: Omit<StoreShippingZone, 'id'>) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = z.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1519,6 +1495,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setShippingZones(prev => [{ ...z, id: `shp_${Date.now()}` }, ...prev]);
   };
   const saveStorePage = (page: Omit<StorePageItem, 'id' | 'updatedAt'> & { id?: string }) => {
+    if (!requireConnectedBackend()) return;
+
     const targetStoreId = page.storeId || activeStoreId;
     if (backendStatus === 'connected') {
       void (async () => {
@@ -1548,6 +1526,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
   const deleteStorePage = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     const existing = storePages.find(p => p.id === id);
     if (backendStatus === 'connected' && existing) {
       void (async () => {
@@ -1607,19 +1587,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
   const toggleStoreApp = (appId: string, storeId: string) => {
-    setStoreApps(prev =>
-      prev.map(app => {
-        if (app.id !== appId) return app;
-        const currentIds = app.installedStoreIds || app.installedStores || [];
-        const updatedIds = currentIds.includes(storeId) ? currentIds.filter(x => x !== storeId) : [...currentIds, storeId];
-        return { ...app, installedStoreIds: updatedIds, installedStores: updatedIds };
-      })
-    );
+    void appId; void storeId;
+    showToast(language === 'ar' ? 'إدارة تطبيقات المتجر غير متصلة بالخادم؛ لم يتم تثبيت أو إزالة أي تطبيق.' : 'Store-app management is not connected to the server; no app was installed or removed.');
   };
+
+
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
-    setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
+    void tpl;
+    showToast(language === 'ar' ? 'حفظ قوالب المتاجر غير متصل بالخادم؛ لم يُحفظ قالب محلي.' : 'Store-template persistence is not connected; no local-only template was saved.');
   };
+
+
   const triggerSystemBackup = (targetLabel?: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1641,11 +1622,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
-    setBanking(prev => [{ ...bank, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' }, ...prev]);
+    void bank;
+    showToast(language === 'ar' ? 'إضافة الحسابات التجارية غير متصلة بمزود موثّق؛ لم يُنشأ حساب.' : 'Business-account provisioning is not connected to a verified provider; no account was created.');
   };
 
-  // --- SUPPORT TICKETS ---
+
   const addTicket = (t: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'status'>) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1675,6 +1659,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const resolveTicket = (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1692,6 +1678,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // --- NOTIFICATIONS & DOCUMENTS VAULT ---
   const markNotificationRead = async (id: string) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.markNotificationRead(id);
@@ -1705,6 +1693,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const markAllNotificationsRead = async () => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.markAllNotificationsRead();
@@ -1725,6 +1715,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     requestId?: string;
     formationId?: string;
   }): Promise<RequestDocumentMeta | null> => {
+    if (!requireConnectedBackend()) return null;
+
     if (backendStatus === 'connected') {
       try {
         const res = await qabsApi.uploadDocument(input);
@@ -1753,18 +1745,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // --- STAFF ---
-  const addStaff = (s: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
-    setStaff(prev => [{ ...s, id: `stf_${Date.now()}`, status: 'active', lastActive: 'now' }, ...prev]);
-  };
-  const updateStaffPermissions = (staffId: string, permissions: string[]) => {
-    setStaff(prev => prev.map(m => (m.id === staffId ? { ...m, permissions } : m)));
-  };
-  const removeStaff = (staffId: string) => {
-    setStaff(prev => prev.filter(m => m.id !== staffId));
+  const addStaff = (staffInput: Omit<StaffMember, 'id' | 'lastActive' | 'status'>) => {
+    void staffInput;
+    showToast(language === 'ar' ? 'إنشاء الموظفين يتطلب خدمة إدارة مستخدمين خادمية؛ لم يُنشأ حساب.' : 'Staff creation requires the server-side user-management service; no account was created.');
   };
 
-  // --- BILLING, SUBSCRIPTIONS, INVOICES & CREDITS (STRICT FINANCIAL GATE) ---
+
+  const updateStaffPermissions = (staffId: string, permissions: string[]) => {
+    void staffId; void permissions;
+    showToast(language === 'ar' ? 'تعديل صلاحيات الموظفين غير متصل بالخادم؛ لم تتغير الصلاحيات.' : 'Staff permissions are not connected to the server; no permissions changed.');
+  };
+
+
+  const removeStaff = (staffId: string) => {
+    void staffId;
+    showToast(language === 'ar' ? 'إزالة الموظفين تتطلب إلغاء حساب خادمي؛ لم يتم حذف أي حساب.' : 'Staff removal requires server-side account revocation; no account was removed.');
+  };
+
+
   const changeSubscriptionPlan = (planId: 'starter' | 'growth' | 'enterprise', cycle: 'monthly' | 'annual') => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -1803,6 +1804,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const cancelSubscription = async (reason?: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.cancelSubscription(reason);
@@ -1823,6 +1826,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     planId?: 'starter' | 'growth' | 'enterprise',
     billingCycle?: 'monthly' | 'annual'
   ): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         const res = await qabsApi.renewSubscription(planId || subscription.planId, billingCycle || subscription.billingCycle);
@@ -1843,6 +1848,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const verifyInvoiceWithProof = async (invoiceId: string, paymentProofRef: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.adminVerifyInvoice(invoiceId, paymentProofRef);
@@ -1862,22 +1869,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueRefund = (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => {
-    const newRefund: RefundRecord = {
-      id: `ref_${Date.now()}`,
-      orderNumber,
-      amount,
-      currency: 'USD',
-      reasonAr,
-      reasonEn,
-      status: 'requested',
-      date: new Date().toISOString().split('T')[0],
-      customerName: user.name
-    };
-    setRefunds(prev => [newRefund, ...prev]);
-    showToast(language === 'ar' ? `تم تسجيل طلب الاسترداد للطلب ${orderNumber} للمراجعة` : `Refund request recorded for ${orderNumber}`);
+    void orderNumber; void amount; void reasonAr; void reasonEn;
+    showToast(language === 'ar' ? 'طلبات الاسترداد غير متصلة بنظام المدفوعات؛ لم يُنشأ طلب أو تحويل مالي.' : 'Refunds are not connected to the payment system; no refund request or transfer was created.');
   };
 
+
   const topUpCredits = (amount: number) => {
+    if (!requireConnectedBackend()) return;
+
     if (backendStatus === 'connected') {
       void (async () => {
         try {
@@ -2013,76 +2012,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const completeServiceCheckout = (paymentMethod: 'Tap' | 'Moyasar' | 'Stripe' | 'PayPal' | 'Crypto' | 'BankTransfer') => {
-    if (!pendingServiceOrder) return;
-    const ord = pendingServiceOrder;
-    const d = ord.details || {};
-
-    if (ord.serviceType === 'company_formation') {
-      const jur = d.jurisdiction || 'US_WYOMING';
-      const suffix = d.entityType || (jur === 'UK_LTD' ? 'LTD' : 'LLC');
-      const baseName = (d.companyName || `${user.companyName || user.name || 'QABS VENTURES'}`).trim().toUpperCase();
-      const companyName = baseName.endsWith(suffix) ? baseName : `${baseName} ${suffix}`;
-      addCompany({
-        companyName,
-        jurisdiction: jur,
-        entityType: suffix,
-        registeredAgent: 'QABS Statutory Registered Agent LLC',
-        registeredAddress: '30 N Gould St Ste R, Sheridan, WY 82801, USA',
-        renewalDueDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        ownerName: user.name,
-        ownerEmail: user.email,
-        packagePriceUsd: ord.priceUsd,
-        formationStage: 1,
-        notes: `Submitted via ${paymentMethod} (pending verification)`
-      });
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-      return;
-    }
-
-    if (ord.serviceType === 'store_package') {
-      const planId = d.planId || 'growth';
-      const cycle = d.billingCycle || 'monthly';
-      changeSubscriptionPlan(planId, cycle);
-      if (d.storeName || planId) {
-        const name = d.storeName?.trim() || `${user.companyName || user.name} Store`;
-        const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14) || `store${Math.floor(100 + Math.random() * 899)}`;
-        const resolvedGateway: StoreInstance['gatewayType'] =
-          paymentMethod === 'Tap' || paymentMethod === 'Moyasar' || paymentMethod === 'PayPal'
-            ? paymentMethod
-            : 'Tap';
-        addStore({
-          name,
-          ownerName: user.name,
-          ownerEmail: user.email,
-          activityAr: 'متجر إلكتروني مستقل — مسودة',
-          activityEn: 'Independent Storefront — Draft',
-          country: 'SA',
-          defaultLanguage: 'both',
-          subdomain: `${slug}.qabs1.store`,
-          currency: 'SAR',
-          taxRate: 15,
-          theme: 'gold_executive',
-          status: 'draft',
-          approvalStatus: 'draft',
-          paymentConnected: false,
-          paymentApprovalStatus: 'unconfigured',
-          gatewayType: resolvedGateway
-        });
-      }
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-      return;
-    }
-
-    if (ord.serviceType === 'ai_credits') {
-      topUpCredits(ord.priceUsd);
-      setCheckoutModalOpen(false);
-      setPendingServiceOrder(null);
-      setMode('portal');
-    }
+    void paymentMethod;
+    showToast(language === 'ar'
+      ? 'الدفع غير مفعّل في المعاينة. لم يتم تحصيل أي مبلغ أو إنشاء اشتراك أو متجر أو إضافة رصيد.'
+      : 'Checkout is disabled in this preview. No payment, subscription, store, or credits were created.');
+    setCheckoutModalOpen(false);
   };
 
   const submitServiceOrder = async (
@@ -2091,6 +2025,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       document?: { name: string; mimeType: string; base64: string; type?: string };
     }
   ): Promise<SubmittedServiceOrder> => {
+    if (!requireConnectedBackend()) {
+      throw new Error(language === 'ar'
+        ? 'خدمة إرسال الطلبات غير متصلة؛ لم يتم حفظ الطلب.'
+        : 'The request service is disconnected; the request was not saved.');
+    }
+
     if (backendStatus === 'connected') {
       const res = await qabsApi.createServiceRequest({
         serviceSlug: input.serviceSlug,
@@ -2136,6 +2076,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateServiceOrderStatus = async (id: string, status: ServiceOrderStatus, adminNotes?: string): Promise<boolean> => {
+    if (!requireConnectedBackend()) return false;
+
     if (backendStatus === 'connected') {
       try {
         await qabsApi.updateServiceRequest(id, { status, adminNotes });
@@ -2193,12 +2135,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const cleanEmail = email.trim() || 'client@qabs1.store';
-    setUser(role === 'super_admin' ? { ...OWNER_USER_PROFILE, email: cleanEmail } : { ...INITIAL_USER, id: `usr_${Date.now()}`, name: cleanEmail.split('@')[0], email: cleanEmail, role: 'customer', credits: 50 });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-    setMode(role === 'super_admin' ? 'admin' : 'portal');
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تسجيل الدخول: خدمة المصادقة غير متصلة. لم يتم إنشاء جلسة تجريبية.'
+      : 'Sign-in unavailable: the authentication service is disconnected. No demo session was created.';
+    setAuthError(unavailable);
+    showToast(unavailable);
+    return false;
   };
 
   const loginOwner = async (email?: string, password?: string): Promise<boolean> => {
@@ -2216,8 +2158,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (backendStatus === 'connected') {
       setAuthLoading(true);
       try {
-        const res = await qabsApi.register({ name: name.trim(), email: email.trim(), password, companyName: companyName.trim() });
-        if (res.previewEmailVerifyToken) setPreviewVerifyToken(res.previewEmailVerifyToken);
+        await qabsApi.register({ name: name.trim(), email: email.trim(), password, companyName: companyName.trim() });
+        // Never expose preview verification tokens in the browser UI.
+        setPreviewVerifyToken(null);
         const boot = await qabsApi.bootstrap();
         applyBootstrapPayload(boot);
         try {
@@ -2241,36 +2184,37 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    setUser({
-      id: `usr_client_${Date.now()}`,
-      name: name.trim(),
-      email: email.trim(),
-      role: 'customer',
-      avatar: '',
-      companyName: companyName.trim(),
-      credits: 50
-    });
-    setIsAuthenticated(true);
-    setAuthModalOpen(false);
-    setMode('portal');
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر إنشاء الحساب: خدمة المصادقة غير متصلة. لم يتم إنشاء حساب محلي وهمي.'
+      : 'Registration unavailable: the authentication service is disconnected. No local demo account was created.';
+    setAuthError(unavailable);
+    showToast(unavailable);
+    return false;
   };
 
   const requestPasswordReset = async (email: string): Promise<string | null> => {
     setAuthError(null);
     if (backendStatus === 'connected') {
       try {
-        const res = await qabsApi.forgotPassword(email.trim());
-        const tok = res.previewResetToken || null;
-        setPreviewResetToken(tok);
-        return tok;
+        await qabsApi.forgotPassword(email.trim());
+        // Reset tokens must only be delivered through the configured mail channel.
+        // A backend preview token is never returned to the browser UI.
+        setPreviewResetToken(null);
+        showToast(language === 'ar'
+          ? 'إذا كان البريد مسجلاً، فستصل تعليمات الاستعادة عبر البريد الإلكتروني.'
+          : 'If the address is registered, password-reset instructions will be sent by email.');
+        return null;
       } catch (err) {
         const msg = (err as ApiError)?.message || 'Recovery failed';
         setAuthError(msg);
         return null;
       }
     }
-    return 'preview-offline-token';
+    const unavailable = language === 'ar'
+      ? 'استعادة كلمة المرور غير متاحة دون اتصال بخدمة المصادقة.'
+      : 'Password recovery is unavailable while the authentication service is disconnected.';
+    setAuthError(unavailable);
+    return null;
   };
 
   const confirmPasswordReset = async (token: string, newPassword: string): Promise<boolean> => {
@@ -2287,7 +2231,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
     }
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تأكيد كلمة المرور: لا يمكن التحقق من الرمز دون اتصال بالخادم.'
+      : 'Password reset could not be confirmed without the authentication server.';
+    setAuthError(unavailable);
+    return false;
   };
 
   const confirmEmailVerification = async (token: string): Promise<boolean> => {
@@ -2303,36 +2251,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return false;
       }
     }
-    setUser(prev => ({ ...prev, emailVerified: true }));
-    return true;
+    const unavailable = language === 'ar'
+      ? 'تعذّر تأكيد البريد: لم يتم التحقق من الرمز عبر الخادم.'
+      : 'Email verification failed: the token was not verified by the server.';
+    setAuthError(unavailable);
+    return false;
   };
 
   const resendVerificationEmail = async (): Promise<string | null> => {
     if (backendStatus === 'connected') {
       try {
-        const res = await qabsApi.resendVerification();
-        const tok = res.previewEmailVerifyToken || null;
-        if (tok) setPreviewVerifyToken(tok);
+        await qabsApi.resendVerification();
+        // Never expose backend preview verification tokens in a browser response.
+        setPreviewVerifyToken(null);
         showToast(
           language === 'ar'
-            ? 'تم إصدار رمز تأكيد البريد الإلكتروني بنجاح ✓'
-            : 'Email verification token issued ✓'
+            ? 'إذا كان الحساب مؤهلاً، فستصل رسالة التحقق إلى بريده الإلكتروني.'
+            : 'If the account is eligible, a verification email will be sent.'
         );
-        return tok;
+        return null;
       } catch (err) {
         handleApiFailure(err, 'تعذر إعادة إرسال رمز التحقق', 'Failed to resend verification token');
         return null;
       }
     }
-    return 'preview-verify-token';
+    const unavailable = language === 'ar'
+      ? 'إعادة إرسال التحقق غير متاحة دون اتصال بخدمة البريد والمصادقة.'
+      : 'Verification resend is unavailable while the mail and authentication services are disconnected.';
+    setAuthError(unavailable);
+    return null;
   };
 
   const logout = async () => {
+    let serverRevoked = backendStatus !== 'connected';
     if (backendStatus === 'connected') {
       try {
         await qabsApi.logout();
+        serverRevoked = true;
       } catch {
-        // clear local state anyway
+        // Always clear this browser's UI state, but do not claim the server session was revoked.
+        serverRevoked = false;
       }
       setCompanies([]);
       setStores([]);
@@ -2358,11 +2316,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (typeof window !== 'undefined' && window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname + window.location.search);
     }
-    showToast(language === 'ar' ? 'تم تسجيل الخروج بنجاح' : 'Signed out cleanly');
+    showToast(serverRevoked
+      ? (language === 'ar' ? 'تم تسجيل الخروج من هذا الجهاز.' : 'Signed out on this device.')
+      : (language === 'ar'
+        ? 'تم إخفاء الجلسة محلياً، لكن تعذّر تأكيد إلغائها من الخادم. أعد المحاولة عند عودة الاتصال.'
+        : 'Signed out locally, but server-side session revocation was not confirmed. Retry when the service is reachable.'));
   };
 
   // --- OTHER HELPERS ---
   const syncShopifyStore = (storeId: string, domain: string, _accessToken: string, webhooksConnected: boolean) => {
+    if (!requireConnectedBackend()) return;
+
     const cleanDomain = domain.trim();
     if (backendStatus === 'connected') {
       void (async () => {
@@ -2401,32 +2365,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleSetupStep = (storeId: string, stepId: string) => {
-    const target = stores.find(s => s.id === storeId);
-    const current = target?.setupStepsCompleted || [];
-    const nextSteps = current.includes(stepId) ? current.filter(x => x !== stepId) : [...current, stepId];
-    setStores(prev =>
-      prev.map(s => (s.id === storeId ? { ...s, setupStepsCompleted: nextSteps } : s))
-    );
-    if (backendStatus === 'connected') {
-      void qabsApi
-        .updateStore(storeId, { settings: { setupStepsCompleted: nextSteps } })
-        .then(() => refreshWorkspace())
-        .catch(() => {});
-    }
+    void storeId; void stepId;
+    showToast(language === 'ar' ? 'تحديث خطوات إعداد المتجر غير متصل بالخادم؛ لم يتم حفظ التغيير.' : 'Store setup progress is not connected to the server; no change was saved.');
   };
+
 
   const addCompanyDocument = (
     companyId: string,
     name: string,
     docType: CompanyFormation['documents'][number]['type']
   ) => {
-    const today = new Date().toISOString().split('T')[0];
-    setCompanies(prev =>
-      prev.map(c =>
-        c.id === companyId ? { ...c, documents: [{ name, type: docType, status: 'ready', date: today }, ...c.documents] } : c
-      )
-    );
+    void companyId; void name; void docType;
+    showToast(language === 'ar' ? 'حفظ مستندات التأسيس يتطلب خزنة ملفات خادمية؛ لم يُسجل مستند محلي.' : 'Formation documents require the server-side document vault; no local-only document was recorded.');
   };
+
 
   const activateProductionMode = (_storeId?: string) => {
     showToast(
@@ -2474,24 +2426,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return placeholder;
     }
 
-    setUser(prev => ({ ...prev, credits: Math.max(0, (prev.credits || 0) - 1) }));
-    const entry: AICommandHistoryItem = {
-      id: `ai_${Date.now()}`,
+    // Offline preview must never simulate execution, append fake history, or deduct credits.
+    return {
+      id: `ai_unavailable_${Date.now()}`,
       prompt: cleanPrompt,
-      responseAr: `تم تحليل "${targetStore?.name || 'Workspace'}" في وضع المعاينة غير المتصل.`,
-      responseEn: `Analyzed "${targetStore?.name || 'Workspace'}" in offline preview mode.`,
+      responseAr: 'محرك قبس AI غير متصل؛ لم يتم تنفيذ الطلب ولم يُخصم أي رصيد.',
+      responseEn: 'QABS AI is not connected; the prompt was not executed and no credits were deducted.',
       timestamp
     };
-    setAiHistory(prev => [entry, ...prev]);
-    return entry;
   };
 
   const updateSectionSettings = <K extends keyof WorkspaceSectionSettings>(
     section: K,
     updates: Partial<WorkspaceSectionSettings[K]>
   ) => {
-    setSectionSettings(prev => ({ ...prev, [section]: { ...prev[section], ...updates } }));
-    showToast(language === 'ar' ? 'تم حفظ إعدادات القسم ✓' : 'Section settings saved ✓');
+    // These settings do not yet have a server persistence endpoint. Do not
+    // mutate browser-only state or claim that settings were saved.
+    void section;
+    void updates;
+    showToast(language === 'ar'
+      ? 'حفظ إعدادات الأقسام على الخادم غير متاح بعد؛ لم يتم حفظ أي تغيير.'
+      : 'Server-side section settings are not available yet; no changes were saved.');
   };
 
   const exportWorkspaceBackupJson = (): string => {
@@ -2500,7 +2455,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const importWorkspaceBackupJson = (): boolean => false;
   const resetWorkspaceData = () => {
-    localStorage.removeItem(STORAGE_KEY);
     if (backendStatus === 'connected') void refreshWorkspace();
   };
 
@@ -2549,7 +2503,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addProduct,
         updateProduct,
         deleteProduct,
+        listProductVariants,
+        createProductVariant,
+        updateProductVariant,
+        adjustProductInventory,
+        listInventoryMovements,
         orders,
+        createStoreOrder,
         addOrder,
         updateOrderStatus,
         customers,

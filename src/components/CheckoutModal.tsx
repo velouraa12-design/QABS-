@@ -9,7 +9,6 @@ import {
   Sparkles,
   Store,
   Building2,
-  ArrowLeft,
   LockKeyhole
 } from 'lucide-react';
 
@@ -167,6 +166,7 @@ export const CheckoutModal: React.FC = () => {
                     key={opt.id}
                     type="button"
                     onClick={() => setPaymentMethod(opt.id)}
+                    disabled
                     className={`p-3 rounded-xl border text-start transition-all cursor-pointer flex items-start gap-2.5 ${
                       active
                         ? 'border-[#14243E] dark:border-[#D5B46B] bg-[#FBFAF6] dark:bg-[#051724] ring-2 ring-[#D5B46B]/40'
@@ -196,23 +196,20 @@ export const CheckoutModal: React.FC = () => {
             <LockKeyhole className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               {isAr
-                ? 'تنبيه أمني: لا يتم تحصيل بطاقات أو اعتماد الفاتورة كمدفوعة تلقائياً؛ تُسجل الفاتورة بحالة «بانتظار التحقق» لحين مراجعة مرجع السداد من الإدارة.'
-                : 'Security gate: Live card charging is disabled in preview. Your invoice is created as Pending Verification until an administrator verifies your payment proof reference.'}
+                ? 'الدفع والفواتير غير مفعّلة في هذه المعاينة. لن يتم حفظ طلب أو إصدار فاتورة أو خصم مبلغ أو إضافة رصيد.'
+                : 'Checkout and invoicing are disabled in this preview. No request or invoice will be saved, no charge will be made, and no credits will be added.'}
             </span>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
             <button
               type="button"
+              disabled
               onClick={() => completeServiceCheckout(paymentMethod)}
-              className="flex-1 py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1c3255] text-white font-black text-xs flex items-center justify-center gap-2 cursor-pointer shadow-md"
+              className="flex-1 py-3 px-4 rounded-xl bg-slate-400 text-white font-black text-xs flex items-center justify-center gap-2 cursor-not-allowed shadow-md opacity-70"
             >
-              <span>
-                {isAr
-                  ? `تسجيل الطلب وإصدار الفاتورة ($${pendingServiceOrder.priceUsd})`
-                  : `Submit Request & Issue Invoice ($${pendingServiceOrder.priceUsd})`}
-              </span>
-              <ArrowLeft className="w-4 h-4 text-[#D5B46B] ltr:rotate-180" />
+              <span>{isAr ? 'الدفع غير متاح في المعاينة' : 'Checkout unavailable in preview'}</span>
+              <LockKeyhole className="w-4 h-4 text-white" />
             </button>
             <button
               type="button"

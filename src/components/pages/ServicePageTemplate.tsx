@@ -118,7 +118,7 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
             <div className="lg:col-span-4 rounded-2xl bg-[#0D1B30] border border-[#D5B46B]/50 p-6 flex flex-col justify-between space-y-5">
               <div className="space-y-2 border-b border-white/10 pb-4">
                 <div className="text-xs text-[#D5B46B] font-bold">
-                  {isAr ? 'تبدأ الباقة المعتمدة من' : 'Approved Pricing Starts At'}
+                  {isAr ? 'السعر الإرشادي يبدأ من' : 'Indicative Pricing Starts At'}
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span className="text-3xl font-black font-mono text-white tabular-nums">
@@ -143,8 +143,8 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
                   <ShieldCheck className="w-4 h-4 text-[#D5B46B] shrink-0" />
                   <span>
                     {isAr
-                      ? 'تنفيذ ومتابعة موثقة داخل مساحة عمل قبس'
-                      : 'Verified tracking inside your QABS Workspace'}
+                      ? 'يخضع الطلب لمراجعة الأهلية وتأكيد نطاق الخدمة قبل التنفيذ'
+                      : 'Requests are reviewed for eligibility and scope before work begins'}
                   </span>
                 </div>
               </div>
@@ -202,8 +202,8 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
             </h2>
             <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
               {isAr
-                ? 'معايير تنفيذ احترافية مصممة لتلبية المتطلبات القانونية والتشغيلية بدقة.'
-                : 'Structured deliverables engineered to meet strict legal and operational standards.'}
+                ? 'تفاصيل الخدمات المتاحة تخضع للأهلية وتأكيد نطاق الباقة قبل التنفيذ.'
+                : 'Available deliverables are subject to eligibility and package-scope confirmation.'}
             </p>
           </div>
 
@@ -236,8 +236,8 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {isAr
-                  ? 'مراحل واضحة ومجدولة من لحظة إرسال الطلب وحتى التسليم النهائي.'
-                  : 'Clear, milestone-based workflow from request submission to final handoff.'}
+                  ? 'مراحل إرشادية للطلب؛ تختلف الخطوات والمدد حسب الجهة واكتمال المستندات.'
+                  : 'Indicative request stages; steps and timing vary by registry and document completeness.'}
               </p>
             </div>
           </div>
@@ -267,12 +267,12 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
           </div>
         </section>
 
-        {/* 5. Approved Packages & Pricing */}
+        {/* 5. Indicative Packages & Pricing */}
         {service.packages.length > 0 && (
           <section className="space-y-6">
             <div>
               <h2 className="text-2xl font-black text-[#14243E] dark:text-white">
-                {isAr ? 'الأسعار والباقات المعتمدة' : 'Approved Packages & Pricing'}
+                {isAr ? 'الأسعار والباقات الإرشادية' : 'Packages & Indicative Pricing'}
               </h2>
               <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {isAr ? service.pricingNoteAr : service.pricingNoteEn}
@@ -296,11 +296,11 @@ export const ServicePageTemplate: React.FC<ServicePageTemplateProps> = ({
                         <span className="text-xs font-bold text-[#92743A] dark:text-[#D5B46B]">
                           {pkg.recommended
                             ? isAr
-                              ? 'الباقة الموصى بها'
-                              : 'Recommended'
+                              ? 'خيار مقترح'
+                              : 'Suggested option'
                             : isAr
-                            ? 'باقة معتمدة'
-                            : 'Approved Tier'}
+                            ? 'خيار إرشادي'
+                            : 'Indicative option'}
                         </span>
                         <span className="text-[11px] text-slate-500">
                           {isAr ? pkg.billingNoteAr : pkg.billingNoteEn}

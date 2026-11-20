@@ -25,6 +25,7 @@ import {
 } from './security.ts';
 import { type AuthedRequest, createNotification, logAudit, registerStoreRoutes } from './routes/stores.ts';
 import { registerAdminRoutes } from './routes/admin.ts';
+import { createTapSandboxCharge, isTapTestSecret, isValidTapWebhookUrl, retrieveTapSandboxCharge, verifyTapWebhookHashstring } from './payments/tap.ts';
 
 export interface CreateServerOptions {
   dbPath?: string;
@@ -69,8 +70,19 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app: Express;
   db: DatabaseSync;
 } {
-  const dbPath =
-    options.dbPath || process.env.QABS_DB_PATH || path.join(os.tmpdir(), 'qabs_preview.sqlite');
+  // Never let a production/managed runtime silently fall back to ephemeral /tmp
+  // storage. That would make customer records disappear across restarts and can
+  // create a false impression that the API is durable. Production must provide
+  // an explicitly provisioned persistent database path; Cloudflare Workers must
+  // use the D1-backed runtime rather than this Node/SQLite adapter.
+  const configuredDbPath = options.dbPath ?? process.env.QABS_DB_PATH?.trim();
+  const managedRuntime = process.env.NODE_ENV === 'production' || Boolean(process.env.K_SERVICE);
+  if (!configuredDbPath && managedRuntime) {
+    throw new Error(
+      'QABS_DB_PATH is required for the Node API in production. Refusing ephemeral /tmp SQLite storage; use persistent storage or the D1 runtime.'
+    );
+  }
+  const dbPath = configuredDbPath || path.join(os.tmpdir(), 'qabs_preview.sqlite');
   const exposePreviewTokens =
     options.exposePreviewTokens ?? (process.env.NODE_ENV !== 'production' && !process.env.K_SERVICE);
   const rateLimitMax = options.rateLimitMax ?? 40;
@@ -136,6 +148,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       '/api/auth/forgot-password',
       '/api/auth/reset-password',
       '/api/auth/verify-email',
+      '/api/payments/tap/webhook',
       '/studio/api/auth/login',
       '/studio/api/auth/register'
     ]);
@@ -158,6 +171,20 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       res.status(401).json({
         error: 'Authentication required.',
         code: 'UNAUTHENTICATED'
+      });
+      return;
+    }
+    // Registration may create a short-lived session so the user can verify
+    // their address, but that session must not grant access to tenant data.
+    const verificationOnlyPaths = new Set([
+      '/api/auth/me',
+      '/api/auth/resend-verification',
+      '/api/auth/logout'
+    ]);
+    if (!req.actor.emailVerified && !verificationOnlyPaths.has(req.path)) {
+      res.status(403).json({
+        error: 'Please verify your email address before accessing workspace data.',
+        code: 'EMAIL_NOT_VERIFIED'
       });
       return;
     }
@@ -242,13 +269,26 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     });
   });
 
+  const emailProviderReady = () => Boolean(process.env.RESEND_API_KEY?.trim());
+  const emailVerificationEnabled = () =>
+    process.env.QABS_EMAIL_VERIFICATION_ENABLED === 'true' && emailProviderReady();
+  const passwordRecoveryEnabled = () =>
+    process.env.QABS_PASSWORD_RECOVERY_ENABLED === 'true' && emailProviderReady();
+  const registrationEnabled = () =>
+    process.env.QABS_REGISTRATION_ENABLED === 'true' && emailVerificationEnabled();
+
   app.get('/studio/api/config', (_req: Request, res: Response) => {
+    // Email-dependent capabilities are advertised only when the operator has
+    // explicitly enabled them and the transactional email provider is ready.
     res.json({
       stage: 'preview-isolated',
       payments: false,
-      registration: true,
-      emailVerification: true,
-      passwordRecovery: true,
+      registration: registrationEnabled(),
+      emailVerification: emailVerificationEnabled(),
+      passwordRecovery: passwordRecoveryEnabled(),
+      formationDetails: false,
+      documents: false,
+      privateDocuments: false,
       emailCodeLogin: false,
       googleSignIn: false
     });
@@ -258,6 +298,23 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app.get('/api/auth/session', (req: AuthedRequest, res: Response) => {
     if (!req.actor) {
       res.json({ authenticated: false, user: null, csrfToken: null });
+      return;
+    }
+    // An unverified registration session may only read its verification state.
+    // Do not expose tenant identifiers, company details, or credit balances until
+    // the email address has been verified.
+    if (!req.actor.emailVerified) {
+      res.json({
+        authenticated: true,
+        user: {
+          id: req.actor.userId,
+          name: req.actor.name,
+          email: req.actor.email,
+          role: req.actor.role,
+          emailVerified: false
+        },
+        csrfToken: req.actor.csrfToken
+      });
       return;
     }
     res.json({
@@ -289,6 +346,14 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   const handleRegister = async (req: Request, res: Response) => {
+    // Never permit direct API registration to bypass the UI's email-verification gate.
+    if (!registrationEnabled()) {
+      res.status(503).json({
+        error: 'Registration is temporarily unavailable until verified email delivery is configured.',
+        code: 'REGISTRATION_DISABLED'
+      });
+      return;
+    }
     const ipKey = `reg:${req.ip || 'local'}`;
     if (!checkRateLimit(ipKey)) {
       res.status(429).json({ error: 'Too many registration attempts.', code: 'RATE_LIMITED' });
@@ -389,7 +454,12 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   const handleLogin = (req: Request, res: Response) => {
     const email = sanitizeText(req.body?.email, 200).toLowerCase();
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!checkRateLimit(`login:${email || req.ip}`)) {
+    // Apply independent account and source throttles: account-only limits can be
+    // bypassed by cycling email addresses, while IP-only limits can be bypassed
+    // by distributing attempts. Both limits must pass before password work.
+    const loginIpKey = `login_ip:${req.ip || 'local'}`;
+    const loginAccountKey = `login_account:${email || 'unknown'}`;
+    if (!checkRateLimit(loginIpKey) || !checkRateLimit(loginAccountKey)) {
       res.status(429).json({ error: 'Too many login attempts. Try again later.', code: 'RATE_LIMITED' });
       return;
     }
@@ -400,11 +470,18 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     }
 
     const userRow = db
-      .prepare('SELECT id, tenant_id, name, email, password_hash, role, status FROM users WHERE email = ?')
+      .prepare('SELECT id, tenant_id, name, email, password_hash, role, email_verified, status FROM users WHERE email = ?')
       .get(email) as Record<string, unknown> | undefined;
 
     if (!userRow || !verifyPassword(password, String(userRow.password_hash))) {
       res.status(401).json({ error: 'Invalid email or password.', code: 'INVALID_CREDENTIALS' });
+      return;
+    }
+    if (!userRow.email_verified) {
+      res.status(403).json({
+        error: 'Please verify your email address before signing in.',
+        code: 'EMAIL_NOT_VERIFIED'
+      });
       return;
     }
     if (userRow.status !== 'active') {
@@ -447,6 +524,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   app.post('/studio/api/auth/logout', handleLogout);
 
   app.post('/api/auth/forgot-password', async (req: Request, res: Response) => {
+    if (!passwordRecoveryEnabled()) {
+      res.status(503).json({ error: 'Password recovery is not configured.', code: 'PASSWORD_RECOVERY_DISABLED' });
+      return;
+    }
     const email = sanitizeText(req.body?.email, 200).toLowerCase();
     if (!checkRateLimit(`forgot:${email || req.ip}`)) {
       res.status(429).json({ error: 'Too many recovery requests.', code: 'RATE_LIMITED' });
@@ -460,6 +541,11 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     if (userRow) {
       resetToken = generateToken(24);
       const expires = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+      // Only the newest password-reset link remains usable for this account.
+      db.prepare(
+        `UPDATE auth_tokens SET used_at = CURRENT_TIMESTAMP
+         WHERE user_id = ? AND purpose = 'password_reset' AND used_at IS NULL`
+      ).run(userRow.id);
       db.prepare(
         `INSERT INTO auth_tokens (id, user_id, purpose, token_hash, expires_at)
          VALUES (?, ?, 'password_reset', ?, ?)`
@@ -481,6 +567,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   app.post('/api/auth/reset-password', (req: Request, res: Response) => {
+    if (!passwordRecoveryEnabled()) {
+      res.status(503).json({ error: 'Password recovery is not configured.', code: 'PASSWORD_RECOVERY_DISABLED' });
+      return;
+    }
     const token = sanitizeText(req.body?.token, 160);
     const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
     if (!token || !isStrongPassword(newPassword)) {
@@ -502,7 +592,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
 
     db.exec('BEGIN IMMEDIATE');
     try {
-      db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hashPassword(newPassword), String(tokRow.user_id));
+      // A single-use reset token delivered to this mailbox also proves control of the email address.
+      db.prepare('UPDATE users SET password_hash = ?, email_verified = 1 WHERE id = ?').run(hashPassword(newPassword), String(tokRow.user_id));
       db.prepare('UPDATE auth_tokens SET used_at = CURRENT_TIMESTAMP WHERE id = ?').run(String(tokRow.id));
       db.prepare('UPDATE sessions SET revoked_at = CURRENT_TIMESTAMP WHERE user_id = ?').run(String(tokRow.user_id));
       db.exec('COMMIT');
@@ -524,6 +615,10 @@ export function createQabsApp(options: CreateServerOptions = {}): {
   });
 
   app.post('/api/auth/verify-email', (req: Request, res: Response) => {
+    if (!emailVerificationEnabled()) {
+      res.status(503).json({ error: 'Email verification is not configured.', code: 'EMAIL_VERIFICATION_DISABLED' });
+      return;
+    }
     const token = sanitizeText(req.body?.token, 160);
     if (!token) {
       res.status(400).json({ error: 'Verification token required.', code: 'TOKEN_REQUIRED' });
@@ -1106,6 +1201,126 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ requests: rows });
   });
 
+  // Studio service catalogue and customer-owned service requests. These are
+  // request records only: no payment, filing, provider activation, or external
+  // execution is triggered by these endpoints.
+  app.get('/studio/api/services/catalog', requireAuth, (_req: AuthedRequest, res: Response) => {
+    const services = db.prepare(
+      'SELECT slug, category, title_ar, title_en, starting_price_usd, active FROM services_catalog WHERE active = 1 ORDER BY category, title_ar'
+    ).all();
+    res.json({
+      services,
+      statusLabels: ORDER_STATUS_LABELS,
+      statusLabelsEn: Object.fromEntries(Object.entries(ORDER_STATUS_LABELS).map(([key, value]) => [key, value.en])),
+      payments: false,
+      externalExecution: 'manual_review_only',
+      attachments: { enabled: false },
+      preview: true
+    });
+  });
+
+  app.get('/studio/api/services/requests', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const workspaceId = sanitizeId(req.query.workspace_id);
+    if (workspaceId && workspaceId !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to workspace.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    const service = sanitizeText(req.query.service, 64);
+    const status = sanitizeText(req.query.status, 32);
+    const page = Math.max(1, Math.min(1000, Number.parseInt(String(req.query.page || '1'), 10) || 1));
+    const pageSize = 25;
+    const where: string[] = [];
+    const params: (string | number)[] = [];
+    if (!isPrivilegedRole(actor.role)) {
+      where.push('tenant_id = ?');
+      params.push(actor.tenantId);
+    }
+    if (service) { where.push('service_slug = ?'); params.push(service); }
+    if (status) { where.push('status = ?'); params.push(status); }
+    const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const requests = db.prepare(
+      `SELECT id, service_slug AS service, service_title_ar AS title, status, custom_fields_json AS payload, created_at, updated_at
+       FROM service_requests ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`
+    ).all(...params, pageSize, (page - 1) * pageSize);
+    const totalRow = db.prepare(`SELECT COUNT(*) AS total FROM service_requests ${clause}`).get(...params) as { total: number };
+    res.json({ requests, legacyFormation: [], hasMore: page * pageSize < Number(totalRow.total), page });
+  });
+
+  app.post('/studio/api/services/requests', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const service = sanitizeText(req.body?.service, 64);
+    const title = sanitizeText(req.body?.title, 200);
+    const attemptId = sanitizeText(req.body?.attempt_id, 100);
+    const payload = req.body?.payload && typeof req.body.payload === 'object' && !Array.isArray(req.body.payload)
+      ? req.body.payload as Record<string, unknown>
+      : {};
+    const workspaceId = req.body?.workspace_id ? sanitizeId(req.body.workspace_id) : actor.tenantId;
+
+    if (!service || !title || !attemptId || attemptId.length < 8 || attemptId.length > 100) {
+      res.status(400).json({ error: 'service, title, and a valid attempt_id are required.', code: 'INVALID_REQUEST_DATA' });
+      return;
+    }
+    if (workspaceId !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to workspace.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    const payloadJson = JSON.stringify(payload);
+    if (payloadJson.length > 20_000) {
+      res.status(413).json({ error: 'Request payload is too large.', code: 'PAYLOAD_TOO_LARGE' });
+      return;
+    }
+
+    const prior = db.prepare(
+      'SELECT r.id, r.service_slug AS service, r.service_title_ar AS title, r.status, r.custom_fields_json AS payload, r.created_at, r.updated_at FROM studio_request_attempts a JOIN service_requests r ON r.id = a.request_id WHERE a.tenant_id = ? AND a.attempt_id = ?'
+    ).get(actor.tenantId, attemptId);
+    if (prior) {
+      res.json({ request: prior, replayed: true });
+      return;
+    }
+
+    const customerName = sanitizeText(actor.name || actor.email, 160);
+    const companyName = sanitizeText(payload.companyName || payload.company_name || '', 160);
+    const phone = sanitizeText(payload.phone || payload.customerPhone || '', 64) || 'not-provided';
+    const catalog = db.prepare('SELECT title_ar, title_en FROM services_catalog WHERE slug = ? AND active = 1').get(service) as
+      | { title_ar: string; title_en: string }
+      | undefined;
+    const requestId = `sreq_${generateToken(8)}`;
+    const referenceCode = `QBS-${Math.floor(100000 + Math.random() * 899999)}`;
+    db.exec('BEGIN IMMEDIATE');
+    try {
+      db.prepare(
+        `INSERT INTO service_requests (
+          id, reference_code, tenant_id, user_id, service_slug, service_path,
+          service_title_ar, service_title_en, price_usd, customer_name, customer_email,
+          customer_phone, company_or_store_name, custom_fields_json, notes, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, ?, ?, ?, 'new')`
+      ).run(
+        requestId, referenceCode, actor.tenantId, actor.userId, service,
+        `/services/${service}`, title, catalog?.title_en || title,
+        customerName, actor.email, phone, companyName, payloadJson,
+        'Studio preview request; manual review required. No payment or external execution.'
+      );
+      db.prepare(
+        'INSERT INTO studio_request_attempts (tenant_id, attempt_id, request_id) VALUES (?, ?, ?)'
+      ).run(actor.tenantId, attemptId, requestId);
+      db.exec('COMMIT');
+    } catch (error) {
+      db.exec('ROLLBACK');
+      if (String(error).includes('UNIQUE constraint failed: studio_request_attempts.tenant_id, studio_request_attempts.attempt_id')) {
+        const replay = db.prepare(
+          'SELECT r.id, r.service_slug AS service, r.service_title_ar AS title, r.status, r.custom_fields_json AS payload, r.created_at, r.updated_at FROM studio_request_attempts a JOIN service_requests r ON r.id = a.request_id WHERE a.tenant_id = ? AND a.attempt_id = ?'
+        ).get(actor.tenantId, attemptId);
+        if (replay) { res.json({ request: replay, replayed: true }); return; }
+      }
+      throw error;
+    }
+    const created = db.prepare(
+      'SELECT id, service_slug AS service, service_title_ar AS title, status, custom_fields_json AS payload, created_at, updated_at FROM service_requests WHERE id = ? AND tenant_id = ?'
+    ).get(requestId, actor.tenantId);
+    res.status(201).json({ request: created, replayed: false });
+  });
+
   app.get('/studio/api/project-workspaces', requireAuth, (req: AuthedRequest, res: Response) => {
     const actor = req.actor!;
     const tenant = db.prepare('SELECT id, company_legal_name, owner_name FROM tenants WHERE id = ?').get(actor.tenantId) as
@@ -1409,6 +1624,245 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ invoice: inv });
   });
 
+  // Tap server-to-server webhook. Unauthenticated by design; HMAC and invoice binding are mandatory.
+  app.post('/api/payments/tap/webhook', (req: Request, res: Response) => {
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true' || !isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'Tap sandbox webhook is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const payload = req.body as Record<string, any>;
+    const hashHeader = req.headers.hashstring;
+    const hashstring = Array.isArray(hashHeader) ? hashHeader[0] : hashHeader;
+    if (!verifyTapWebhookHashstring(payload, typeof hashstring === 'string' ? hashstring : undefined, secretKey)) {
+      res.status(401).json({ error: 'Invalid Tap webhook signature.', code: 'INVALID_WEBHOOK_SIGNATURE' });
+      return;
+    }
+    if (payload.object !== 'charge' || payload.live_mode !== false ||
+        typeof payload.id !== 'string' || !/^chg_[A-Za-z0-9]+$/.test(payload.id)) {
+      res.status(400).json({ error: 'Unsupported Tap webhook event.', code: 'INVALID_WEBHOOK_EVENT' });
+      return;
+    }
+    const invoiceId = sanitizeId(payload.reference?.transaction);
+    const invoiceNumber = String(payload.reference?.order || '');
+    if (!invoiceId || !invoiceNumber) {
+      res.status(400).json({ error: 'Tap webhook is missing invoice references.', code: 'INVALID_WEBHOOK_REFERENCE' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ?`
+    ).get(invoiceId) as Record<string, unknown> | undefined;
+    if (!invoice || invoice.invoice_number !== invoiceNumber || invoice.payment_proof_ref !== `tap:${payload.id}`) {
+      res.status(200).json({ received: true, processed: false });
+      return;
+    }
+    const amountMatches = Math.abs(Number(payload.amount) - Number(invoice.amount)) < 0.000001;
+    const currencyMatches = String(payload.currency || '').toUpperCase() === String(invoice.currency || 'USD').toUpperCase();
+    if (payload.status === 'CAPTURED' && amountMatches && currencyMatches) {
+      db.prepare(
+        `UPDATE billing_invoices SET status = 'paid', verified_at = ?
+         WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+      ).run(...([new Date().toISOString(), invoiceId, String(invoice.tenant_id), `tap:${payload.id}`] as any[]));
+    }
+    res.status(200).json({ received: true, processed: payload.status === 'CAPTURED' && amountMatches && currencyMatches });
+  });
+
+  // Tap hosted checkout — sandbox only. The amount is always loaded from the
+  // authenticated tenant's invoice; callers cannot supply or override it.
+  app.post('/api/payments/tap/charges', requireAuth, async (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true') {
+      res.status(503).json({ error: 'Sandbox payment initiation is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (!isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'A Tap test-mode secret key is required.', code: 'TAP_SANDBOX_NOT_CONFIGURED' });
+      return;
+    }
+    const invoiceId = sanitizeId(req.body?.invoiceId);
+    if (!invoiceId) {
+      res.status(400).json({ error: 'A valid invoiceId is required.', code: 'INVALID_INVOICE_ID' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, description_en, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ? AND tenant_id = ?`
+    ).get(invoiceId, actor.tenantId) as Record<string, unknown> | undefined;
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found.', code: 'INVOICE_NOT_FOUND' });
+      return;
+    }
+    if (invoice.status === 'paid' || invoice.status === 'cancelled') {
+      res.status(409).json({ error: 'This invoice cannot accept another payment attempt.', code: 'INVOICE_NOT_PAYABLE' });
+      return;
+    }
+    if (String(invoice.payment_proof_ref || '').trim()) {
+      res.status(409).json({ error: 'A payment reference already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
+      return;
+    }
+    if (!isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim())) {
+      res.status(503).json({ error: 'A dedicated HTTPS Tap webhook endpoint is required.', code: 'TAP_WEBHOOK_URL_NOT_CONFIGURED' });
+      return;
+    }
+    // Atomic reservation prevents two concurrent requests from creating duplicate charges
+    // and preserves any manual/bank-transfer proof already attached to the invoice.
+    const reservation = `tap:pending:${generateToken(8)}`;
+    const reserved = db.prepare(
+      `UPDATE billing_invoices SET payment_proof_ref = ?
+       WHERE id = ? AND tenant_id = ? AND status NOT IN ('paid', 'cancelled')
+       AND (payment_proof_ref IS NULL OR payment_proof_ref = '')`
+    ).run(reservation, invoiceId, actor.tenantId);
+    if (Number(reserved.changes || 0) !== 1) {
+      res.status(409).json({ error: 'A payment attempt already exists for this invoice.', code: 'PAYMENT_ATTEMPT_EXISTS' });
+      return;
+    }
+
+    let appOrigin: URL;
+    try {
+      appOrigin = new URL(process.env.APP_ORIGIN || '');
+    } catch {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
+      res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
+      return;
+    }
+    if (appOrigin.protocol !== 'https:' || appOrigin.username || appOrigin.password) {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
+      res.status(503).json({ error: 'A valid HTTPS APP_ORIGIN is required.', code: 'PAYMENT_RETURN_ORIGIN_NOT_CONFIGURED' });
+      return;
+    }
+    const redirect = new URL('/payment/return', appOrigin);
+    redirect.searchParams.set('invoice', invoiceId);
+
+    try {
+      const charge = await createTapSandboxCharge({
+        amount: Number(invoice.amount),
+        currency: String(invoice.currency || 'USD').toUpperCase(),
+        description: String(invoice.description_en || invoice.invoice_number),
+        invoiceId,
+        invoiceNumber: String(invoice.invoice_number),
+        customerName: actor.name,
+        customerEmail: actor.email,
+        redirectUrl: redirect.toString(),
+        webhookUrl: process.env.TAP_WEBHOOK_URL!.trim()
+      }, secretKey);
+      db.prepare(
+        `UPDATE billing_invoices
+         SET status = 'pending_verification', payment_proof_ref = ?
+         WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+      ).run(`tap:${charge.id}`, invoiceId, actor.tenantId, reservation);
+      logAudit(
+        db,
+        actor.tenantId,
+        actor.userId,
+        actor.name,
+        `بدء محاولة دفع تجريبية عبر Tap للفاتورة ${invoice.invoice_number}`,
+        `Started Tap sandbox payment attempt for invoice ${invoice.invoice_number}`,
+        String(charge.id)
+      );
+      res.status(201).json({
+        provider: 'tap',
+        mode: 'sandbox',
+        invoiceId,
+        chargeId: charge.id,
+        providerStatus: charge.status,
+        redirectUrl: charge.redirectUrl,
+        paymentConfirmed: false
+      });
+    } catch (error) {
+      db.prepare('UPDATE billing_invoices SET payment_proof_ref = NULL WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ?')
+        .run(invoiceId, actor.tenantId, reservation);
+      const code = error instanceof Error ? error.message : 'TAP_SANDBOX_REQUEST_FAILED';
+      const safeCode = [
+        'TAP_SANDBOX_KEY_REQUIRED',
+        'INVALID_PAYMENT_AMOUNT',
+        'INVALID_PAYMENT_CURRENCY',
+        'INVALID_PAYMENT_CONTEXT',
+        'TAP_SANDBOX_AUTH_FAILED',
+        'TAP_SANDBOX_REQUEST_FAILED',
+        'TAP_SANDBOX_INVALID_RESPONSE'
+      ].includes(code) ? code : 'TAP_SANDBOX_REQUEST_FAILED';
+      res.status(502).json({ error: 'Tap sandbox could not create the payment session.', code: safeCode });
+    }
+  });
+
+  // Verify the provider-side sandbox result before updating the invoice. Browser
+  // redirects are never trusted as proof of payment.
+  app.post('/api/payments/tap/verify', requireAuth, async (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (process.env.QABS_ALLOW_SANDBOX_PAYMENTS !== 'true') {
+      res.status(503).json({ error: 'Sandbox payment verification is disabled.', code: 'PAYMENTS_SANDBOX_DISABLED' });
+      return;
+    }
+    const secretKey = process.env.TAP_SECRET_KEY?.trim();
+    if (!isTapTestSecret(secretKey)) {
+      res.status(503).json({ error: 'A Tap test-mode secret key is required.', code: 'TAP_SANDBOX_NOT_CONFIGURED' });
+      return;
+    }
+    const invoiceId = sanitizeId(req.body?.invoiceId);
+    const chargeId = typeof req.body?.chargeId === 'string' ? req.body.chargeId.trim() : '';
+    if (!invoiceId || !/^chg_[A-Za-z0-9]+$/.test(chargeId)) {
+      res.status(400).json({ error: 'Valid invoiceId and chargeId are required.', code: 'INVALID_PAYMENT_REFERENCE' });
+      return;
+    }
+    const invoice = db.prepare(
+      `SELECT id, tenant_id, invoice_number, amount, currency, status, payment_proof_ref
+       FROM billing_invoices WHERE id = ? AND tenant_id = ?`
+    ).get(invoiceId, actor.tenantId) as Record<string, unknown> | undefined;
+    if (!invoice) {
+      res.status(404).json({ error: 'Invoice not found.', code: 'INVOICE_NOT_FOUND' });
+      return;
+    }
+    if (invoice.payment_proof_ref !== `tap:${chargeId}`) {
+      res.status(409).json({ error: 'Payment reference does not match this invoice.', code: 'PAYMENT_REFERENCE_MISMATCH' });
+      return;
+    }
+
+    try {
+      const charge = await retrieveTapSandboxCharge(chargeId, secretKey);
+      const amountMatches = Math.abs(charge.amount - Number(invoice.amount)) < 0.000001;
+      const currencyMatches = charge.currency === String(invoice.currency || 'USD').toUpperCase();
+      const referencesMatch =
+        charge.transactionReference === invoiceId &&
+        charge.orderReference === String(invoice.invoice_number);
+      const captured = charge.status === 'CAPTURED' && charge.liveMode === false;
+      if (captured && amountMatches && currencyMatches && referencesMatch && invoice.status !== 'paid') {
+        db.prepare(
+          `UPDATE billing_invoices SET status = 'paid', verified_at = ?
+           WHERE id = ? AND tenant_id = ? AND payment_proof_ref = ? AND status != 'paid'`
+        ).run(new Date().toISOString(), invoiceId, actor.tenantId, `tap:${chargeId}`);
+        logAudit(
+          db,
+          actor.tenantId,
+          actor.userId,
+          actor.name,
+          `تأكيد دفع تجريبي للفاتورة ${invoice.invoice_number} عبر Tap`,
+          `Verified Tap sandbox payment for invoice ${invoice.invoice_number}`,
+          chargeId
+        );
+      }
+      const verifiedInvoice = db.prepare(
+        'SELECT id, invoice_number, amount, currency, status, verified_at FROM billing_invoices WHERE id = ? AND tenant_id = ?'
+      ).get(invoiceId, actor.tenantId);
+      res.json({
+        provider: 'tap',
+        mode: 'sandbox',
+        providerStatus: charge.status,
+        paymentConfirmed: captured && amountMatches && currencyMatches && referencesMatch,
+        invoice: verifiedInvoice
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : 'TAP_SANDBOX_REQUEST_FAILED';
+      const safeCode = ['TAP_SANDBOX_KEY_REQUIRED', 'INVALID_TAP_CHARGE_ID', 'TAP_SANDBOX_AUTH_FAILED', 'TAP_SANDBOX_REQUEST_FAILED', 'TAP_SANDBOX_INVALID_RESPONSE'].includes(code)
+        ? code
+        : 'TAP_SANDBOX_REQUEST_FAILED';
+      res.status(502).json({ error: 'Tap sandbox verification failed.', code: safeCode });
+    }
+  });
+
   // Safe server-side integration status overview (zero secrets exposed)
   app.get('/api/integrations/status', requireAuth, (_req: AuthedRequest, res: Response) => {
     res.json({
@@ -1416,15 +1870,15 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       environment: process.env.NODE_ENV === 'production' ? 'production_gated' : 'preview',
       integrations: {
         tap: {
-          configured: Boolean(process.env.TAP_PUBLIC_KEY),
-          secretConfigured: Boolean(process.env.TAP_SECRET_KEY),
+          configured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()) && isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim()),
+          sandboxConfigured: process.env.QABS_ALLOW_SANDBOX_PAYMENTS === 'true' && isTapTestSecret(process.env.TAP_SECRET_KEY?.trim()) && isValidTapWebhookUrl(process.env.TAP_WEBHOOK_URL?.trim()),
           region: 'GCC',
           methods: ['mada', 'Visa/Mastercard', 'Apple Pay'],
           mode: 'sandbox_gated'
         },
         moyasar: {
-          configured: Boolean(process.env.MOYASAR_PUBLISHABLE_KEY),
-          secretConfigured: Boolean(process.env.MOYASAR_SECRET_KEY),
+          configured: process.env.MOYASAR_PUBLISHABLE_KEY?.startsWith('pk_test_') === true && process.env.MOYASAR_SECRET_KEY?.startsWith('sk_test_') === true,
+          sandboxConfigured: process.env.MOYASAR_PUBLISHABLE_KEY?.startsWith('pk_test_') === true && process.env.MOYASAR_SECRET_KEY?.startsWith('sk_test_') === true,
           region: 'SA / GCC',
           methods: ['mada', 'SADAD', 'STC Pay', 'Apple Pay'],
           mode: 'sandbox_gated'

@@ -58,8 +58,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Wyoming LLC (USA)',
     entityType: 'LLC',
     baseUsd: 249,
-    noteAr: 'الأكثر طلباً للتجارة الإلكترونية • ضريبة ولاية 0%',
-    noteEn: 'Best for e-commerce • 0% state income tax'
+    noteAr: 'خيار محتمل لبعض الأنشطة الرقمية؛ راجع الرسوم والالتزامات قبل الاختيار',
+    noteEn: 'A possible option for some digital businesses; review fees and obligations before choosing'
   },
   {
     id: 'US_DELAWARE',
@@ -68,8 +68,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Delaware LLC / C-Corp',
     entityType: 'LLC',
     baseUsd: 260,
-    noteAr: 'المعيار الاستثماري للشركات الناشئة والبنوك',
-    noteEn: 'Gold standard for startups & venture scaling'
+    noteAr: 'قد تناسب شركات تسعى لجذب الاستثمار؛ راجع الرسوم والالتزامات',
+    noteEn: 'May suit companies seeking investment; review fees and obligations'
   },
   {
     id: 'US_KENTUCKY',
@@ -78,8 +78,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'Kentucky LLC (USA)',
     entityType: 'LLC',
     baseUsd: 189,
-    noteAr: 'رسوم حكومية اقتصادية وسرعة إيداع عالية',
-    noteEn: 'Lowest state filing fee & fast turnaround'
+    noteAr: 'راجع الرسوم الحالية ومتطلبات الولاية قبل التقديم',
+    noteEn: 'Review current state fees and requirements before filing'
   },
   {
     id: 'US_NEW_MEXICO',
@@ -88,8 +88,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'New Mexico LLC (USA)',
     entityType: 'LLC',
     baseUsd: 199,
-    noteAr: 'خصوصية عالية وبدون رسوم تقرير سنوي',
-    noteEn: 'Full privacy & $0 annual state report'
+    noteAr: 'قد تناسب بعض الأنشطة؛ تحقّق من الإفصاحات والرسوم الحالية',
+    noteEn: 'May suit some businesses; verify current disclosure and fee requirements'
   },
   {
     id: 'UK_LTD',
@@ -98,8 +98,8 @@ const CALC_JURISDICTIONS: {
     labelEn: 'United Kingdom (UK LTD)',
     entityType: 'LTD',
     baseUsd: 179,
-    noteAr: 'تأسيس أوروبي سريع للتجارة وبوابات الدفع',
-    noteEn: 'Fast UK Companies House registration'
+    noteAr: 'متطلبات ورسوم Companies House تتغير؛ تحقّق قبل التقديم',
+    noteEn: 'Companies House requirements and fees change; verify before filing'
   }
 ];
 
@@ -111,14 +111,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const { language, setMode, isAuthenticated, requestServiceAction, openClientAuth, sectionSettings } = useApp();
   const { siteContent } = useCustomizer();
   const isAr = language === 'ar';
+  const isPagesPreview = typeof window !== 'undefined' && window.location.hostname.endsWith('.pages.dev');
 
   usePageSeo({
     titleAr: 'قبس الرقمية QABS | تأسيس الشركات الأمريكية والبريطانية والمتاجر وبوابات الدفع',
     titleEn: 'QABS Digital Platform | US & UK Company Formation, Stores & Payment Gateways',
     descriptionAr:
-      'منصة قبس الرقمية المتكاملة: تأسيس شركات LLC و C-Corp في الـ 50 ولاية وبريطانيا، الرقم الضريبي EIN، المتاجر المستقلة، بوابات الدفع، والخدمات الرقمية.',
+      'تساعد قبس في مراجعة خيارات تأسيس الشركات وتجهيز الطلبات وخدمات إعداد المتاجر والحلول الرقمية وفق الأهلية والتوفر ونطاق العمل؛ عرض الخدمة لا يعني تفعيلها تلقائياً.',
     descriptionEn:
-      'QABS Digital Platform: 50-state US LLC & UK LTD formation, IRS EIN, isolated multi-tenant e-commerce stores, payment gateways, and digital business services.',
+      'QABS assists with company-formation options, application preparation, store setup, and digital services subject to eligibility, availability, and agreed scope; a listed service is not automatically activated.',
     path: '/',
     schemaType: 'WebPage'
   });
@@ -127,20 +128,18 @@ export const LandingView: React.FC<LandingViewProps> = ({
   const [calcJurisdiction, setCalcJurisdiction] = useState<CalcJurisdiction>('US_WYOMING');
   const [calcCompanyName, setCalcCompanyName] = useState('');
   const [calcAddons, setCalcAddons] = useState({
-    ein: true,
-    physicalAddressAgent: true,
+    ein: false,
+    physicalAddressAgent: false,
     businessBank: false,
     stripePayPal: false
   });
 
   // Store Package Cycle & Name
-  const [storeBillingCycle, setStoreBillingCycle] = useState<'monthly' | 'annual'>('monthly');
-  const [showcaseStoreName, setShowcaseStoreName] = useState('');
 
   // Collapsible states pricing
   const [showStatesPricing, setShowStatesPricing] = useState(false);
   const [stateSearch, setStateSearch] = useState('');
-  const [stateFilter, setStateFilter] = useState<'all' | 'popular' | 'zero_tax' | 'low_fee'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'low_fee'>('all');
   const [selectedPkgId, setSelectedPkgId] = useState<'starter' | 'complete' | 'premium'>('complete');
 
   // FAQ Accordion state
@@ -169,6 +168,7 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleFormationAction = (stateCode?: string) => {
+    if (isPagesPreview) return;
     if (isAuthenticated) {
       onOpenFormationModal(stateCode || selectedCalcJur.stateCode);
       return;
@@ -177,15 +177,17 @@ export const LandingView: React.FC<LandingViewProps> = ({
     requestServiceAction({
       id: `svc_cf_${Date.now()}`,
       serviceType: 'company_formation',
-      titleAr: `تأسيس شركة ${foundJur.labelAr}`,
-      titleEn: `Form ${foundJur.labelEn}`,
-      subtitleAr: 'تشمل تجهيز ملف التأسيس الرسمي، الوكيل المسجل، والمتابعة حتى الإصدار',
-      subtitleEn: 'Includes official filing package, registered agent & full workspace tracking',
+      titleAr: `مراجعة خيار تأسيس ${foundJur.labelAr}`,
+      titleEn: `Review formation option: ${foundJur.labelEn}`,
+      subtitleAr: 'طلب مراجعة أهلية وتجهيز مستندات التأسيس؛ الإيداع والإصدار والوكيل تخضع للتوفر والجهات المختصة.',
+      subtitleEn: 'Request eligibility review and formation-document preparation; filing, issuance, and agent services depend on availability and the relevant authorities.',
       priceUsd: foundJur.baseUsd + einFee + agentFee,
       details: {
         jurisdiction: foundJur.id,
         companyName: calcCompanyName.trim() || undefined,
         entityType: foundJur.entityType,
+        indicativeOnly: true,
+        quoteReviewOnly: true,
         addons: {
           ein: true,
           physicalAddressAgent: true,
@@ -197,37 +199,41 @@ export const LandingView: React.FC<LandingViewProps> = ({
   };
 
   const handleCalculatorOrder = () => {
+    if (isPagesPreview) return;
     const enabledLabelsAr: string[] = [];
     const enabledLabelsEn: string[] = [];
     if (calcAddons.ein) {
-      enabledLabelsAr.push('الرقم الضريبي EIN');
-      enabledLabelsEn.push('IRS EIN');
+      enabledLabelsAr.push('مساعدة في طلب EIN');
+      enabledLabelsEn.push('EIN application assistance');
     }
     if (calcAddons.physicalAddressAgent) {
-      enabledLabelsAr.push('وكيل مسجل وعنوان رسمي');
-      enabledLabelsEn.push('Registered Agent & Address');
+      enabledLabelsAr.push('مراجعة متطلبات الوكيل المسجل');
+      enabledLabelsEn.push('Registered-agent requirements review');
     }
     if (calcAddons.businessBank) {
-      enabledLabelsAr.push('تجهيز البنك التجاري');
-      enabledLabelsEn.push('Mercury/Relay Bank Setup');
+      enabledLabelsAr.push('مراجعة متطلبات حساب الأعمال');
+      enabledLabelsEn.push('Business-account requirements review');
     }
     if (calcAddons.stripePayPal) {
-      enabledLabelsAr.push('ربط Stripe و PayPal');
-      enabledLabelsEn.push('Stripe & PayPal Setup');
+      enabledLabelsAr.push('مراجعة متطلبات مزودي الدفع');
+      enabledLabelsEn.push('Payment-provider requirements review');
     }
 
     requestServiceAction({
       id: `svc_calc_${Date.now()}`,
       serviceType: 'company_formation',
-      titleAr: `طلب تأسيس: ${selectedCalcJur.labelAr}`,
-      titleEn: `Formation Order: ${selectedCalcJur.labelEn}`,
-      subtitleAr: enabledLabelsAr.length > 0 ? `الخدمات المضافة: ${enabledLabelsAr.join(' + ')}` : selectedCalcJur.noteAr,
-      subtitleEn: enabledLabelsEn.length > 0 ? `Add-ons: ${enabledLabelsEn.join(' + ')}` : selectedCalcJur.noteEn,
+      titleAr: `طلب مراجعة أهلية وتكلفة: ${selectedCalcJur.labelAr}`,
+      titleEn: `Eligibility and Quote Review: ${selectedCalcJur.labelEn}`,
+      subtitleAr: `تقدير إرشادي للمراجعة فقط. ${enabledLabelsAr.length > 0 ? `الخدمات المطلوبة: ${enabledLabelsAr.join(' + ')}. ` : ''}لا يعني الطلب إيداعاً حكومياً أو إصدار EIN أو فتح حساب أو قبول مزود.`,
+      subtitleEn: `Indicative estimate for review only. ${enabledLabelsEn.length > 0 ? `Requested services: ${enabledLabelsEn.join(' + ')}. ` : ''}This request does not mean a government filing, EIN issuance, account opening, or provider approval.`,
       priceUsd: calcTotalUsd,
       details: {
         jurisdiction: selectedCalcJur.id,
         companyName: calcCompanyName.trim() || undefined,
         entityType: selectedCalcJur.entityType,
+        indicativeOnly: true,
+        quoteReviewOnly: true,
+        governmentFeesMayBeAdditional: true,
         addons: { ...calcAddons }
       }
     });
@@ -242,42 +248,40 @@ export const LandingView: React.FC<LandingViewProps> = ({
       st.nameEn.toLowerCase().includes(stateSearch.toLowerCase()) ||
       st.code.toLowerCase().includes(stateSearch.toLowerCase());
     if (!matchesSearch) return false;
-    if (stateFilter === 'popular') return st.tags.includes('popular');
-    if (stateFilter === 'zero_tax') return st.tags.includes('zero_tax');
     if (stateFilter === 'low_fee') return st.stateFilingFee <= 100;
     return true;
   });
 
   const faqs = [
     {
-      qAr: 'هل يمكن لغير المقيم في أمريكا تأسيس شركة قانونية 100%؟',
-      qEn: 'Can non-US residents legally form a US company 100%?',
-      aAr: 'نعم، يتيح القانون الأمريكي لرواد الأعمال والمستثمرين من كافة دول العالم تأسيس شركات LLC أو C-Corp وامتلاكها بنسبة 100% دون اشتراط إقامة أو زيارة للولايات المتحدة أو وجود شريك أمريكي.',
-      aEn: 'Yes, US law allows global founders to form and own 100% of an LLC or C-Corp without requiring US residency, travel, or a domestic partner.'
+      qAr: 'هل يمكن لغير المقيم تأسيس شركة أمريكية؟',
+      qEn: 'Can a non-US resident form a US company?',
+      aAr: 'تسمح ولايات أمريكية عديدة لغير المقيمين بتأسيس شركات LLC أو C-Corp وتملكها بالكامل، لكن الأهلية والمتطلبات تختلف حسب الولاية ونوع النشاط ووضع المالك. يجب مراجعة الجوانب القانونية والضريبية قبل اختيار مسار التأسيس.',
+      aEn: 'Many US states allow non-residents to form and fully own an LLC or C-Corp, but eligibility and requirements vary by state, business activity, and owner circumstances. Legal and tax considerations should be reviewed before choosing a formation path.'
     },
     {
       qAr: 'ما هو الفرق بين التأسيس في وايومنغ (Wyoming) وديلاوير (Delaware)؟',
       qEn: 'What is the difference between Wyoming and Delaware formation?',
-      aAr: 'ولاية وايومنغ هي الخيار الأول للتجارة الإلكترونية والأنشطة الرقمية بفضل خصوصية الملاك العالية وانعدام ضريبة الدخل والرسوم السنوية المنخفضة ($60). بينما ولاية ديلاوير هي المعيار الذهبي للشركات التقنية الناشئة التي تخطط لجذب استثمارات ورؤوس أموال مغامرة (VC).',
-      aEn: 'Wyoming is ideal for e-commerce and digital founders due to complete privacy, zero state income tax, and low annual fees ($60). Delaware is the premier standard for tech startups seeking venture capital and institutional funding.'
+      aAr: 'تختلف وايومنغ وديلاوير في الرسوم ومتطلبات التقارير والحوكمة. قد تناسب وايومنغ بعض الأنشطة، بينما تختار شركات تستهدف الاستثمار ديلاوير. لا ينبغي اختيار الولاية بناءً على ضريبة الولاية وحدها؛ فقد تنطبق ضرائب اتحادية ورسوم والتزامات أخرى بحسب الحالة.',
+      aEn: 'Wyoming and Delaware differ in fees, reporting requirements, and corporate rules. Wyoming may suit some businesses, while companies seeking venture investment often consider Delaware. State tax alone should not determine the choice; federal taxes, fees, and other obligations may also apply.'
     },
     {
       qAr: 'كم يستغرق إصدار الرقم الضريبي الفيدرالي EIN للشركات لغير المقيمين؟',
       qEn: 'How long does IRS EIN issuance take for non-residents?',
-      aAr: 'يستغرق إصدار شهادة الرقم الضريبي الرسمي CP575 من مصلحة الضرائب الأمريكية (IRS) لغير حاملي رقم SSN عادة بين 4 إلى 10 أيام عمل عبر خط الاتصال المباشر المخصص للوكلاء المعتمدين.',
-      aEn: 'Official IRS CP575 EIN issuance for non-SSN holders typically takes 4 to 10 business days via direct authorized agent channels.'
+      aAr: 'تختلف مدة إصدار رقم EIN وخطاب CP575 بحسب حالة الطلب وطريقة تقديمه ومتطلبات مصلحة الضرائب الأمريكية (IRS). لا يمكن ضمان مدة محددة قبل مراجعة الحالة والقناة المتاحة.',
+      aEn: 'IRS EIN and CP575 processing times vary by application details, submission method, and IRS requirements. A specific timeline cannot be guaranteed before the case and available channel are reviewed.'
     },
     {
       qAr: 'كيف يساعدني الكيان في ربط بوابات الدفع Stripe والحساب البنكي؟',
       qEn: 'How does the entity facilitate Stripe and US banking approval?',
-      aAr: 'بمجرد صدور وثائق التأسيس والرقم الضريبي EIN وعنوان الوكيل المسجل، يصبح لديك ملف تجاري أمريكي متكامل يؤهلك لفتح حسابات بنكية أعمال (مثل Mercury و Wise Business) والتقديم على بوابات الدفع العالمية مثل Stripe و PayPal.',
-      aEn: 'With state formation papers, IRS EIN, and registered address, you possess a compliant US business profile to open business fintech accounts (Mercury, Wise) and apply for Stripe and PayPal.'
+      aAr: 'قد تساعد وثائق التأسيس ورقم EIN وعنوان الوكيل المسجل في تجهيز ملف التقديم، لكنها لا تضمن فتح حساب بنكي أو قبول بوابة دفع. لكل مزود معايير تحقق مستقلة تتعلق بالإقامة والنشاط والوثائق والمخاطر.',
+      aEn: 'Formation documents, an EIN, and a registered address may help prepare an application, but they do not guarantee a bank account or payment-provider approval. Each provider applies its own checks for residence, business activity, documents, and risk.'
     },
     {
       qAr: 'هل يمكنني إدارة متاجري الإلكترونية وتأسيس الشركات من نفس لوحة التحكم؟',
       qEn: 'Can I manage my online stores and corporate entities from one unified portal?',
-      aAr: 'نعم تماماً! تقدم منصة قبس الموحدة لوحة تحكم واحدة تجمع إدارة ملفات تأسيس الشركات ووثائقها القانونية، إلى جانب إدارة متاجرك الإلكترونية المستقلة ومنتجاتها وطلباتها واستوديو التصميم.',
-      aEn: 'Yes! QABS provides a unified dashboard merging corporate entity filings and legal compliance with independent online stores, product catalogs, and QABS Studio design.'
+      aAr: 'تجمع واجهة قبس مسارات لعرض ملفات التأسيس ووثائقها ومتابعة المتاجر والمنتجات والطلبات. وتختلف الوظائف المتاحة بحسب حالة ربط كل خدمة واعتمادها.',
+      aEn: 'The QABS interface brings together areas for formation files and documents, stores, products, and orders. Available actions depend on each service being connected and approved.'
     }
   ];
 
@@ -387,8 +391,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   </h3>
                   <p className="text-xs text-slate-500 mt-1">
                     {isAr
-                      ? 'تشمل تأسيس الشركة الأمريكية، الرقم الضريبي EIN، العنوان، وتجهيز بوابات الدفع والمتجر الإلكتروني'
-                      : 'Includes US LLC formation, IRS EIN, Registered Agent address, payment gateway prep & store'}
+                      ? 'تشمل خدمات مساعدة في التأسيس وطلب EIN وتجهيز مستندات التقديم؛ التنفيذ يخضع للأهلية والتوفر ولا يضمن موافقات الجهات.'
+                      : 'Includes formation and EIN application assistance and provider-application document preparation; subject to eligibility and availability, with no approval guarantees.'}
                   </p>
                 </div>
 
@@ -401,28 +405,38 @@ export const LandingView: React.FC<LandingViewProps> = ({
                   ))}
                 </ul>
 
+                <p className="text-[10px] leading-5 text-slate-500 dark:text-slate-400">
+                  {isAr
+                    ? 'السعر إرشادي ويخضع لمراجعة الأهلية ونطاق الخدمة والرسوم الحكومية وتأكيد التوفر قبل الدفع. لا نضمن إصدار EIN أو فتح حساب أو قبول بوابة دفع.'
+                    : 'Indicative price subject to eligibility, scope, government fees, and availability review before payment. EIN issuance, bank-account opening, and payment-provider approval are not guaranteed.'}
+                </p>
                 <div className="grid grid-cols-2 gap-2.5 pt-2">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() =>
                       requestServiceAction({
                         id: `svc_turnkey_${Date.now()}`,
                         serviceType: 'company_formation',
                         titleAr: isAr ? siteContent.showcasePackageTitleAr : 'باقة التأسيس الشاملة',
                         titleEn: siteContent.showcasePackageTitleEn,
-                        subtitleAr: 'تأسيس شركة أمريكية + EIN + وكيل مسجل + تجهيز الدفع',
-                        subtitleEn: 'Full US LLC + IRS EIN + Registered Agent + Gateway prep',
+                        subtitleAr: 'مساعدة في التأسيس وطلب EIN والوكيل المسجل وتجهيز مستندات التقديم؛ وفق الأهلية والتوفر.',
+                        subtitleEn: 'Formation, EIN, registered-agent and payment-application support, subject to eligibility and availability.',
                         priceUsd: Number(siteContent.showcasePrice) || 349,
                         details: {
                           jurisdiction: 'US_WYOMING',
                           entityType: 'LLC',
-                          addons: { ein: true, physicalAddressAgent: true, businessBank: true, stripePayPal: true }
+                          addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false },
+                          indicativeOnly: true,
+                          quoteReviewOnly: true,
+                          governmentFeesMayBeAdditional: true
                         }
                       })
                     }
-                    className="py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1c3357] text-white font-black text-xs transition-all cursor-pointer text-center"
+                    className={`py-3 px-4 rounded-xl text-white font-black text-xs transition-all text-center ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#14243E] hover:bg-[#1c3357] cursor-pointer'}`}
                   >
-                    {isAr ? 'اطلب الباقة الآن' : 'Order Package Now'}
+                    {isAr ? (isPagesPreview ? 'المعاينة فقط — الطلب والدفع غير مفعّلين' : 'اطلب مراجعة الأهلية والتكلفة') : (isPagesPreview ? 'Preview only — requests and payments are disabled' : 'Request Eligibility & Quote Review')}
                   </button>
                   <button
                     type="button"
@@ -436,40 +450,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </div>
           </div>
 
-          {/* Quick Quantitative Trust Metrics */}
-          <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800 grid grid-cols-2 sm:grid-cols-4 gap-6 text-center">
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#004457] dark:text-[#E5C158] font-mono">
-                +1,450
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'شركة تم تأسيسها رسمياً' : 'Companies Incorporated'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#00A896] font-mono">
-                100%
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'نسبة نجاح استخراج EIN' : 'EIN Issuance Success'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#004457] dark:text-[#E5C158] font-mono">
-                48h
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'متوسط سرعة الإيداع لدى الولاية' : 'Avg State Filing Speed'}
-              </div>
-            </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-black text-[#00A896] font-mono">
-                $0
-              </div>
-              <div className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">
-                {isAr ? 'ضريبة دخل في وايومنغ' : 'State Tax in Wyoming'}
-              </div>
-            </div>
+          {/* Transparent service disclaimer — no unverified performance claims */}
+          <div className="mt-12 pt-8 border-t border-slate-200 dark:border-slate-800">
+            <p className="max-w-4xl mx-auto text-center text-xs sm:text-sm leading-7 text-slate-600 dark:text-slate-300">
+              {isAr
+                ? 'تختلف التكلفة والمدة بحسب الولاية ونوع الخدمة والرسوم الحكومية والمتطلبات الرسمية. تُراجع تفاصيل الطلب والتكلفة قبل اعتماد التنفيذ، وإرسال النموذج لا يعني إيداعاً حكومياً أو ضماناً للموافقة.'
+                : 'Pricing and timelines vary by jurisdiction, service scope, government fees, and official requirements. Request details and costs are reviewed before work is approved; submitting a form is not a government filing or a guarantee of approval.'}
+            </p>
           </div>
         </div>
       </section>
@@ -490,8 +477,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h2>
               <p className="text-xs sm:text-sm text-slate-500">
                 {isAr
-                  ? 'اختر الولاية والخدمات الإضافية لمعرفة التكلفة الإجمالية بالدولار والريال، ثم اضغط "اطلب الخدمة الآن" لإتمام الطلب.'
-                  : 'Select your jurisdiction and optional services for instant pricing, then proceed to checkout.'}
+                  ? 'اختر الاختصاص والخدمات التي ترغب بمراجعتها للحصول على تقدير مبدئي. السعر النهائي والرسوم الحكومية والتوفر تُؤكد بعد مراجعة الأهلية؛ لا يوجد دفع في هذه المعاينة.'
+                  : 'Select a jurisdiction and services to review for an indicative estimate. Final pricing, government fees, and availability are confirmed after eligibility review; this preview does not collect payment.'}
               </p>
             </div>
             <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-[#14243E] text-white shrink-0">
@@ -570,26 +557,26 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 {[
                   {
                     key: 'ein' as const,
-                    titleAr: 'استخراج الرقم الضريبي الفيدرالي (EIN)',
-                    titleEn: 'Federal IRS EIN Tax ID',
+                    titleAr: 'مساعدة في إعداد طلب EIN (حسب الأهلية)',
+                    titleEn: 'EIN Application Assistance (subject to eligibility)',
                     price: einFee
                   },
                   {
                     key: 'physicalAddressAgent' as const,
-                    titleAr: 'الوكيل المسجل وعنوان أمريكي/بريطاني معتمد',
-                    titleEn: 'Registered Agent & Business Address',
+                    titleAr: 'مراجعة متطلبات الوكيل المسجل والتوفر',
+                    titleEn: 'Registered-Agent Requirements and Availability Review',
                     price: agentFee
                   },
                   {
                     key: 'businessBank' as const,
-                    titleAr: 'ملف وتجهيز الحساب البنكي التجاري (Mercury / Relay)',
-                    titleEn: 'Business Bank Account Prep (Mercury / Relay)',
+                    titleAr: 'مراجعة متطلبات حساب الأعمال ومستندات التقديم',
+                    titleEn: 'Business-Account Requirements and Application Documents',
                     price: bankFee
                   },
                   {
                     key: 'stripePayPal' as const,
-                    titleAr: 'تجهيز وربط بوابات الدفع (Stripe & PayPal)',
-                    titleEn: 'Stripe & PayPal Gateway Onboarding',
+                    titleAr: 'مراجعة متطلبات مزودي الدفع ومستندات التقديم',
+                    titleEn: 'Payment-Provider Requirements and Application Documents',
                     price: gatewayFee
                   }
                 ].map(item => (
@@ -620,16 +607,21 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 ))}
               </div>
 
+              <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+                {isAr ? 'الأسعار المعروضة تقديرية، وقد تُضاف رسوم حكومية أو رسوم مزودين. اختيار الإضافات لا يعني تفعيلها أو ضمان قبولها.' : 'Displayed amounts are indicative; government or provider fees may be additional. Selecting an add-on does not activate it or guarantee approval.'}
+              </p>
               <button
                 type="button"
                 onClick={handleCalculatorOrder}
-                className="w-full py-3.5 px-5 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-lg"
+                disabled={isPagesPreview}
+                aria-disabled={isPagesPreview}
+                className={`w-full py-3.5 px-5 rounded-xl text-white font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#14243E] hover:bg-[#1d3559] cursor-pointer'}`} 
               >
                 <Lock className="w-4 h-4 text-[#D5B46B]" />
                 <span>
                   {isAr
-                    ? `اطلب الخدمة الآن — متابعة للدفع ($${calcTotalUsd})`
-                    : `Order Service Now — Checkout ($${calcTotalUsd})`}
+                    ? (isPagesPreview ? 'المعاينة فقط — الطلب والدفع غير مفعّلين' : `اطلب مراجعة الأهلية والتكلفة (تقدير ${calcTotalUsd})`)
+                    : (isPagesPreview ? 'Preview only — requests and payments are disabled' : `Request Eligibility & Quote Review (estimate ${calcTotalUsd})`)}
                 </span>
               </button>
             </div>
@@ -639,95 +631,54 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       {/* 3. INDEPENDENT STORE PACKAGES & PAYMENT GATEWAYS (STRIPE / PAYPAL / CRYPTO) */}
       <section id="store-packages" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <span className="text-xs font-black text-[#92743A] uppercase">
-              {isAr ? 'المتاجر الإلكترونية وبوابات الدفع' : 'Independent Stores & Payment Gateways'}
-            </span>
-            <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
-              {isAr
-                ? 'باقات إنشاء المتاجر الإلكترونية المستقلة وربط Stripe / PayPal / Crypto'
-                : 'Standalone Store Packages with Stripe, PayPal & Crypto Gateways'}
-            </h2>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              value={showcaseStoreName}
-              onChange={e => setShowcaseStoreName(e.target.value)}
-              placeholder={isAr ? 'اسم متجرك المقترح (اختياري)...' : 'Store name (optional)...'}
-              className="rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-xs"
-            />
-            <div className="inline-flex rounded-xl border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-slate-900 p-1 text-xs font-bold">
-              <button
-                type="button"
-                onClick={() => setStoreBillingCycle('monthly')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${
-                  storeBillingCycle === 'monthly' ? 'bg-[#14243E] text-white' : 'text-slate-500'
-                }`}
-              >
-                {isAr ? 'شهري' : 'Monthly'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setStoreBillingCycle('annual')}
-                className={`px-3 py-1.5 rounded-lg cursor-pointer ${
-                  storeBillingCycle === 'annual' ? 'bg-[#14243E] text-white' : 'text-slate-500'
-                }`}
-              >
-                {isAr ? 'سنوي' : 'Annual'}
-              </button>
-            </div>
-          </div>
+        <div className="space-y-3">
+          <span className="text-xs font-black text-[#92743A] uppercase">
+            {isAr ? 'إعداد المتاجر — حسب نطاق العمل' : 'Store setup — scoped engagement'}
+          </span>
+          <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
+            {isAr ? 'خيارات إعداد المتاجر المستقلة' : 'Independent store setup options'}
+          </h2>
+          <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {isAr
+              ? 'هذه خيارات أولية لطلب تقييم الاحتياج وليست اشتراكات مفعّلة. لا يتم من هذه الصفحة تحصيل رسوم أو تفعيل بوابات دفع أو نطاقات أو نشر متجر تلقائياً. نراجع المتطلبات والتوفر ونطاق العمل ثم نؤكد العرض قبل أي تنفيذ.'
+              : 'These are preliminary options for a needs assessment, not active subscriptions. This page does not collect payment or automatically activate gateways, domains, or store publication. Requirements, availability, and scope are reviewed before a quote or work is confirmed.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {SUBSCRIPTION_PLANS.map(plan => {
-            const unitPrice = storeBillingCycle === 'annual' ? plan.priceAnnual : plan.priceMonthly;
-            const totalCharge = storeBillingCycle === 'annual' ? unitPrice * 12 : unitPrice;
+            const scopeAr = plan.id === 'starter'
+              ? 'مراجعة احتياجات متجر واحد والقالب والمنتجات الأولية قبل تحديد نطاق الإعداد.'
+              : plan.id === 'growth'
+                ? 'مراجعة احتياجات عدة متاجر وسير العمل وحدود الإدارة المطلوبة قبل تقديم عرض.'
+                : 'تقييم متطلبات التشغيل الموسع والتكاملات وعزل البيانات قبل إعداد تصور تقني مستقل.';
+            const scopeEn = plan.id === 'starter'
+              ? 'Review one store, its template, and initial product needs before defining setup scope.'
+              : plan.id === 'growth'
+                ? 'Review multi-store and workflow needs and management boundaries before quoting.'
+                : 'Assess extended operations, integrations, and data-isolation requirements before a separate technical proposal.';
             return (
               <div
                 key={plan.id}
                 className={`rounded-3xl bg-white dark:bg-[#071D2B] p-6 border-2 flex flex-col justify-between space-y-5 shadow-sm ${
-                  plan.popular
-                    ? 'border-[#D5B46B] shadow-lg'
-                    : 'border-[#EAE6DC] dark:border-slate-800'
+                  plan.popular ? 'border-[#D5B46B] shadow-lg' : 'border-[#EAE6DC] dark:border-slate-800'
                 }`}
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="px-2.5 py-1 rounded-lg bg-[#F8F7F2] dark:bg-slate-900 border border-[#D5B46B]/50 text-[#92743A] text-[10px] font-black">
-                      {isAr ? plan.badgeAr : plan.badgeEn}
-                    </span>
-                    <div className="flex items-center gap-1 text-[10px] font-mono text-slate-400">
-                      <span>Stripe</span>
-                      <span>•</span>
-                      <span>PayPal</span>
-                      <span>•</span>
-                      <span>Crypto</span>
-                    </div>
-                  </div>
-
+                  <span className="inline-flex px-2.5 py-1 rounded-lg bg-[#F8F7F2] dark:bg-slate-900 border border-[#D5B46B]/50 text-[#92743A] text-[10px] font-black">
+                    {isAr ? 'طلب تقييم — غير متاح كاشتراك' : 'Assessment only — not an active subscription'}
+                  </span>
                   <h3 className="text-lg font-black text-[#14243E] dark:text-white">
                     {isAr ? plan.nameAr : plan.nameEn}
                   </h3>
-
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-3xl font-black font-mono text-[#14243E] dark:text-[#D5B46B]">
-                      ${unitPrice}
-                    </span>
-                    <span className="text-xs text-slate-500">
-                      / {isAr ? 'شهرياً' : 'month'}
-                    </span>
-                  </div>
-
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {isAr ? plan.descriptionAr : plan.descriptionEn}
+                    {isAr ? scopeAr : scopeEn}
                   </p>
-
                   <ul className="space-y-2 pt-2 border-t border-[#EAE6DC] dark:border-slate-800">
-                    {(isAr ? plan.featuresAr : plan.featuresEn).slice(0, 4).map((feat, idx) => (
+                    {(isAr
+                      ? ['تحديد المتطلبات والوظائف المطلوبة', 'مراجعة التوفر والاعتماديات الخارجية', 'عرض نطاق العمل والتكلفة قبل التنفيذ', 'لا نشر أو تحصيل أو تفعيل تلقائي']
+                      : ['Define required features and requirements', 'Review availability and external dependencies', 'Confirm scope and pricing before work begins', 'No automatic publication, collection, or activation']
+                    ).map((feat, idx) => (
                       <li key={idx} className="flex items-center gap-2 text-xs text-slate-700 dark:text-slate-300 font-semibold">
                         <CheckCircle2 className="w-3.5 h-3.5 text-[#00A896] shrink-0" />
                         <span>{feat}</span>
@@ -735,28 +686,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     ))}
                   </ul>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() =>
-                    requestServiceAction({
-                      id: `svc_store_${plan.id}_${Date.now()}`,
-                      serviceType: 'store_package',
-                      titleAr: isAr ? plan.nameAr : plan.nameEn,
-                      titleEn: plan.nameEn,
-                      subtitleAr: `إنشاء متجر مستقل مع بوابات Stripe / PayPal / Crypto (${storeBillingCycle === 'annual' ? 'اشتراك سنوي' : 'اشتراك شهري'})`,
-                      subtitleEn: `Standalone Store + Stripe / PayPal / Crypto (${storeBillingCycle})`,
-                      priceUsd: totalCharge,
-                      details: {
-                        planId: plan.id,
-                        billingCycle: storeBillingCycle,
-                        storeName: showcaseStoreName.trim() || undefined
-                      }
-                    })
-                  }
-                  className="w-full py-3 px-4 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black text-xs cursor-pointer transition-colors"
+                  disabled
+                  aria-disabled="true"
+                  className="w-full py-3 px-4 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-black text-xs cursor-not-allowed"
                 >
-                  {isAr ? `اطلب الباقة الآن ($${totalCharge})` : `Order Plan Now ($${totalCharge})`}
+                  {isAr ? 'قيد الإعداد — لا يوجد اشتراك أو دفع' : 'In preparation — no subscription or payment'}
                 </button>
               </div>
             );
@@ -766,90 +702,71 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
       {/* 4. QABS AI TOOLS & DIGITAL SERVICES SHOWCASE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div>
+        <div className="space-y-3">
           <span className="text-xs font-black text-[#00A896] uppercase">
-            {isAr ? 'أدوات قبس AI والخدمات الرقمية' : 'QABS AI Tools & Digital Services'}
+            {isAr ? 'أدوات قبس AI — قيد الإعداد' : 'QABS AI — In preparation'}
           </span>
           <h2 className="text-2xl font-black text-[#14243E] dark:text-white mt-1">
-            {isAr
-              ? 'باقات قبس AI للأتمتة الذكية وإدارة المنتجات والطلبات'
-              : 'QABS AI Smart Automation & Digital Credit Packs'}
+            {isAr ? 'مساعدات الذكاء الاصطناعي للأعمال' : 'AI assistance for business workflows'}
           </h2>
+          <p className="max-w-3xl text-sm leading-7 text-slate-600 dark:text-slate-300">
+            {isAr
+              ? 'نموذج الاشتراكات والرصيد المضمّن وشراء الأرصدة الإضافية ما زال قيد التطوير والاختبار. لا توجد أرصدة قابلة للشراء أو عمليات آلية مفعّلة حالياً، ولن يتم تحصيل أي رسوم من هذا القسم.'
+              : 'The subscription model, included usage credits, and prepaid top-ups are still under development and testing. No credits are currently purchasable and no automated operations are activated; this section does not collect payment.'}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
             {
-              id: 'ai_500',
-              credits: 500,
-              priceUsd: 29,
-              titleAr: 'باقة قبس AI الأساسية (500 رصيد)',
-              titleEn: 'QABS AI Starter (500 Credits)',
-              descAr: 'أوامر ذكية لتسعير المنتجات، صياغة الأوصاف الاحترافية، وإنشاء كوبونات الخصم تلقائياً.',
-              descEn: 'Smart commands for product pricing, copywriting, and automated discount generation.',
-              icon: Bot
+              id: 'ai_content_interest',
+              icon: Bot,
+              titleAr: 'مساعدة في المحتوى والمنتجات',
+              titleEn: 'Content and product assistance',
+              descAr: 'تقييم احتياجك لصياغة أوصاف المنتجات والأفكار التسويقية؛ لا يتم تنفيذ مهام آلية في هذه المرحلة.',
+              descEn: 'Assess needs for product descriptions and marketing ideas; automated tasks are not available in this phase.'
             },
             {
-              id: 'ai_1500',
-              credits: 1500,
-              priceUsd: 69,
-              titleAr: 'باقة قبس AI الاحترافية (1,500 رصيد)',
-              titleEn: 'QABS AI Pro (1,500 Credits)',
-              descAr: 'تجهيز الطلبات الآلي، تحليل المبيعات المباشر، ومساعد إدارة المخزون والربط البنكي.',
-              descEn: 'Automated fulfillment, live analytics reports, and inventory assistant.',
-              icon: Sparkles
+              id: 'ai_catalog_interest',
+              icon: Sparkles,
+              titleAr: 'مساندة إدارة الكتالوج',
+              titleEn: 'Catalog workflow assistance',
+              descAr: 'تحديد فرص تحسين بيانات المنتجات والتصنيفات قبل اعتماد أي تكامل أو تنفيذ.',
+              descEn: 'Identify opportunities to improve product data and categories before any integration or execution is approved.'
             },
             {
-              id: 'ai_5000',
-              credits: 5000,
-              priceUsd: 149,
-              titleAr: 'باقة قبس AI المؤسسية (5,000 رصيد + أتمتة)',
-              titleEn: 'QABS AI Enterprise (5,000 Credits)',
-              descAr: 'سقف عمليات موسع، مزامنة Shopify Admin API بالذكاء الاصطناعي، ودعم التسوية بالعملات الرقمية.',
-              descEn: 'High-volume automation, Shopify API AI sync, and multi-currency crypto tools.',
-              icon: Coins
+              id: 'ai_automation_interest',
+              icon: Coins,
+              titleAr: 'تقييم الأتمتة',
+              titleEn: 'Automation assessment',
+              descAr: 'مراجعة سير العمل والأنظمة المطلوبة وتحديد الاعتماديات والتكلفة بصورة مستقلة.',
+              descEn: 'Review workflows and required systems, then identify dependencies and costs separately.'
             }
-          ].map(pack => {
-            const PackIcon = pack.icon;
+          ].map(item => {
+            const ItemIcon = item.icon;
             return (
               <div
-                key={pack.id}
-                className="p-6 rounded-3xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 hover:border-[#D5B46B] shadow-sm flex flex-col justify-between space-y-4"
+                key={item.id}
+                className="p-6 rounded-3xl bg-white dark:bg-[#071D2B] border border-[#EAE6DC] dark:border-slate-800 shadow-sm flex flex-col justify-between space-y-4"
               >
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="w-11 h-11 rounded-xl bg-[#14243E] text-[#D5B46B] flex items-center justify-center">
-                      <PackIcon className="w-5 h-5" />
-                    </div>
-                    <span className="font-mono text-xl font-black text-[#14243E] dark:text-[#D5B46B]">
-                      ${pack.priceUsd}
-                    </span>
+                  <div className="w-11 h-11 rounded-xl bg-[#14243E] text-[#D5B46B] flex items-center justify-center">
+                    <ItemIcon className="w-5 h-5" />
                   </div>
                   <h3 className="text-base font-black text-[#14243E] dark:text-white">
-                    {isAr ? pack.titleAr : pack.titleEn}
+                    {isAr ? item.titleAr : item.titleEn}
                   </h3>
                   <p className="text-xs text-slate-500 leading-relaxed">
-                    {isAr ? pack.descAr : pack.descEn}
+                    {isAr ? item.descAr : item.descEn}
                   </p>
                 </div>
-
                 <button
                   type="button"
-                  onClick={() =>
-                    requestServiceAction({
-                      id: `svc_${pack.id}_${Date.now()}`,
-                      serviceType: 'ai_credits',
-                      titleAr: pack.titleAr,
-                      titleEn: pack.titleEn,
-                      subtitleAr: `شحن فوري لرصيد ${pack.credits.toLocaleString()} وحدة تشغيل في قبس AI`,
-                      subtitleEn: `Instant recharge of ${pack.credits.toLocaleString()} QABS AI credits`,
-                      priceUsd: pack.priceUsd,
-                      details: { creditsAmount: pack.credits }
-                    })
-                  }
-                  className="w-full py-2.5 px-4 rounded-xl border-2 border-[#14243E] dark:border-[#D5B46B] text-[#14243E] dark:text-[#D5B46B] hover:bg-[#14243E] hover:text-white font-black text-xs transition-colors cursor-pointer"
+                  disabled
+                  aria-disabled="true"
+                  className="w-full py-2.5 px-4 rounded-xl border-2 border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-black text-xs cursor-not-allowed"
                 >
-                  {isAr ? 'اطلب الخدمة الآن' : 'Order AI Pack Now'}
+                  {isAr ? 'قريباً — لا توجد أرصدة قابلة للشراء' : 'Coming soon — no credits available for purchase'}
                 </button>
               </div>
             );
@@ -862,12 +779,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-xs font-black text-[#00A896] uppercase">
-              {isAr ? 'منظومة قبس الرقمية المتكاملة' : 'QABS Unified Digital Ecosystem'}
+              {isAr ? 'خدمات قبس الرقمية' : 'QABS Digital Services'}
             </span>
             <h2 className="text-2xl font-black text-[#003445] dark:text-white mt-1">
               {isAr
-                ? 'كل ما تحتاجه لتأسيس شركتك وربط مدفوعاتك وإدارة متاجرك الإلكترونية'
-                : 'Everything Needed to Form Companies, Connect Global Payments & Run Online Stores'}
+                ? 'مساعدة في تأسيس الأعمال وتجهيز الطلبات ومراجعة احتياجات المتاجر والخدمات الرقمية'
+                : 'Business formation assistance, application preparation, and store and digital-service assessments'}
             </h2>
           </div>
         </div>
@@ -887,13 +804,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'تأسيس LLC أو C-Corp في كافة الولايات الخمسين (وايومنغ، ديلاوير، نيو مكسيكو...) والشركات البريطانية LTD.'
-                  : 'Register LLC or C-Corp in all 50 US states or UK LTD with full corporate documents.'}
+                  ? 'مساعدة في مراجعة خيارات LLC أو C-Corp الأمريكية أو UK LTD وتجهيز الطلبات وفق الأهلية والاختصاص ونطاق الخدمة المتاح.'
+                  : 'Review US LLC or C-Corp and UK LTD options and prepare applications subject to eligibility, jurisdiction, and available service scope.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'طلب تأسيس شركة' : 'Request Formation'}</span>
+                <span>{isAr ? 'مراجعة خيارات التأسيس' : 'Review Formation Options'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -920,13 +837,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'استخراج خطاب EIN الرسمي من IRS، عنوان أمريكي معتمد، وإدارة التقارير والتجديدات السنوية.'
-                  : 'Official IRS CP575 EIN issuance, registered agent address, and annual state filings.'}
+                  ? 'مساعدة في مراجعة أهلية طلب EIN وتجهيز مستنداته، ومراجعة متطلبات الوكيل والالتزامات السنوية وفق الاختصاص؛ الإصدار والقبول والمدة تخضع للجهات المختصة.'
+                  : 'EIN application-preparation assistance, registered-agent requirements, and annual compliance review subject to eligibility and the relevant authorities.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'متابعة الوثائق والامتثال' : 'Manage Compliance'}</span>
+                <span>{isAr ? 'استعراض خدمات الامتثال' : 'Explore Compliance Services'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -953,13 +870,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'متجر إلكتروني مستقل لكل عميل مع لوحة تحكم متكاملة واستوديو تصميم مرئي وعزل كامل للبيانات.'
-                  : 'Independent online store per client with full dashboard, visual QABS Studio, and strict isolation.'}
+                  ? 'نراجع احتياجات إنشاء المتجر وتصميمه وإدارته؛ حدود التشغيل والتكاملات وعزل البيانات لا تُعتمد إلا بعد التحقق الفني وتأكيد نطاق الخدمة.'
+                  : 'We assess store creation, design, and management needs; operational scope, integrations, and data isolation require technical verification and explicit confirmation.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'إدارة المتاجر الإلكترونية' : 'Open QABS Stores'}</span>
+                <span>{isAr ? 'استعراض خدمة إعداد المتاجر' : 'Explore Store Setup'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -989,13 +906,13 @@ export const LandingView: React.FC<LandingViewProps> = ({
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'ربط حسابات Mercury و Wise وبوابات الدفع Stripe و PayPal و Tap و Moyasar بعد اعتماد قبس.'
-                  : 'Connect Mercury, Wise, Stripe, PayPal, Tap & Moyasar with verified governance.'}
+                  ? 'نساعد في مراجعة متطلبات مزودي الحسابات والدفع وتجهيز مستندات التقديم عند الأهلية؛ قرار القبول والتفعيل يعود إلى كل مزود ولا نضمنه.'
+                  : 'We help review account and payment-provider requirements and prepare application documents where eligible; each provider independently decides approval and activation.'}
               </p>
             </div>
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
               <span className="text-xs font-black text-[#00A896] flex items-center gap-1">
-                <span>{isAr ? 'استعراض الباقات وبوابات الدفع' : 'View Plans & Gateways'}</span>
+                <span>{isAr ? 'استعراض خدمات الحسابات والدفع' : 'Explore Account & Payment Services'}</span>
                 <ArrowRight className="w-3.5 h-3.5 rtl:rotate-180" />
               </span>
               <AppLink
@@ -1075,8 +992,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </h2>
             <p className="text-xs sm:text-sm text-slate-500">
               {isAr
-                ? 'نتولى عنك كافة الإجراءات الحكومية والقانونية والتقنية لتتفرغ لتنمية تجارتك'
-                : 'We manage all legal, governmental, and technical procedures so you can focus on scale'}
+                ? 'نراجع المتطلبات وننسق الخطوات المتفق عليها؛ الجهات الحكومية ومزودو الحسابات والدفع يتخذون قراراتهم بصورة مستقلة.'
+                : 'We review requirements and coordinate the agreed scope; government registries and account/payment providers make their own decisions.'}
             </p>
             <div className="pt-1">
               <AppLink
@@ -1095,12 +1012,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 01
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'اختيار الولاية وتعبئة البيانات' : 'Select State & Enter Details'}
+                {isAr ? 'مراجعة الاختصاص وتعبئة البيانات' : 'Review Jurisdiction & Enter Details'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'اختر الولاية الأنسب لنشاطك (وايومنغ للتجارة الإلكترونية، ديلاوير للاستثمار) وقم بتحديد اسم الشركة والمدراء.'
-                  : 'Choose the best state (Wyoming for commerce, Delaware for VC) and specify company name & managers.'}
+                  ? 'قارن الاختصاصات المتاحة وفق النشاط ومكان ممارسة العمل والرسوم والالتزامات؛ لا توجد ولاية مناسبة للجميع.'
+                  : 'Compare supported jurisdictions against business activity, operating location, fees, and obligations; no single state fits everyone.'}
               </p>
             </div>
 
@@ -1109,12 +1026,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 02
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'الإيداع واستخراج EIN والوثائق' : 'State Filing & IRS EIN'}
+                {isAr ? 'تجهيز الطلبات وتنسيق الإيداع' : 'Application Preparation & Filing Coordination'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'نقوم بإيداع النظام الأساسي لدى سكرتير الولاية واستخراج الرقم الضريبي الفيدرالي EIN وتجهيز عقد التأسيس.'
-                  : 'We file Articles of Organization, obtain IRS EIN letter, and issue the custom Operating Agreement.'}
+                  ? 'نساعد في تجهيز مستندات الإيداع وطلب EIN عند الأهلية؛ السجل الحكومي يصدر وثائق التأسيس وIRS تقرر إصدار الرقم الضريبي.'
+                  : 'We help prepare filing and EIN application documents where eligible; the registry issues formation records and the IRS decides whether to issue an EIN.'}
               </p>
             </div>
 
@@ -1123,12 +1040,12 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 03
               </div>
               <h3 className="text-base font-black text-[#003445] dark:text-white">
-                {isAr ? 'تفعيل البنك والدفع وإطلاق المتجر' : 'Banking, Gateways & Launch'}
+                {isAr ? 'مراجعة طلبات الحسابات والدفع وإعداد المتجر' : 'Account Applications, Payments & Store Setup Review'}
               </h3>
               <p className="text-xs text-slate-500 leading-relaxed">
                 {isAr
-                  ? 'نوجهك لفتح حساب Mercury أو Wise، وربط بوابة Stripe، وتفعيل متجرك الإلكتروني المستقل في قبس.'
-                  : 'Open Mercury or Wise accounts, connect Stripe payment gateway, and launch your store on QABS.'}
+                  ? 'نراجع متطلبات حسابات الأعمال وبوابات الدفع وتجهيز مستندات التقديم؛ فتح الحساب أو قبول المزود أو إطلاق المتجر ليس مضموناً.'
+                  : 'Review business-account and payment-provider requirements and prepare application documents; account opening, provider approval, and store launch are not guaranteed.'}
               </p>
             </div>
           </div>
@@ -1151,9 +1068,9 @@ export const LandingView: React.FC<LandingViewProps> = ({
             <thead className="bg-slate-50 dark:bg-slate-900 text-slate-700 dark:text-slate-300 font-black border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="p-4">{isAr ? 'الولاية / الاختصاص' : 'Jurisdiction'}</th>
-                <th className="p-4">{isAr ? 'ضريبة دخل الولاية' : 'State Income Tax'}</th>
-                <th className="p-4">{isAr ? 'سرية الملاك (Privacy)' : 'Owner Privacy'}</th>
-                <th className="p-4">{isAr ? 'التقرير السنوي' : 'Annual Report'}</th>
+                <th className="p-4">{isAr ? 'ملاحظات ضريبية عامة' : 'General Tax Notes'}</th>
+                <th className="p-4">{isAr ? 'متطلبات الإفصاح' : 'Disclosure Requirements'}</th>
+                <th className="p-4">{isAr ? 'الرسوم والالتزامات السنوية' : 'Annual Fees & Obligations'}</th>
                 <th className="p-4">{isAr ? 'الأنسب لـ' : 'Recommended For'}</th>
                 <th className="p-4 text-center">{isAr ? 'الإجراء' : 'Action'}</th>
               </tr>
@@ -1163,13 +1080,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'وايومنغ (Wyoming - WY) ⭐' : 'Wyoming (WY)'}
                 </td>
-                <td className="p-4 text-emerald-600 font-bold">0% (معفاة تماماً)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سرية تامة (لا تظهر بالسجلات العامة)</td>
-                <td className="p-4 font-mono">$60 / سنوياً</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">التجارة الإلكترونية، المتاجر الرقمية، والخدمات عن بعد</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'لا ضريبة دخل على مستوى الولاية؛ قد تنطبق ضرائب أخرى' : 'No state-level income tax; other taxes may apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تخضع لإفصاحات السجلات المطلوبة' : 'Subject to required public-record disclosures'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تقرير سنوي ورسوم حكومية حالية' : 'Annual report; current state fees apply'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب بعض الأنشطة الرقمية بعد مراجعة الالتزامات' : 'May suit some digital businesses after reviewing obligations'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('WY')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1181,13 +1100,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'ديلاوير (Delaware - DE)' : 'Delaware (DE)'}
                 </td>
-                <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">0% (خارج الولاية)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">حماية قانونية متقدمة (Court of Chancery)</td>
-                <td className="p-4 font-mono">$300 / سنوياً</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">الشركات الناشئة التقنية، جذب الاستثمار وصناديق VC</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تختلف حسب نوع الكيان ومكان ممارسة النشاط' : 'Varies by entity type and where business is conducted'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تطبق متطلبات السجل والإفصاح الخاصة بالكيان' : 'Entity-specific public-record and disclosure rules apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'قد تنطبق ضريبة امتياز ورسوم سنوية' : 'Franchise tax and annual fees may apply'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب شركات تسعى لجذب الاستثمار' : 'May suit companies seeking investment'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('DE')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1199,13 +1120,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'نيو مكسيكو (New Mexico - NM)' : 'New Mexico (NM)'}
                 </td>
-                <td className="p-4 text-emerald-600 font-bold">0% (للأعمال الخارجية)</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سرية تامة ومطلقة للملاك</td>
-                <td className="p-4 font-mono text-emerald-600 font-bold">$0 (لا يوجد تقرير سنوي)</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">أقل تكلفة صيانة سنوية وميزانية اقتصادية</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تختلف حسب مصدر الدخل والالتزامات المحلية والفيدرالية' : 'Depends on income source and applicable state and federal obligations'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'تطبق متطلبات الإفصاح والسجلات القانونية' : 'Required disclosures and public-record rules apply'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'راجع المتطلبات والرسوم الحالية للكيان' : 'Check current entity requirements and fees'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب من يوازن التكلفة مع المتطلبات' : 'May suit founders balancing cost and requirements'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('NM')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1217,13 +1140,15 @@ export const LandingView: React.FC<LandingViewProps> = ({
                 <td className="p-4 font-black text-[#004457] dark:text-white">
                   {isAr ? 'بريطانيا (UK LTD)' : 'United Kingdom (LTD)'}
                 </td>
-                <td className="p-4 text-slate-700 dark:text-slate-300 font-bold">ضريبة الشركات البريطانية</td>
-                <td className="p-4 font-bold text-slate-800 dark:text-slate-200">سجل Companies House الرسمي</td>
-                <td className="p-4 font-mono">£13 تقرير تأكيد سنوي</td>
-                <td className="p-4 text-slate-600 dark:text-slate-400">التجارة مع بريطانيا وأوروبا وبوابات الدفع بالجنيه الإسترليني</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'ضريبة الشركات وفق الأرباح والقواعد البريطانية' : 'Corporation tax under applicable UK rules'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'بيانات الشركة متاحة وفق قواعد Companies House' : 'Company details are public under Companies House rules'}</td>
+                <td className="p-4 text-slate-700 dark:text-slate-300">{isAr ? 'رسوم الإيداع الحالية لدى Companies House' : 'Current Companies House filing fees'}</td>
+                <td className="p-4 text-slate-600 dark:text-slate-400">{isAr ? 'قد تناسب نشاطاً يستهدف السوق البريطاني' : 'May suit businesses targeting the UK market'}</td>
                 <td className="p-4 text-center">
                   <button
                     type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
                     onClick={() => handleFormationAction('UK')}
                     className="px-3 py-1.5 rounded-lg bg-[#004457] hover:bg-[#003342] text-white font-bold text-[11px] cursor-pointer"
                   >
@@ -1234,22 +1159,27 @@ export const LandingView: React.FC<LandingViewProps> = ({
             </tbody>
           </table>
         </div>
+        <p className="mt-3 text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+          {isAr
+            ? 'هذه مقارنة عامة وليست استشارة قانونية أو ضريبية. تختلف الضرائب والرسوم ومتطلبات الإفصاح حسب نوع الكيان والنشاط والإقامة ومكان ممارسة الأعمال، وقد تتغير. تحقّق من المصادر الحكومية الرسمية قبل التقديم.'
+            : 'This is general information, not legal or tax advice. Taxes, fees, and disclosure requirements vary by entity, activity, residence, and place of business, and may change. Verify current details with official government sources before filing.'}
+        </p>
       </section>
 
-      {/* 5. COLLAPSIBLE ALL 50 US STATES TRANSPARENT PRICING */}
+      {/* 5. COLLAPSIBLE INDICATIVE US STATE FEE GUIDE */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="rounded-3xl bg-white dark:bg-[#071D2B] border-2 border-[#004457]/20 dark:border-cyan-950 p-6 shadow-md space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <span className="text-xs font-black text-[#00A896]">
                 {isAr
-                  ? 'أسعار كافة الولايات الأمريكية بشفافية تامة — شاملة الرسوم الحكومية'
-                  : 'Transparent All 50 US States Formation Pricing — Including State Filing Fees'}
+                  ? 'تقديرات تأسيس الولايات الأمريكية — رسوم الولاية تُعرض بشكل منفصل'
+                  : 'Indicative US state formation estimates — state fees shown separately'}
               </span>
               <h3 className="text-lg sm:text-xl font-black text-[#003445] dark:text-white mt-0.5">
                 {isAr
-                  ? 'تشمل جميع الباقات: رسوم سكرتير الولاية الحكومية + تأسيس (50 ولاية أمريكية)'
-                  : 'All Packages Include: Secretary of State Filing Fee + Formation (All 50 US States)'}
+                  ? 'الإجمالي التقديري = سعر الباقة + رسوم إيداع الولاية المعروضة'
+                  : 'Estimated total = package price + displayed state filing fee'}
               </h3>
             </div>
 
@@ -1260,11 +1190,11 @@ export const LandingView: React.FC<LandingViewProps> = ({
               <span>
                 {showStatesPricing
                   ? isAr
-                    ? 'إخفاء جدول أسعار الولايات الأمريكية (50 ولاية)'
-                    : 'Hide All 50 US States Pricing'
+                    ? 'إخفاء جدول رسوم الولايات الإرشادي'
+                    : 'Hide Indicative US State Fee Guide'
                   : isAr
-                  ? 'عرض أسعار كافة الولايات الأمريكية (50 ولاية)'
-                  : 'Show All 50 US States Pricing'}
+                  ? 'عرض جدول رسوم الولايات الإرشادي'
+                  : 'Show Indicative US State Fee Guide'}
               </span>
               {showStatesPricing ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
             </button>
@@ -1306,14 +1236,17 @@ export const LandingView: React.FC<LandingViewProps> = ({
                     onChange={e => setStateFilter(e.target.value as any)}
                     className="rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 text-xs font-bold"
                   >
-                    <option value="all">{isAr ? 'كل الولايات (50)' : 'All 50 States'}</option>
-                    <option value="popular">{isAr ? 'الأكثر شعبية ⭐' : 'Most Popular'}</option>
-                    <option value="zero_tax">{isAr ? 'بدون ضريبة ولاية' : 'Zero State Tax'}</option>
+                    <option value="all">{isAr ? 'كل الخيارات المدرجة' : 'All listed options'}</option>
                     <option value="low_fee">{isAr ? 'رسوم حكومية منخفضة' : 'Low Filing Fee'}</option>
                   </select>
                 </div>
               </div>
 
+              <p className="text-[11px] leading-6 text-slate-500 dark:text-slate-400">
+                {isAr
+                  ? 'رسوم الولاية تقديرية وقد تتغير. لا تشمل بالضرورة الضرائب الفيدرالية أو الوكيل المسجل أو رسوم الجهات الخارجية. تحقّق من جدول الرسوم الرسمي عند التقديم؛ وغياب ضريبة دخل على مستوى الولاية لا يعني إعفاءً ضريبياً شاملاً.'
+                  : 'State fees are indicative and may change. They may exclude federal taxes, registered-agent fees, and third-party charges. Verify official fees before filing; no state-level income tax does not mean a full tax exemption.'}
+              </p>
               {/* States Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-[520px] overflow-y-auto p-1">
                 {filteredStates.map(st => {
@@ -1329,14 +1262,6 @@ export const LandingView: React.FC<LandingViewProps> = ({
                             {isAr ? st.nameAr : st.nameEn}{' '}
                             <span className="text-xs font-mono text-[#00A896]">({st.code})</span>
                           </span>
-                          {st.badgeAr && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
-                              {isAr ? st.badgeAr : st.badgeEn}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-slate-500 mt-1">
-                          {isAr ? st.recommendedForAr : st.recommendedForEn}
                         </div>
                         <div className="mt-2 pt-2 border-t border-slate-200/70 dark:border-slate-800 flex items-center justify-between text-xs">
                           <span className="text-slate-500">
@@ -1350,27 +1275,32 @@ export const LandingView: React.FC<LandingViewProps> = ({
 
                       <button
                         type="button"
+                        disabled={isPagesPreview}
+                        aria-disabled={isPagesPreview}
                         onClick={() =>
                           isAuthenticated
                             ? onOpenFormationModal(st.code)
                             : requestServiceAction({
                                 id: `svc_state_${st.code}_${Date.now()}`,
                                 serviceType: 'company_formation',
-                                titleAr: `تأسيس شركة في ${st.nameAr} (${selectedPkg.nameAr})`,
-                                titleEn: `Form Company in ${st.nameEn} (${selectedPkg.nameEn})`,
-                                subtitleAr: `رسوم الولاية: $${st.stateFilingFee} + باقة ${selectedPkg.nameAr}`,
-                                subtitleEn: `State fee: $${st.stateFilingFee} + ${selectedPkg.nameEn}`,
+                                titleAr: `مراجعة خيار تأسيس في ${st.nameAr} (${selectedPkg.nameAr})`,
+                                titleEn: `Review formation option in ${st.nameEn} (${selectedPkg.nameEn})`,
+                                subtitleAr: `تقدير إرشادي يشمل رسوم الولاية المعروضة وباقة ${selectedPkg.nameAr}؛ الأهلية والتوفر والرسوم النهائية تحتاج تأكيداً.`,
+                                subtitleEn: `Indicative estimate including the displayed state fee and ${selectedPkg.nameEn}; eligibility, availability, and final fees require confirmation.`,
                                 priceUsd: totalWithPkg,
                                 details: {
                                   jurisdiction: st.jurisdictionId as 'US_WYOMING' | 'US_DELAWARE' | 'US_KENTUCKY' | 'US_NEW_MEXICO' | 'UK_LTD',
                                   entityType: 'LLC',
-                                  addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false }
+                                  addons: { ein: true, physicalAddressAgent: true, businessBank: false, stripePayPal: false },
+                                  indicativeOnly: true,
+                                  quoteReviewOnly: true,
+                                  governmentFeesMayBeAdditional: true
                                 }
                               })
                         }
-                        className="w-full py-2 rounded-xl bg-[#004457] hover:bg-[#003342] text-white text-xs font-bold cursor-pointer"
+                        className={`w-full py-2 rounded-xl text-white text-xs font-bold ${isPagesPreview ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#004457] hover:bg-[#003342] cursor-pointer'}`}
                       >
-                        {isAr ? `اطلب التأسيس في ${st.nameAr}` : `Order in ${st.nameEn}`}
+                        {isAr ? (isPagesPreview ? 'المعاينة فقط — لا يوجد طلب أو دفع' : `اطلب مراجعة خيار ${st.nameAr}`) : (isPagesPreview ? 'Preview only — no order or payment' : `Request review for ${st.nameEn}`)}
                       </button>
                     </div>
                   );
@@ -1456,6 +1386,8 @@ export const LandingView: React.FC<LandingViewProps> = ({
           <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
             <button
               type="button"
+                    disabled={isPagesPreview}
+                    aria-disabled={isPagesPreview}
               onClick={() => handleFormationAction('WY')}
               className="px-6 py-3.5 rounded-xl bg-[#E5C158] hover:bg-[#d8b44c] text-slate-950 font-black text-xs sm:text-sm transition-all cursor-pointer shadow-lg text-center"
             >
