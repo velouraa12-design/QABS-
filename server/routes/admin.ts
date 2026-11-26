@@ -70,6 +70,7 @@ export function registerAdminRoutes(
     const products = db.prepare('SELECT * FROM store_products ORDER BY updated_at DESC').all();
     const subscriptions = db.prepare('SELECT * FROM user_subscriptions ORDER BY updated_at DESC').all();
     const invoices = db.prepare('SELECT * FROM billing_invoices ORDER BY issued_date DESC').all();
+    const refunds = db.prepare('SELECT * FROM refund_requests ORDER BY created_at DESC').all();
     const tickets = db.prepare('SELECT * FROM support_tickets ORDER BY created_at DESC').all();
     const notifications = db.prepare('SELECT * FROM notifications ORDER BY created_at DESC LIMIT 100').all();
     const auditLogs = db.prepare('SELECT * FROM security_audit_logs ORDER BY created_at DESC LIMIT 150').all();
@@ -93,6 +94,7 @@ export function registerAdminRoutes(
       products,
       subscriptions,
       invoices,
+      refunds,
       tickets,
       notifications,
       auditLogs,
@@ -463,6 +465,117 @@ export function registerAdminRoutes(
   router.get('/api/admin/error-logs', requirePrivileged, (_req: AuthedRequest, res: Response) => {
     const errorLogs = db.prepare('SELECT * FROM system_error_logs ORDER BY created_at DESC LIMIT 100').all();
     res.json({ errorLogs });
+  });
+
+  // Advance/Update Company Formation Stage, Status & Official Registration IDs
+  router.patch('/api/admin/formations/:formationId', requirePrivileged, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const formationId = sanitizeId(req.params.formationId);
+    const existing = db.prepare('SELECT * FROM company_formations WHERE id = ?').get(formationId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Company formation not found.', code: 'NOT_FOUND' });
+      return;
+    }
+
+    const rawStage = req.body?.formationStage !== undefined ? Number(req.body.formationStage) : Number(existing.formation_stage || 1);
+    const nextStage = Math.max(1, Math.min(5, Math.floor(Number.isFinite(rawStage) ? rawStage : 1)));
+    const allowedStatuses = new Set(['draft', 'under_review', 'submitted_to_state', 'approved']);
+    const nextStatus =
+      req.body?.status && allowedStatuses.has(String(req.body.status))
+        ? String(req.body.status)
+        : nextStage === 5
+        ? 'approved'
+        : nextStage >= 2
+        ? 'submitted_to_state'
+        : 'under_review';
+    const ein = req.body?.ein !== undefined ? sanitizeText(req.body.ein, 64) : (existing.ein as string | null);
+    const stateFileNumber =
+      req.body?.stateFileNumber !== undefined
+        ? sanitizeText(req.body.stateFileNumber, 80)
+        : (existing.state_file_number as string | null);
+    const crn = req.body?.crn !== undefined ? sanitizeText(req.body.crn, 64) : (existing.crn as string | null);
+    const notes = req.body?.notes !== undefined ? sanitizeText(req.body.notes, 800) : (existing.notes as string | null);
+
+    db.prepare(
+      `UPDATE company_formations
+       SET formation_stage = ?, status = ?, ein = ?, state_file_number = ?, crn = ?, notes = ?
+       WHERE id = ?`
+    ).run(nextStage, nextStatus, ein || null, stateFileNumber || null, crn || null, notes || null, formationId);
+
+    createNotification(
+      db,
+      String(existing.tenant_id),
+      `تحديث ملف تأسيس ${existing.company_name}`,
+      `Formation Update: ${existing.company_name}`,
+      `المرحلة الحالية: ${nextStage}/5 (${nextStatus})${ein ? ` • EIN: ${ein}` : ''}`,
+      `Current stage: ${nextStage}/5 (${nextStatus})${ein ? ` • EIN: ${ein}` : ''}`,
+      'formation',
+      '/company-formation'
+    );
+    logAudit(
+      db,
+      String(existing.tenant_id),
+      actor.userId,
+      actor.name,
+      `تحديث ملف تأسيس ${existing.company_name} إلى المرحلة ${nextStage}/5`,
+      `Updated formation ${existing.company_name} stage=${nextStage} status=${nextStatus}`,
+      formationId
+    );
+    res.json({ formation: db.prepare('SELECT * FROM company_formations WHERE id = ?').get(formationId) });
+  });
+
+  // Review Customer Refund Requests (Admin / Super Admin only)
+  router.patch('/api/admin/refunds/:refundId', requirePrivileged, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    if (!canVerifyFinancials(actor.role)) {
+      res.status(403).json({
+        error: 'Only admin or super_admin can approve or reject refund requests.',
+        code: 'FORBIDDEN_FINANCIAL_ACTION'
+      });
+      return;
+    }
+    const refundId = sanitizeId(req.params.refundId);
+    const decision = sanitizeText(req.body?.status, 32);
+    if (!['approved', 'rejected'].includes(decision)) {
+      res.status(400).json({ error: 'Decision must be approved or rejected.', code: 'INVALID_DECISION' });
+      return;
+    }
+    const existing = db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(refundId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Refund request not found.', code: 'REFUND_NOT_FOUND' });
+      return;
+    }
+    const adminNotes = sanitizeText(req.body?.adminNotes || '', 500);
+    db.prepare(
+      `UPDATE refund_requests
+       SET status = ?, admin_notes = ?, reviewed_by = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).run(decision, adminNotes || null, actor.name, refundId);
+
+    createNotification(
+      db,
+      String(existing.tenant_id),
+      `تحديث طلب الاسترداد ${existing.order_number}`,
+      `Refund Update: ${existing.order_number}`,
+      `حالة طلب الاسترداد: ${decision}${adminNotes ? ` — ${adminNotes}` : ''}`,
+      `Refund status: ${decision}${adminNotes ? ` — ${adminNotes}` : ''}`,
+      'billing',
+      '/billing'
+    );
+    logAudit(
+      db,
+      String(existing.tenant_id),
+      actor.userId,
+      actor.name,
+      `مراجعة طلب الاسترداد ${existing.order_number}: ${decision}`,
+      `Reviewed refund ${existing.order_number} status=${decision}`,
+      refundId
+    );
+    res.json({ refund: db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(refundId) });
   });
 
   // Persist landing & CMS site content in DB

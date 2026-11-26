@@ -204,6 +204,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     resendVerificationEmail,
     importSupplierProduct,
     workspaceBackups,
+    downloadServerBackup,
     cancelSubscription,
     renewSubscription
   } = useApp();
@@ -3503,12 +3504,22 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       {isAr ? `النسخ الاحتياطية المحفوظة على الخادم (${workspaceBackups.length})` : `Server Backup Snapshots (${workspaceBackups.length})`}
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {workspaceBackups.slice(0, 4).map(bak => (
-                        <div key={bak.id} className="p-2.5 rounded-xl bg-[#FBFAF6] dark:bg-slate-900 border border-[#EAE6DC] dark:border-slate-800 flex items-center justify-between font-mono text-[11px]">
-                          <span className="truncate font-bold">{bak.label}</span>
-                          <span className="text-slate-500 shrink-0 ms-2">
-                            {Math.max(1, Math.round(bak.sizeBytes / 1024))} KB • {bak.createdAt}
-                          </span>
+                      {workspaceBackups.slice(0, 6).map(bak => (
+                        <div key={bak.id} className="p-2.5 rounded-xl bg-[#FBFAF6] dark:bg-slate-900 border border-[#EAE6DC] dark:border-slate-800 flex items-center justify-between gap-2 font-mono text-[11px]">
+                          <div className="min-w-0">
+                            <div className="truncate font-bold">{bak.label}</div>
+                            <div className="text-slate-500 text-[10px]">
+                              {Math.max(1, Math.round(bak.sizeBytes / 1024))} KB • {bak.createdAt}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => void downloadServerBackup(bak.id)}
+                            className="px-2.5 py-1 rounded-lg bg-[#14243E] text-[#D5B46B] hover:bg-[#1d3559] font-sans font-bold shrink-0 cursor-pointer flex items-center gap-1"
+                          >
+                            <Download className="w-3 h-3" />
+                            <span>JSON</span>
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -6030,7 +6041,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                                   ? `المرحلة ${stage} من 5 — قيد التنفيذ`
                                   : `Stage ${stage}/5 — In Progress`}
                               </span>
-                              {stage < 5 && (
+                              {stage < 5 && (isOwner || backendStatus !== 'connected') && (
                                 <button
                                   type="button"
                                   onClick={() => advanceCompanyStage(comp.id)}
@@ -6038,6 +6049,11 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                                 >
                                   {isAr ? 'ترقية المرحلة التالية ←' : 'Advance Stage →'}
                                 </button>
+                              )}
+                              {stage < 5 && !isOwner && backendStatus === 'connected' && (
+                                <span className="px-3 py-1 rounded-xl bg-[#F8F7F2] border border-[#EAE6DC] text-[#92743A] text-[11px] font-bold">
+                                  {isAr ? 'تحدّث المراحل عبر فريق امتثال قبس' : 'Updated by QABS Compliance Team'}
+                                </span>
                               )}
                             </div>
                           </div>
@@ -6058,12 +6074,16 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                               {stageLabels.map(st => {
                                 const done = stage >= st.step;
                                 const isCurrent = stage === st.step;
+                                const canAdvance = isOwner || backendStatus !== 'connected';
                                 return (
                                   <button
                                     key={st.step}
                                     type="button"
-                                    onClick={() => advanceCompanyStage(comp.id, st.step as 1 | 2 | 3 | 4 | 5)}
-                                    className={`p-2.5 rounded-xl border text-right text-[11px] font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                                    disabled={!canAdvance}
+                                    onClick={() => canAdvance && advanceCompanyStage(comp.id, st.step as 1 | 2 | 3 | 4 | 5)}
+                                    className={`p-2.5 rounded-xl border text-right text-[11px] font-bold transition-all flex items-center gap-2 ${
+                                      canAdvance ? 'cursor-pointer' : 'cursor-default'
+                                    } ${
                                       done
                                         ? 'border-emerald-300 bg-emerald-50/70 text-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200'
                                         : isCurrent

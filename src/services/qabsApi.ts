@@ -104,6 +104,8 @@ export interface BootstrapResponse {
   subscriptionHistory: Record<string, unknown>[];
   invoices: Record<string, unknown>[];
   creditLedger: Record<string, unknown>[];
+  refunds?: Record<string, unknown>[];
+  workspaceSettings?: Record<string, unknown> | null;
   notifications: Record<string, unknown>[];
   tickets: Record<string, unknown>[];
   auditLogs: Record<string, unknown>[];
@@ -121,6 +123,7 @@ export interface AdminOverviewResponse {
   products: Record<string, unknown>[];
   subscriptions: Record<string, unknown>[];
   invoices: Record<string, unknown>[];
+  refunds?: Record<string, unknown>[];
   tickets: Record<string, unknown>[];
   notifications: Record<string, unknown>[];
   auditLogs: Record<string, unknown>[];
@@ -215,9 +218,27 @@ export const qabsApi = {
   // Public & CMS site content
   getSiteContent: () => apiRequest<{ siteContent: Record<string, unknown> | null }>('/api/site-content'),
 
-  // Workspace bootstrap & backups
+  // Workspace bootstrap, settings & backups
   bootstrap: () => apiRequest<BootstrapResponse>('/api/workspace/bootstrap'),
+  getWorkspaceSettings: () => apiRequest<{ settings: Record<string, unknown> | null }>('/api/workspace/settings'),
+  updateWorkspaceSettings: (settings: Record<string, unknown>) =>
+    apiRequest<{ settings: Record<string, unknown> }>('/api/workspace/settings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings })
+    }),
   listWorkspaceBackups: () => apiRequest<{ backups: Record<string, unknown>[] }>('/api/workspace/backups'),
+  getWorkspaceBackup: (backupId: string) =>
+    apiRequest<{
+      backup: {
+        id: string;
+        tenant_id: string;
+        label: string;
+        size_bytes: number;
+        created_at: string;
+        snapshot: Record<string, unknown>;
+      };
+    }>(`/api/workspace/backups/${encodeURIComponent(backupId)}`),
   createWorkspaceBackup: (label?: string) =>
     apiRequest<{ backup: Record<string, unknown>; snapshot: Record<string, unknown> }>('/api/workspace/backup', {
       method: 'POST',
@@ -291,6 +312,12 @@ export const qabsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
+    }),
+  updateFormationNotes: (formationId: string, notes: string) =>
+    apiRequest<{ formation: Record<string, unknown> }>(`/api/formations/${encodeURIComponent(formationId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ notes })
     }),
 
   // Multi-Tenant Stores
@@ -505,6 +532,19 @@ export const qabsApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amountUsd })
     }),
+  listRefunds: () => apiRequest<{ refunds: Record<string, unknown>[] }>('/api/billing/refunds'),
+  createRefundRequest: (input: {
+    orderNumber: string;
+    amount: number;
+    currency?: string;
+    reasonAr: string;
+    reasonEn?: string;
+  }) =>
+    apiRequest<{ refund: Record<string, unknown> }>('/api/billing/refunds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
   executeAI: (prompt: string, storeId?: string, mode: 'chat' | 'workspace_command' = 'workspace_command', language: 'ar' | 'en' = 'ar') =>
     apiRequest<{
       creditsBalance: number;
@@ -582,6 +622,28 @@ export const qabsApi = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ paymentProofRef })
+    }),
+  adminUpdateFormation: (
+    formationId: string,
+    input: {
+      formationStage?: number;
+      status?: 'draft' | 'under_review' | 'submitted_to_state' | 'approved';
+      ein?: string;
+      stateFileNumber?: string;
+      crn?: string;
+      notes?: string;
+    }
+  ) =>
+    apiRequest<{ formation: Record<string, unknown> }>(`/api/admin/formations/${encodeURIComponent(formationId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  adminReviewRefund: (refundId: string, status: 'approved' | 'rejected', adminNotes?: string) =>
+    apiRequest<{ refund: Record<string, unknown> }>(`/api/admin/refunds/${encodeURIComponent(refundId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status, adminNotes })
     }),
   adminSendNotification: (input: {
     tenantId?: string;

@@ -385,6 +385,22 @@ CREATE TABLE IF NOT EXISTS system_error_logs (
   created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS refund_requests (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  order_number TEXT NOT NULL,
+  amount REAL NOT NULL CHECK (amount >= 0),
+  currency TEXT NOT NULL DEFAULT 'USD',
+  reason_ar TEXT NOT NULL,
+  reason_en TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'requested'
+    CHECK (status IN ('requested', 'approved', 'rejected')),
+  admin_notes TEXT,
+  reviewed_by TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_requests_tenant ON service_requests(tenant_id, status);
@@ -397,6 +413,7 @@ CREATE INDEX IF NOT EXISTS idx_shipping_store ON store_shipping_zones(store_id, 
 CREATE INDEX IF NOT EXISTS idx_pages_store ON store_pages(store_id, tenant_id);
 CREATE INDEX IF NOT EXISTS idx_backups_tenant ON workspace_backups(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON billing_invoices(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_refunds_tenant ON refund_requests(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON credit_ledger(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_tickets_tenant ON support_tickets(tenant_id, status);

@@ -52,7 +52,6 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
     isAuthenticated,
     isOwner,
     openClientAuth,
-    openOwnerAuth,
     logout,
     isProductionMode,
     toggleProductionMode
@@ -410,10 +409,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
               type="button"
               onClick={() => openClientAuth('login')}
               aria-label={isAr ? 'تسجيل الدخول' : 'Sign In'}
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] dark:hover:bg-slate-700 rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-[11px] sm:text-xs font-black text-[#14243E] dark:text-white bg-[#F8F7F2] dark:bg-slate-800 hover:bg-[#EAE6DC] dark:hover:bg-slate-700 rounded-xl border border-[#D5B46B] transition-colors cursor-pointer"
             >
               <User className="w-3.5 h-3.5 text-[#92743A] shrink-0" />
-              <span className="whitespace-nowrap hidden sm:inline">
+              <span className="whitespace-nowrap">
                 {isAr ? 'تسجيل الدخول' : 'Sign In'}
               </span>
             </button>
@@ -429,19 +428,7 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
             </button>
           ) : null}
 
-          {!isOwner ? (
-            <button
-              type="button"
-              onClick={openOwnerAuth}
-              className="flex items-center gap-1.5 px-2 sm:px-3 py-2 text-xs font-black text-white bg-[#14243E] hover:bg-[#1d3559] rounded-xl border border-[#D5B46B]/60 shadow-sm transition-colors cursor-pointer"
-              title={isAr ? 'دخول خاص بالمالك الوحيد' : 'Owner Admin Portal'}
-            >
-              <Crown className="w-3.5 h-3.5 text-[#D5B46B] shrink-0" />
-              <span className="whitespace-nowrap hidden md:inline">
-                {isAr ? 'المالك' : 'Owner'}
-              </span>
-            </button>
-          ) : (
+          {isOwner && (
             <button
               type="button"
               onClick={() => setMode('admin')}

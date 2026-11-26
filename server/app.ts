@@ -668,6 +668,12 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     const backups = db
       .prepare('SELECT id, tenant_id, label, size_bytes, created_at FROM workspace_backups WHERE tenant_id = ? ORDER BY created_at DESC LIMIT 20')
       .all(tenantId);
+    const refunds = isAdminOrStaff
+      ? db.prepare('SELECT * FROM refund_requests ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM refund_requests WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId);
+    const wsSettingsRow = db
+      .prepare('SELECT value_json FROM platform_settings WHERE key = ?')
+      .get(`workspace_settings:${tenantId}`) as { value_json: string } | undefined;
 
     res.json({
       user: loadSafeUserSnapshot(actor.userId, tenantId),
@@ -682,6 +688,8 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       shippingZones,
       storePages,
       backups,
+      refunds,
+      workspaceSettings: wsSettingsRow ? JSON.parse(wsSettingsRow.value_json) : null,
       serviceRequests,
       documents,
       subscription,
@@ -1095,6 +1103,38 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     res.json({ formation: row });
   });
 
+  app.patch('/api/formations/:id', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const id = sanitizeId(req.params.id);
+    const row = db.prepare('SELECT * FROM company_formations WHERE id = ?').get(id) as
+      | Record<string, unknown>
+      | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'Company formation not found.', code: 'NOT_FOUND' });
+      return;
+    }
+    if (row.tenant_id !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to another tenant company.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    const wantsOfficialChange =
+      req.body?.status !== undefined ||
+      req.body?.formationStage !== undefined ||
+      req.body?.ein !== undefined ||
+      req.body?.stateFileNumber !== undefined ||
+      req.body?.crn !== undefined;
+    if (wantsOfficialChange && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({
+        error: 'Only QABS staff or admin can advance formation stages or assign official EIN/filing numbers.',
+        code: 'FORBIDDEN_FORMATION_APPROVAL'
+      });
+      return;
+    }
+    const notes = req.body?.notes !== undefined ? sanitizeText(req.body.notes, 800) : String(row.notes || '');
+    db.prepare('UPDATE company_formations SET notes = ? WHERE id = ?').run(notes, id);
+    res.json({ formation: db.prepare('SELECT * FROM company_formations WHERE id = ?').get(id) });
+  });
+
   // ==================== STORES & STUDIO BRIDGE ====================
   registerStoreRoutes(app, db, requireAuth);
 
@@ -1355,6 +1395,94 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       backup: { id, tenant_id: actor.tenantId, label, size_bytes: sizeBytes, created_at: new Date().toISOString() },
       snapshot: snapshotObj
     });
+  });
+
+  app.get('/api/workspace/backups/:backupId', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const backupId = sanitizeId(req.params.backupId);
+    const row = db.prepare('SELECT * FROM workspace_backups WHERE id = ?').get(backupId) as
+      | Record<string, unknown>
+      | undefined;
+    if (!row) {
+      res.status(404).json({ error: 'Backup snapshot not found.', code: 'BACKUP_NOT_FOUND' });
+      return;
+    }
+    if (row.tenant_id !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to another tenant backup.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    res.json({
+      backup: {
+        id: row.id,
+        tenant_id: row.tenant_id,
+        label: row.label,
+        size_bytes: row.size_bytes,
+        created_at: row.created_at,
+        snapshot: JSON.parse(String(row.snapshot_json || '{}'))
+      }
+    });
+  });
+
+  app.get('/api/workspace/settings', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const row = db
+      .prepare('SELECT value_json FROM platform_settings WHERE key = ?')
+      .get(`workspace_settings:${actor.tenantId}`) as { value_json: string } | undefined;
+    res.json({ settings: row ? JSON.parse(row.value_json) : null });
+  });
+
+  app.patch('/api/workspace/settings', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const key = `workspace_settings:${actor.tenantId}`;
+    const existingRow = db.prepare('SELECT value_json FROM platform_settings WHERE key = ?').get(key) as
+      | { value_json: string }
+      | undefined;
+    const current = existingRow ? JSON.parse(existingRow.value_json) : {};
+    const incoming = req.body?.settings && typeof req.body.settings === 'object' ? req.body.settings : req.body;
+    const next = { ...current, ...(incoming && typeof incoming === 'object' ? incoming : {}) };
+    if (next.billing && typeof next.billing === 'object') {
+      next.billing = {
+        ...next.billing,
+        enableStripe: false,
+        enablePayPal: false,
+        enableMoyasarTap: false
+      };
+    }
+    db.prepare(
+      `INSERT INTO platform_settings (key, value_json, updated_by, updated_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+       ON CONFLICT(key) DO UPDATE SET value_json = excluded.value_json, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+    ).run(key, JSON.stringify(next), actor.userId);
+    logAudit(db, actor.tenantId, actor.userId, actor.name, 'تحديث إعدادات مساحة العمل', 'Updated workspace section settings', key);
+    res.json({ settings: next });
+  });
+
+  app.get('/api/billing/refunds', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const rows = isPrivilegedRole(actor.role)
+      ? db.prepare('SELECT * FROM refund_requests ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM refund_requests WHERE tenant_id = ? ORDER BY created_at DESC').all(actor.tenantId);
+    res.json({ refunds: rows });
+  });
+
+  app.post('/api/billing/refunds', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const orderNumber = sanitizeText(req.body?.orderNumber, 64);
+    const amount = Number(req.body?.amount ?? 0);
+    const currency = sanitizeText(req.body?.currency || 'USD', 8) || 'USD';
+    const reasonAr = sanitizeText(req.body?.reasonAr || 'طلب استرداد للمراجعة', 500);
+    const reasonEn = sanitizeText(req.body?.reasonEn || reasonAr, 500);
+    if (!orderNumber || !Number.isFinite(amount) || amount <= 0) {
+      res.status(400).json({ error: 'Valid orderNumber and positive refund amount required.', code: 'INVALID_REFUND' });
+      return;
+    }
+    const id = `ref_${generateToken(6)}`;
+    db.prepare(
+      `INSERT INTO refund_requests (id, tenant_id, order_number, amount, currency, reason_ar, reason_en, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'requested')`
+    ).run(id, actor.tenantId, orderNumber, amount, currency, reasonAr, reasonEn);
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `طلب استرداد مالي للطلب ${orderNumber}`, `Requested refund for order ${orderNumber}`, id);
+    res.status(201).json({ refund: db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(id) });
   });
 
   // Request AI Credit Top-up (NEVER grants credits until admin verifies invoice proof!)

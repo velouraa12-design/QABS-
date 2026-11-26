@@ -4,6 +4,7 @@ import {
   CreditLedgerItem,
   Invoice,
   NotificationItem,
+  RefundRecord,
   RequestDocumentMeta,
   StoreCategoryItem,
   StoreCustomer,
@@ -124,6 +125,9 @@ export function mapDbStore(
     taxRate: Number(settings.taxRate ?? 15),
     setupStepsCompleted: Array.isArray(settings.setupStepsCompleted)
       ? (settings.setupStepsCompleted as string[])
+      : [],
+    installedApps: Array.isArray(settings.installedApps)
+      ? (settings.installedApps as string[])
       : [],
     designVersions: Array.isArray(settings.designVersions)
       ? (settings.designVersions as StoreInstance['designVersions'])
@@ -423,5 +427,22 @@ export function mapDbWorkspaceBackup(row: Record<string, unknown>): WorkspaceBac
     label: String(row.label || 'Workspace Backup'),
     sizeBytes: Number(row.size_bytes || 0),
     createdAt: String(row.created_at || '').replace('T', ' ').slice(0, 16)
+  };
+}
+
+export function mapDbRefund(row: Record<string, unknown>): RefundRecord {
+  return {
+    id: String(row.id),
+    tenantId: row.tenant_id ? String(row.tenant_id) : undefined,
+    orderNumber: String(row.order_number || ''),
+    amount: Number(row.amount || 0),
+    currency: String(row.currency || 'USD'),
+    reasonAr: String(row.reason_ar || ''),
+    reasonEn: String(row.reason_en || row.reason_ar || ''),
+    status: (String(row.status || 'requested') as RefundRecord['status']),
+    adminNotes: row.admin_notes ? String(row.admin_notes) : undefined,
+    reviewedBy: row.reviewed_by ? String(row.reviewed_by) : undefined,
+    date: String(row.created_at || '').slice(0, 10),
+    customerName: String(row.tenant_id || 'Client')
   };
 }

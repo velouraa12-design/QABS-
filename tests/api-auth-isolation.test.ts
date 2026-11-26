@@ -717,5 +717,110 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
       else process.env.RESEND_API_KEY = origResendKey;
     }
   });
+
+  it('enforces RBAC on company formation stages, persists refund requests & admin reviews, workspace settings, and backup downloads', async () => {
+    const tenantA = new TestClient(baseUrl);
+    await tenantA.req('POST', '/api/auth/login', {
+      email: 'client@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const tenantB = new TestClient(baseUrl);
+    await tenantB.req('POST', '/api/auth/login', {
+      email: 'merchant2@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const staff = new TestClient(baseUrl);
+    await staff.req('POST', '/api/auth/login', {
+      email: 'staff@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    const admin = new TestClient(baseUrl);
+    await admin.req('POST', '/api/auth/login', {
+      email: 'admin@qabs1.store',
+      password: 'QabsPreview!2026'
+    });
+
+    // 1. Formation RBAC: owner updates notes (200), cannot self-approve stage/EIN (403); admin updates stage & EIN (200)
+    const fRes = await tenantA.req('POST', '/api/formations', {
+      companyName: 'Riyadh Cloud Ventures LLC',
+      jurisdiction: 'US_WYOMING',
+      entityType: 'LLC'
+    });
+    assert.equal(fRes.status, 201);
+    const fId = fRes.json.formation.id;
+
+    const noteOk = await tenantA.req('PATCH', `/api/formations/${fId}`, { notes: 'Expedited EIN requested' });
+    assert.equal(noteOk.status, 200);
+    assert.equal(noteOk.json.formation.notes, 'Expedited EIN requested');
+
+    const selfApproveBlocked = await tenantA.req('PATCH', `/api/formations/${fId}`, {
+      formationStage: 5,
+      status: 'approved',
+      ein: '99-9999999'
+    });
+    assert.equal(selfApproveBlocked.status, 403);
+    assert.equal(selfApproveBlocked.json.code, 'FORBIDDEN_FORMATION_APPROVAL');
+
+    const adminFormUpdate = await admin.req('PATCH', `/api/admin/formations/${fId}`, {
+      formationStage: 5,
+      status: 'approved',
+      ein: '88-4455667',
+      stateFileNumber: 'WY-2026-8812'
+    });
+    assert.equal(adminFormUpdate.status, 200);
+    assert.equal(adminFormUpdate.json.formation.formation_stage, 5);
+    assert.equal(adminFormUpdate.json.formation.ein, '88-4455667');
+
+    // 2. Refund request persistence + admin financial review
+    const refCreate = await tenantA.req('POST', '/api/billing/refunds', {
+      orderNumber: 'QBS-77441',
+      amount: 120,
+      currency: 'USD',
+      reasonAr: 'طلب مراجعة استرداد للعميل',
+      reasonEn: 'Customer requested order refund'
+    });
+    assert.equal(refCreate.status, 201);
+    const refundId = refCreate.json.refund.id;
+    assert.equal(refCreate.json.refund.status, 'requested');
+
+    // Customer & staff blocked from admin refund approval (403)
+    assert.equal((await tenantA.req('PATCH', `/api/admin/refunds/${refundId}`, { status: 'approved' })).status, 403);
+    assert.equal((await staff.req('PATCH', `/api/admin/refunds/${refundId}`, { status: 'approved' })).status, 403);
+
+    const refApprove = await admin.req('PATCH', `/api/admin/refunds/${refundId}`, {
+      status: 'approved',
+      adminNotes: 'Verified with merchant bank receipt'
+    });
+    assert.equal(refApprove.status, 200);
+    assert.equal(refApprove.json.refund.status, 'approved');
+
+    // 3. Workspace settings persistence with payment gate enforcement
+    const setPatch = await tenantA.req('PATCH', '/api/workspace/settings', {
+      settings: {
+        overview: { defaultCurrency: 'AED', showKpiCards: true, showPreviewBanner: true, showSetupChecklist: true },
+        billing: { enableStripe: true, enablePayPal: true, enableMoyasarTap: true, enableBankTransfer: true, taxNumber: '310492819400003', bankIban: 'SA44' }
+      }
+    });
+    assert.equal(setPatch.status, 200);
+    assert.equal(setPatch.json.settings.overview.defaultCurrency, 'AED');
+    assert.equal(setPatch.json.settings.billing.enableStripe, false);
+    assert.equal(setPatch.json.settings.billing.enableMoyasarTap, false);
+
+    // 4. Backup snapshot single-ID download & cross-tenant block
+    const bakCreate = await tenantA.req('POST', '/api/workspace/backup', { label: 'Download Verify Snap' });
+    assert.equal(bakCreate.status, 201);
+    const bakId = bakCreate.json.backup.id;
+
+    const bakOwnerGet = await tenantA.req('GET', `/api/workspace/backups/${bakId}`);
+    assert.equal(bakOwnerGet.status, 200);
+    assert.equal(bakOwnerGet.json.backup.id, bakId);
+    assert.ok(Array.isArray(bakOwnerGet.json.backup.snapshot.companies));
+
+    assert.equal((await tenantB.req('GET', `/api/workspace/backups/${bakId}`)).status, 403);
+  });
 });
+
 

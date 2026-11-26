@@ -116,6 +116,25 @@ const MainLayout: React.FC = () => {
   useEffect(() => {
     const syncWorkspaceRoute = () => {
       if (backendStatus === 'checking') return;
+      const hash = (window.location.hash || '').toLowerCase();
+      const path = normalizePath(window.location.pathname || '/');
+      if (!isAuthenticated) {
+        if (path === '/login' || hash === '#/login') {
+          setMode('landing');
+          openClientAuth('login');
+          return;
+        }
+        if (path === '/register' || hash === '#/register') {
+          setMode('landing');
+          openClientAuth('register');
+          return;
+        }
+        if (path === '/admin' || hash === '#/admin') {
+          setMode('landing');
+          openOwnerAuth();
+          return;
+        }
+      }
       if (isWorkspaceLocation()) {
         if (isAuthenticated) {
           setMode('portal');
@@ -133,7 +152,7 @@ const MainLayout: React.FC = () => {
       window.removeEventListener('hashchange', syncWorkspaceRoute);
       window.removeEventListener('popstate', syncWorkspaceRoute);
     };
-  }, [backendStatus, isAuthenticated, setMode, openClientAuth]);
+  }, [backendStatus, isAuthenticated, setMode, openClientAuth, openOwnerAuth]);
 
   useEffect(() => {
     if (backendStatus === 'checking') return;

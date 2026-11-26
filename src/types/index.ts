@@ -191,12 +191,15 @@ export interface CommissionRecord {
 
 export interface RefundRecord {
   id: string;
+  tenantId?: string;
   orderNumber: string;
   amount: number;
   currency: string;
   reasonAr: string;
   reasonEn: string;
-  status: 'processed' | 'requested' | 'rejected';
+  status: 'processed' | 'requested' | 'approved' | 'rejected';
+  adminNotes?: string;
+  reviewedBy?: string;
   date: string;
   customerName: string;
 }
@@ -514,6 +517,7 @@ export interface StoreInstance {
   cryptoWalletAddress?: string;
   cryptoNetwork?: string;
   setupStepsCompleted?: string[];
+  installedApps?: string[];
   createdAt: string;
 }
 

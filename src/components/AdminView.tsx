@@ -79,7 +79,10 @@ export const AdminView: React.FC = () => {
     adminUpdateStaffUser,
     adminUpdateServiceCatalog,
     adminSendBroadcastNotification,
-    adminUpdatePlatformSettings
+    adminUpdatePlatformSettings,
+    adminUpdateFormationDetails,
+    adminReviewRefund,
+    refunds
   } = useApp();
 
   const isAr = language === 'ar';
@@ -88,6 +91,10 @@ export const AdminView: React.FC = () => {
   const [requestAdminNotes, setRequestAdminNotes] = useState<Record<string, string>>({});
   const [proofRefs, setProofRefs] = useState<Record<string, string>>({});
   const [servicePrices, setServicePrices] = useState<Record<string, string>>({});
+  const [formationEdits, setFormationEdits] = useState<
+    Record<string, { stage: number; status: string; ein: string; stateFileNumber: string }>
+  >({});
+  const [refundAdminNotes, setRefundAdminNotes] = useState<Record<string, string>>({});
 
   // Staff creation state
   const [newStaffName, setNewStaffName] = useState('');
@@ -119,6 +126,7 @@ export const AdminView: React.FC = () => {
   const productsList = adminOverview?.products || [];
   const subscriptionsList = adminOverview?.subscriptions || [];
   const invoicesList = adminOverview?.invoices || [];
+  const refundsList = adminOverview?.refunds || [];
   const notificationsList = adminOverview?.notifications || [];
   const auditLogsList = adminOverview?.auditLogs || [];
   const errorLogsList = adminOverview?.errorLogs || [];
@@ -660,28 +668,125 @@ export const AdminView: React.FC = () => {
           {/* 5. FORMATIONS */}
           {activeTab === 'formations' && (
             <div className="bg-white dark:bg-[#071D2B] border border-slate-200 dark:border-slate-800 rounded-2xl p-6 space-y-4">
-              <h2 className="text-lg font-black text-[#004457] dark:text-white">
-                {isAr ? 'ملفات تأسيس الشركات الدولية' : 'International Company Formations'}
-              </h2>
+              <div>
+                <h2 className="text-lg font-black text-[#004457] dark:text-white">
+                  {isAr ? 'إدارة ملفات تأسيس الشركات الدولية والـ EIN' : 'International Company Formations & EIN'}
+                </h2>
+                <p className="text-xs text-slate-500">
+                  {isAr
+                    ? 'ترقية مراحل التأسيس (1-5) وإدخال رقم EIN ورقم القيد الرسمي يخطر العميل تلقائياً.'
+                    : 'Updating formation stages (1-5), EIN, and state file number notifies the customer automatically.'}
+                </p>
+              </div>
               <div className="space-y-3">
-                {(isConnected ? formationsList : companies).map((c: any) => (
-                  <div
-                    key={String(c.id)}
-                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-black text-[#004457] dark:text-white">
-                        {String(c.company_name || c.companyName)} — {String(c.jurisdiction)}
+                {(isConnected ? formationsList : companies).map((c: any) => {
+                  const id = String(c.id);
+                  const currentStage = Number(c.formation_stage ?? c.formationStage ?? 1);
+                  const currentStatus = String(c.status || 'under_review');
+                  const currentEin = String(c.ein || '');
+                  const currentStateFile = String(c.state_file_number || c.stateFileNumber || '');
+                  const draft = formationEdits[id] || {
+                    stage: currentStage,
+                    status: currentStatus,
+                    ein: currentEin,
+                    stateFileNumber: currentStateFile
+                  };
+
+                  return (
+                    <div
+                      key={id}
+                      className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 space-y-3 text-xs"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <div className="font-black text-[#004457] dark:text-white">
+                            {String(c.company_name || c.companyName)} — {String(c.jurisdiction)}
+                          </div>
+                          <div className="text-slate-500">
+                            {String(c.entity_type || c.entityType)} • Tenant: {String(c.tenant_id || '-')}
+                          </div>
+                        </div>
+                        <span className="px-3 py-1 rounded-full bg-teal-50 text-[#004457] font-black">
+                          Stage {currentStage}/5 • {currentStatus}
+                        </span>
                       </div>
-                      <div className="text-slate-500">
-                        {String(c.entity_type || c.entityType)} • EIN: {String(c.ein || 'Pending')} • Tenant: {String(c.tenant_id || '-')}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                        <select
+                          aria-label={`Stage for ${id}`}
+                          value={draft.stage}
+                          onChange={e =>
+                            setFormationEdits({
+                              ...formationEdits,
+                              [id]: { ...draft, stage: Number(e.target.value) }
+                            })
+                          }
+                          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-2 font-bold"
+                        >
+                          <option value={1}>Stage 1/5</option>
+                          <option value={2}>Stage 2/5</option>
+                          <option value={3}>Stage 3/5</option>
+                          <option value={4}>Stage 4/5</option>
+                          <option value={5}>Stage 5/5 (Approved)</option>
+                        </select>
+                        <select
+                          aria-label={`Status for formation ${id}`}
+                          value={draft.status}
+                          onChange={e =>
+                            setFormationEdits({
+                              ...formationEdits,
+                              [id]: { ...draft, status: e.target.value }
+                            })
+                          }
+                          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-2 font-bold"
+                        >
+                          <option value="draft">draft</option>
+                          <option value="under_review">under_review</option>
+                          <option value="submitted_to_state">submitted_to_state</option>
+                          <option value="approved">approved</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={draft.ein}
+                          onChange={e =>
+                            setFormationEdits({
+                              ...formationEdits,
+                              [id]: { ...draft, ein: e.target.value }
+                            })
+                          }
+                          placeholder="EIN (e.g. 88-1234567)"
+                          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-2 font-mono"
+                        />
+                        <input
+                          type="text"
+                          value={draft.stateFileNumber}
+                          onChange={e =>
+                            setFormationEdits({
+                              ...formationEdits,
+                              [id]: { ...draft, stateFileNumber: e.target.value }
+                            })
+                          }
+                          placeholder={isAr ? 'رقم قيد الولاية' : 'State File #'}
+                          className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-2 font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void adminUpdateFormationDetails(id, {
+                              formationStage: draft.stage,
+                              status: draft.status as 'draft' | 'under_review' | 'submitted_to_state' | 'approved',
+                              ein: draft.ein,
+                              stateFileNumber: draft.stateFileNumber
+                            })
+                          }
+                          className="px-3 py-2 rounded-xl bg-[#004457] text-white font-black cursor-pointer"
+                        >
+                          {isAr ? 'حفظ التحديث' : 'Save Filing'}
+                        </button>
                       </div>
                     </div>
-                    <span className="px-3 py-1 rounded-full bg-teal-50 text-[#004457] font-black self-start">
-                      {String(c.status)}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -977,6 +1082,64 @@ export const AdminView: React.FC = () => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Refund Requests Review Queue */}
+              <div className="pt-5 border-t border-slate-200 dark:border-slate-800 space-y-3">
+                <h3 className="text-base font-black text-[#004457] dark:text-white">
+                  {isAr ? 'مراجعة طلبات الاسترداد المالي' : 'Refund Requests Review Queue'}
+                </h3>
+                {(isConnected ? refundsList : refunds).length === 0 ? (
+                  <p className="text-xs text-slate-500">{isAr ? 'لا توجد طلبات استرداد حالياً.' : 'No refund requests submitted.'}</p>
+                ) : (
+                  <div className="space-y-2.5">
+                    {(isConnected ? refundsList : refunds).map((rawRef: any) => {
+                      const rid = String(rawRef.id);
+                      const orderNum = String(rawRef.order_number || rawRef.orderNumber);
+                      const amount = Number(rawRef.amount || 0);
+                      const rStatus = String(rawRef.status || 'requested');
+                      const reason = isAr ? String(rawRef.reason_ar || rawRef.reasonAr) : String(rawRef.reason_en || rawRef.reasonEn);
+                      return (
+                        <div
+                          key={rid}
+                          className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        >
+                          <div>
+                            <div className="font-black text-[#004457] dark:text-white">
+                              <span className="font-mono">{orderNum}</span> — ${amount} — {rStatus}
+                            </div>
+                            <div className="text-[11px] text-slate-500">{reason}</div>
+                          </div>
+                          {rStatus === 'requested' && (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <input
+                                type="text"
+                                value={refundAdminNotes[rid] || ''}
+                                onChange={e => setRefundAdminNotes({ ...refundAdminNotes, [rid]: e.target.value })}
+                                placeholder={isAr ? 'ملاحظات المراجعة...' : 'Review note...'}
+                                className="rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-1.5 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => void adminReviewRefund(rid, 'approved', refundAdminNotes[rid])}
+                                className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-black cursor-pointer"
+                              >
+                                {isAr ? 'اعتماد' : 'Approve'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void adminReviewRefund(rid, 'rejected', refundAdminNotes[rid])}
+                                className="px-3 py-1.5 rounded-xl bg-rose-600 text-white font-black cursor-pointer"
+                              >
+                                {isAr ? 'رفض' : 'Reject'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           )}

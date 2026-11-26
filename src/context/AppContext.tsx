@@ -74,6 +74,7 @@ import {
   mapDbNotification,
   mapDbOrder,
   mapDbProduct,
+  mapDbRefund,
   mapDbServiceRequest,
   mapDbShippingZone,
   mapDbStore,
@@ -181,6 +182,7 @@ interface AppContextType {
   }) => Promise<boolean>;
   workspaceBackups: WorkspaceBackupItem[];
   triggerSystemBackup: (targetLabel?: string) => void;
+  downloadServerBackup: (backupId: string) => Promise<void>;
 
   // Support, Staff, Audit, Notifications & Subscriptions
   banking: BankingAccount[];
@@ -252,6 +254,18 @@ interface AppContextType {
     bodyEn?: string;
   }) => Promise<boolean>;
   adminUpdatePlatformSettings: (settings: Record<string, unknown>) => Promise<boolean>;
+  adminUpdateFormationDetails: (
+    formationId: string,
+    input: {
+      formationStage?: number;
+      status?: 'draft' | 'under_review' | 'submitted_to_state' | 'approved';
+      ein?: string;
+      stateFileNumber?: string;
+      crn?: string;
+      notes?: string;
+    }
+  ) => Promise<boolean>;
+  adminReviewRefund: (refundId: string, status: 'approved' | 'rejected', adminNotes?: string) => Promise<boolean>;
 
   // Auth & Service Order Gate state
   isAuthenticated: boolean;
@@ -567,6 +581,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSubscriptionHistory(boot.subscriptionHistory.map(mapDbSubscriptionHistory));
     setInvoices(boot.invoices.map(mapDbInvoice));
     setCreditLedger(boot.creditLedger.map(mapDbCreditLedger));
+    setRefunds((boot.refunds || []).map(mapDbRefund));
+    if (boot.workspaceSettings && typeof boot.workspaceSettings === 'object') {
+      const ws = boot.workspaceSettings as Partial<WorkspaceSectionSettings>;
+      setSectionSettings({
+        overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...(ws.overview || {}) },
+        orders: { ...DEFAULT_SECTION_SETTINGS.orders, ...(ws.orders || {}) },
+        documents: { ...DEFAULT_SECTION_SETTINGS.documents, ...(ws.documents || {}) },
+        billing: {
+          ...DEFAULT_SECTION_SETTINGS.billing,
+          ...(ws.billing || {}),
+          enableStripe: false,
+          enablePayPal: false,
+          enableMoyasarTap: false
+        },
+        qabsAi: { ...DEFAULT_SECTION_SETTINGS.qabsAi, ...(ws.qabsAi || {}) },
+        crypto: { ...DEFAULT_SECTION_SETTINGS.crypto, ...(ws.crypto || {}) },
+        support: { ...DEFAULT_SECTION_SETTINGS.support, ...(ws.support || {}) },
+        companyFormation: {
+          ...DEFAULT_SECTION_SETTINGS.companyFormation,
+          ...(ws.companyFormation || {}),
+          stateFees: {
+            ...DEFAULT_SECTION_SETTINGS.companyFormation.stateFees,
+            ...(ws.companyFormation?.stateFees || {})
+          }
+        }
+      });
+    }
+    setStoreApps(
+      INITIAL_STORE_APPS.map(app => {
+        const syncedIds = mappedStores
+          .filter(st => (st.installedApps || []).includes(app.id))
+          .map(st => st.id);
+        return { ...app, installedStoreIds: syncedIds, installedStores: syncedIds };
+      })
+    );
     setNotifications(boot.notifications.map(mapDbNotification));
     setTickets(boot.tickets.map(mapDbTicket));
     setAuditLogs(boot.auditLogs.map(mapDbAuditLog));
@@ -652,6 +701,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setStorePages([]);
           setWorkspaceBackups([]);
           setInvoices([]);
+          setRefunds([]);
           setTickets([]);
           setAuditLogs([]);
           setSubmittedServiceOrders([]);
@@ -882,6 +932,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateCompanyStatus = (id: string, status: CompanyFormation['status']) => {
+    if (backendStatus === 'connected') {
+      if (isOwner) {
+        const mappedStatus = status === 'action_required' ? 'under_review' : status;
+        void qabsApi
+          .adminUpdateFormation(id, { status: mappedStatus })
+          .then(() => refreshWorkspace())
+          .catch(err => handleApiFailure(err, 'تعذر تحديث حالة الشركة', 'Failed to update company status'));
+      } else {
+        showToast(
+          language === 'ar'
+            ? 'اعتماد مراحل التأسيس مقصور على فريق الامتثال في لوحة الإدارة.'
+            : 'Official formation approval is restricted to QABS Compliance staff.'
+        );
+      }
+      return;
+    }
     setCompanies(prev => prev.map(c => (c.id === id ? { ...c, status } : c)));
   };
 
@@ -889,6 +955,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = companies.find(c => c.id === id);
     if (!target) return;
     const computedStage = (nextStage ?? Math.min(5, (target.formationStage ?? 1) + 1)) as 1 | 2 | 3 | 4 | 5;
+    if (backendStatus === 'connected') {
+      if (isOwner) {
+        void qabsApi
+          .adminUpdateFormation(id, { formationStage: computedStage })
+          .then(() => {
+            showToast(
+              language === 'ar'
+                ? `تم تحديث مرحلة التأسيس (${target.companyName}) إلى ${computedStage}/5 ✓`
+                : `Updated formation stage (${target.companyName}) to ${computedStage}/5 ✓`
+            );
+            return refreshWorkspace();
+          })
+          .catch(err => handleApiFailure(err, 'تعذر تحديث مرحلة التأسيس', 'Failed to update formation stage'));
+      } else {
+        showToast(
+          language === 'ar'
+            ? 'يتم تحديث مراحل التأسيس الرسمية وأرقام EIN بواسطة فريق قبس.'
+            : 'Formation stages and EIN assignments are updated by QABS Compliance Team.'
+        );
+      }
+      return;
+    }
     setCompanies(prev =>
       prev.map(c =>
         c.id === id
@@ -1607,6 +1695,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return true;
   };
   const toggleStoreApp = (appId: string, storeId: string) => {
+    const targetStore = stores.find(s => s.id === storeId);
+    const currentInstalled = new Set(targetStore?.installedApps || []);
+    if (currentInstalled.has(appId)) currentInstalled.delete(appId);
+    else currentInstalled.add(appId);
+    const nextStoreApps = Array.from(currentInstalled);
+
     setStoreApps(prev =>
       prev.map(app => {
         if (app.id !== appId) return app;
@@ -1615,6 +1709,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return { ...app, installedStoreIds: updatedIds, installedStores: updatedIds };
       })
     );
+    setStores(prev => prev.map(s => (s.id === storeId ? { ...s, installedApps: nextStoreApps } : s)));
+
+    if (backendStatus === 'connected' && storeId) {
+      void qabsApi
+        .updateStore(storeId, { settings: { installedApps: nextStoreApps } })
+        .then(() => refreshWorkspace())
+        .catch(err => handleApiFailure(err, 'تعذر حفظ حالة التطبيق في الخادم', 'Failed to persist store app toggle'));
+    }
   };
   const addStoreTemplate = (tpl: Omit<StoreTemplatePreset, 'id'>) => {
     setStoreTemplates(prev => [{ ...tpl, id: `tpl_${Date.now()}` }, ...prev]);
@@ -1638,6 +1740,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     appendAudit(`نسخ احتياطي للبيانات (${targetLabel || 'المنصة'})`, `Triggered backup (${targetLabel || 'Platform'})`, targetLabel || 'QABS-Vault');
     showToast(language === 'ar' ? 'تم تسجيل عملية النسخ الاحتياطي في السجل' : 'Backup recorded in audit log');
+  };
+
+  const downloadServerBackup = async (backupId: string): Promise<void> => {
+    if (backendStatus !== 'connected') {
+      const json = exportWorkspaceBackupJson();
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qabs-backup-${backupId}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      return;
+    }
+    try {
+      const res = await qabsApi.getWorkspaceBackup(backupId);
+      const json = JSON.stringify(res.backup, null, 2);
+      const blob = new Blob([json], { type: 'application/json;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qabs-snapshot-${res.backup.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast(language === 'ar' ? 'تم تنزيل النسخة الاحتياطية من الخادم ✓' : 'Server backup JSON downloaded ✓');
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تنزيل النسخة الاحتياطية', 'Failed to download backup snapshot');
+    }
   };
 
   const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
@@ -1862,6 +1996,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const issueRefund = (orderNumber: string, amount: number, reasonAr: string, reasonEn: string) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createRefundRequest({
+            orderNumber,
+            amount,
+            currency: 'USD',
+            reasonAr,
+            reasonEn
+          });
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم حفظ طلب الاسترداد للطلب ${orderNumber} للمراجعة ✓`
+              : `Refund request for ${orderNumber} persisted for review ✓`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر إرسال طلب الاسترداد', 'Failed to submit refund request');
+        }
+      })();
+      return;
+    }
     const newRefund: RefundRecord = {
       id: `ref_${Date.now()}`,
       orderNumber,
@@ -1977,6 +2133,66 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     } catch (err) {
       handleApiFailure(err, 'تعذر تحديث إعدادات المنصة', 'Failed to update platform settings');
+      return false;
+    }
+  };
+
+  const adminUpdateFormationDetails = async (
+    formationId: string,
+    input: {
+      formationStage?: number;
+      status?: 'draft' | 'under_review' | 'submitted_to_state' | 'approved';
+      ein?: string;
+      stateFileNumber?: string;
+      crn?: string;
+      notes?: string;
+    }
+  ) => {
+    if (backendStatus !== 'connected') {
+      setCompanies(prev =>
+        prev.map(c =>
+          c.id === formationId
+            ? {
+                ...c,
+                formationStage: (input.formationStage ?? c.formationStage) as 1 | 2 | 3 | 4 | 5,
+                status: (input.status ?? c.status) as CompanyFormation['status'],
+                ein: input.ein ?? c.ein,
+                stateFileNumber: input.stateFileNumber ?? c.stateFileNumber,
+                crn: input.crn ?? c.crn,
+                notes: input.notes ?? c.notes
+              }
+            : c
+        )
+      );
+      return true;
+    }
+    try {
+      await qabsApi.adminUpdateFormation(formationId, input);
+      await refreshWorkspace();
+      showToast(language === 'ar' ? 'تم حفظ تحديثات ملف الشركة وإشعار العميل ✓' : 'Formation updated & client notified ✓');
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'تعذر تحديث ملف الشركة', 'Failed to update company formation');
+      return false;
+    }
+  };
+
+  const adminReviewRefund = async (refundId: string, status: 'approved' | 'rejected', adminNotes?: string) => {
+    if (backendStatus !== 'connected') {
+      setRefunds(prev => prev.map(r => (r.id === refundId ? { ...r, status, adminNotes } : r)));
+      return true;
+    }
+    try {
+      await qabsApi.adminReviewRefund(refundId, status, adminNotes);
+      await refreshWorkspace();
+      showToast(
+        language === 'ar'
+          ? `تم تحديث طلب الاسترداد إلى (${status}) وإشعار العميل ✓`
+          : `Refund marked ${status} & client notified ✓`
+      );
+      return true;
+    } catch (err) {
+      handleApiFailure(err, 'يتطلب هذا الإجراء صلاحية Admin أو Super Admin', 'Admin role required to review refunds');
       return false;
     }
   };
@@ -2344,6 +2560,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setStorePages([]);
       setWorkspaceBackups([]);
       setInvoices([]);
+      setRefunds([]);
       setTickets([]);
       setAuditLogs([]);
       setSubmittedServiceOrders([]);
@@ -2490,8 +2707,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     section: K,
     updates: Partial<WorkspaceSectionSettings[K]>
   ) => {
-    setSectionSettings(prev => ({ ...prev, [section]: { ...prev[section], ...updates } }));
-    showToast(language === 'ar' ? 'تم حفظ إعدادات القسم ✓' : 'Section settings saved ✓');
+    const nextSettings: WorkspaceSectionSettings = {
+      ...sectionSettings,
+      [section]: { ...sectionSettings[section], ...updates }
+    };
+    if (backendStatus === 'connected') {
+      nextSettings.billing = {
+        ...nextSettings.billing,
+        enableStripe: false,
+        enablePayPal: false,
+        enableMoyasarTap: false
+      };
+    }
+    setSectionSettings(nextSettings);
+    if (backendStatus === 'connected') {
+      void qabsApi
+        .updateWorkspaceSettings(nextSettings as unknown as Record<string, unknown>)
+        .then(() => {
+          showToast(language === 'ar' ? 'تم حفظ إعدادات القسم في الخادم ✓' : 'Section settings saved on server ✓');
+        })
+        .catch(err => handleApiFailure(err, 'تعذر حفظ إعدادات القسم', 'Failed to persist section settings'));
+    } else {
+      showToast(language === 'ar' ? 'تم حفظ إعدادات القسم ✓' : 'Section settings saved ✓');
+    }
   };
 
   const exportWorkspaceBackupJson = (): string => {
@@ -2569,6 +2807,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         importSupplierProduct,
         workspaceBackups,
         triggerSystemBackup,
+        downloadServerBackup,
         banking,
         addBankAccount,
         tickets,
@@ -2618,6 +2857,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adminUpdateServiceCatalog,
         adminSendBroadcastNotification,
         adminUpdatePlatformSettings,
+        adminUpdateFormationDetails,
+        adminReviewRefund,
         isAuthenticated,
         isOwner,
         authIntent,
