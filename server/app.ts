@@ -671,6 +671,9 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     const refunds = isAdminOrStaff
       ? db.prepare('SELECT * FROM refund_requests ORDER BY created_at DESC').all()
       : db.prepare('SELECT * FROM refund_requests WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId);
+    const bankAccounts = isAdminOrStaff
+      ? db.prepare('SELECT * FROM bank_accounts ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM bank_accounts WHERE tenant_id = ? ORDER BY created_at DESC').all(tenantId);
     const wsSettingsRow = db
       .prepare('SELECT value_json FROM platform_settings WHERE key = ?')
       .get(`workspace_settings:${tenantId}`) as { value_json: string } | undefined;
@@ -689,6 +692,7 @@ export function createQabsApp(options: CreateServerOptions = {}): {
       storePages,
       backups,
       refunds,
+      bankAccounts,
       workspaceSettings: wsSettingsRow ? JSON.parse(wsSettingsRow.value_json) : null,
       serviceRequests,
       documents,
@@ -1483,6 +1487,64 @@ export function createQabsApp(options: CreateServerOptions = {}): {
     ).run(id, actor.tenantId, orderNumber, amount, currency, reasonAr, reasonEn);
     logAudit(db, actor.tenantId, actor.userId, actor.name, `طلب استرداد مالي للطلب ${orderNumber}`, `Requested refund for order ${orderNumber}`, id);
     res.status(201).json({ refund: db.prepare('SELECT * FROM refund_requests WHERE id = ?').get(id) });
+  });
+
+  // Business Bank Accounts Registry (tenant isolated, masked storage, pending_verification default)
+  app.get('/api/banking/accounts', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const rows = isPrivilegedRole(actor.role)
+      ? db.prepare('SELECT * FROM bank_accounts ORDER BY created_at DESC').all()
+      : db.prepare('SELECT * FROM bank_accounts WHERE tenant_id = ? ORDER BY created_at DESC').all(actor.tenantId);
+    res.json({ bankAccounts: rows });
+  });
+
+  app.post('/api/banking/accounts', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const providerRaw = sanitizeText(req.body?.provider || 'Mercury', 64);
+    const provider = ['Mercury', 'Wise Business', 'Relay', 'Payoneer'].includes(providerRaw) ? providerRaw : 'Mercury';
+    const accountName = sanitizeText(req.body?.accountName, 160);
+    const rawAccountNumber = sanitizeText(req.body?.accountNumber || req.body?.accountNumberMasked || '', 40);
+    const routingNumber = sanitizeText(req.body?.routingNumber || '', 32);
+    const currency = sanitizeText(req.body?.currency || 'USD', 8).toUpperCase() || 'USD';
+    const linkedCompany = sanitizeText(req.body?.linkedCompany || '', 160);
+
+    if (!accountName || !rawAccountNumber) {
+      res.status(400).json({ error: 'Account holder name and account number are required.', code: 'INVALID_BANK_ACCOUNT' });
+      return;
+    }
+
+    const digits = rawAccountNumber.replace(/\s+/g, '');
+    const last4 = digits.slice(-4);
+    const masked = `•••• ${last4}`;
+
+    const id = `bnk_${generateToken(6)}`;
+    db.prepare(
+      `INSERT INTO bank_accounts (
+        id, tenant_id, provider, account_name, account_number_masked, routing_number, currency, status, linked_company
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending_verification', ?)`
+    ).run(id, actor.tenantId, provider, accountName, masked, routingNumber, currency, linkedCompany);
+
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `تسجيل حساب بنكي تجاري (${provider})`, `Registered business bank account (${provider})`, id);
+    res.status(201).json({ bankAccount: db.prepare('SELECT * FROM bank_accounts WHERE id = ?').get(id) });
+  });
+
+  app.delete('/api/banking/accounts/:id', requireAuth, (req: AuthedRequest, res: Response) => {
+    const actor = req.actor!;
+    const id = sanitizeId(req.params.id);
+    const existing = db.prepare('SELECT id, tenant_id, provider FROM bank_accounts WHERE id = ?').get(id) as
+      | { id: string; tenant_id: string; provider: string }
+      | undefined;
+    if (!existing) {
+      res.status(404).json({ error: 'Bank account not found.', code: 'BANK_ACCOUNT_NOT_FOUND' });
+      return;
+    }
+    if (existing.tenant_id !== actor.tenantId && !isPrivilegedRole(actor.role)) {
+      res.status(403).json({ error: 'Access denied to another tenant bank account.', code: 'FORBIDDEN_TENANT_ACCESS' });
+      return;
+    }
+    db.prepare('DELETE FROM bank_accounts WHERE id = ?').run(id);
+    logAudit(db, actor.tenantId, actor.userId, actor.name, `حذف حساب بنكي (${existing.provider})`, `Removed business bank account (${existing.provider})`, id);
+    res.json({ ok: true });
   });
 
   // Request AI Credit Top-up (NEVER grants credits until admin verifies invoice proof!)

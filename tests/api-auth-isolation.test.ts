@@ -820,6 +820,31 @@ describe('QABS Backend Security, Auth, Tenant Isolation, Billing Gate & Vault AP
     assert.ok(Array.isArray(bakOwnerGet.json.backup.snapshot.companies));
 
     assert.equal((await tenantB.req('GET', `/api/workspace/backups/${bakId}`)).status, 403);
+
+    // 5. Business Bank Accounts Registry: masked last-4 persistence, bootstrap hydration, and cross-tenant 403 deletion block
+    const bnkCreate = await tenantA.req('POST', '/api/banking/accounts', {
+      provider: 'Mercury',
+      accountName: 'Atlas Commerce Operating',
+      accountNumber: '4000123456789123',
+      routingNumber: '021000021',
+      currency: 'USD',
+      linkedCompany: 'Atlas Global Commerce LLC'
+    });
+    assert.equal(bnkCreate.status, 201);
+    const bnkId = bnkCreate.json.bankAccount.id;
+    assert.equal(bnkCreate.json.bankAccount.account_number_masked, '•••• 9123');
+    assert.equal(bnkCreate.json.bankAccount.status, 'pending_verification');
+
+    const bootWithBank = await tenantA.req('GET', '/api/workspace/bootstrap');
+    assert.equal(bootWithBank.status, 200);
+    assert.ok(bootWithBank.json.bankAccounts.some((b: any) => b.id === bnkId));
+
+    const bnkListB = await tenantB.req('GET', '/api/banking/accounts');
+    assert.equal(bnkListB.status, 200);
+    assert.ok(!bnkListB.json.bankAccounts.some((b: any) => b.id === bnkId));
+
+    assert.equal((await tenantB.req('DELETE', `/api/banking/accounts/${bnkId}`)).status, 403);
+    assert.equal((await tenantA.req('DELETE', `/api/banking/accounts/${bnkId}`)).status, 200);
   });
 });
 

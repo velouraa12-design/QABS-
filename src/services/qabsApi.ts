@@ -105,6 +105,7 @@ export interface BootstrapResponse {
   invoices: Record<string, unknown>[];
   creditLedger: Record<string, unknown>[];
   refunds?: Record<string, unknown>[];
+  bankAccounts?: Record<string, unknown>[];
   workspaceSettings?: Record<string, unknown> | null;
   notifications: Record<string, unknown>[];
   tickets: Record<string, unknown>[];
@@ -544,6 +545,24 @@ export const qabsApi = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input)
+    }),
+  listBankAccounts: () => apiRequest<{ bankAccounts: Record<string, unknown>[] }>('/api/banking/accounts'),
+  createBankAccount: (input: {
+    provider: string;
+    accountName: string;
+    accountNumber: string;
+    routingNumber?: string;
+    currency?: string;
+    linkedCompany?: string;
+  }) =>
+    apiRequest<{ bankAccount: Record<string, unknown> }>('/api/banking/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input)
+    }),
+  deleteBankAccount: (bankId: string) =>
+    apiRequest<{ ok: boolean }>(`/api/banking/accounts/${encodeURIComponent(bankId)}`, {
+      method: 'DELETE'
     }),
   executeAI: (prompt: string, storeId?: string, mode: 'chat' | 'workspace_command' = 'workspace_command', language: 'ar' | 'en' = 'ar') =>
     apiRequest<{

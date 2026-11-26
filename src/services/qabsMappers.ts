@@ -1,5 +1,6 @@
 import {
   AuditLogItem,
+  BankingAccount,
   CompanyFormation,
   CreditLedgerItem,
   Invoice,
@@ -444,5 +445,25 @@ export function mapDbRefund(row: Record<string, unknown>): RefundRecord {
     reviewedBy: row.reviewed_by ? String(row.reviewed_by) : undefined,
     date: String(row.created_at || '').slice(0, 10),
     customerName: String(row.tenant_id || 'Client')
+  };
+}
+
+export function mapDbBankAccount(row: Record<string, unknown>): BankingAccount {
+  const providerRaw = String(row.provider || 'Mercury');
+  const provider: BankingAccount['provider'] =
+    providerRaw === 'Wise Business' || providerRaw === 'Relay' || providerRaw === 'Payoneer' ? providerRaw : 'Mercury';
+  const statusRaw = String(row.status || 'pending_verification');
+  const status: BankingAccount['status'] =
+    statusRaw === 'verified' || statusRaw === 'needs_ein' ? statusRaw : 'pending_verification';
+  return {
+    id: String(row.id),
+    provider,
+    accountName: String(row.account_name || ''),
+    accountNumberMasked: String(row.account_number_masked || ''),
+    routingNumber: String(row.routing_number || ''),
+    currency: String(row.currency || 'USD'),
+    balance: 0,
+    status,
+    linkedCompany: String(row.linked_company || '')
   };
 }

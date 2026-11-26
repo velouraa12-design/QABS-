@@ -54,7 +54,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
     openClientAuth,
     logout,
     isProductionMode,
-    toggleProductionMode
+    toggleProductionMode,
+    backendStatus
   } = useApp();
   const { setEditorOpen } = useCustomizer();
   const { currentPath, navigate } = useRouter();
@@ -388,7 +389,17 @@ export const Header: React.FC<HeaderProps> = ({ onOpenFormationModal, onOpenStor
                   <FlaskConical className="w-3.5 h-3.5 text-amber-700 shrink-0" />
                 )}
                 <span>
-                  {isProductionMode ? (isAr ? 'الإنتاج مفعّل' : 'Live') : isAr ? 'تجريبي' : 'Preview'}
+                  {isProductionMode
+                    ? isAr
+                      ? 'الإنتاج مفعّل'
+                      : 'Live'
+                    : backendStatus === 'connected'
+                    ? isAr
+                      ? 'بيئة فعلية'
+                      : 'Live DB'
+                    : isAr
+                    ? 'معاينة محلية'
+                    : 'Offline'}
                 </span>
               </button>
 

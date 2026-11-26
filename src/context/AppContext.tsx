@@ -64,6 +64,7 @@ import { AdminOverviewResponse, ApiError, BootstrapResponse, IntegrationsStatusR
 import {
   mapApiUserToProfile,
   mapDbAuditLog,
+  mapDbBankAccount,
   mapDbCategory,
   mapDbCompany,
   mapDbCreditLedger,
@@ -186,7 +187,8 @@ interface AppContextType {
 
   // Support, Staff, Audit, Notifications & Subscriptions
   banking: BankingAccount[];
-  addBankAccount: (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => void;
+  addBankAccount: (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'> & { accountNumber?: string }) => void;
+  deleteBankAccount: (id: string) => void;
   tickets: SupportTicket[];
   addTicket: (t: Omit<SupportTicket, 'id' | 'ticketNumber' | 'createdAt' | 'updatedAt' | 'status'>) => void;
   resolveTicket: (id: string) => void;
@@ -469,24 +471,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [mode, setMode] = useState<AppMode>('landing');
   const [isProductionMode, setIsProductionMode] = useState<boolean>(false);
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
-  const [companies, setCompanies] = useState<CompanyFormation[]>(INITIAL_COMPANIES);
-  const [stores, setStores] = useState<StoreInstance[]>(INITIAL_STORES);
-  const [activeStoreId, setActiveStoreId] = useState<string>(INITIAL_STORES[0]?.id ?? 'store_01');
+  const [companies, setCompanies] = useState<CompanyFormation[]>([]);
+  const [stores, setStores] = useState<StoreInstance[]>([]);
+  const [activeStoreId, setActiveStoreId] = useState<string>('');
   const [storeCategories, setStoreCategories] = useState<StoreCategoryItem[]>([]);
   const [storeTeamMembers, setStoreTeamMembers] = useState<StoreTeamMemberItem[]>([]);
-  const [products, setProducts] = useState<StoreProduct[]>(INITIAL_PRODUCTS);
-  const [orders, setOrders] = useState<StoreOrder[]>(INITIAL_ORDERS);
-  const [customers, setCustomers] = useState<StoreCustomer[]>(INITIAL_CUSTOMERS);
-  const [discounts, setDiscounts] = useState<StoreDiscount[]>(INITIAL_DISCOUNTS);
-  const [shippingZones, setShippingZones] = useState<StoreShippingZone[]>(INITIAL_SHIPPING_ZONES);
-  const [storePages, setStorePages] = useState<StorePageItem[]>(INITIAL_STORE_PAGES);
+  const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [orders, setOrders] = useState<StoreOrder[]>([]);
+  const [customers, setCustomers] = useState<StoreCustomer[]>([]);
+  const [discounts, setDiscounts] = useState<StoreDiscount[]>([]);
+  const [shippingZones, setShippingZones] = useState<StoreShippingZone[]>([]);
+  const [storePages, setStorePages] = useState<StorePageItem[]>([]);
   const [storeApps, setStoreApps] = useState<StoreAppAddon[]>(INITIAL_STORE_APPS);
   const [storeTemplates, setStoreTemplates] = useState<StoreTemplatePreset[]>(INITIAL_STORE_TEMPLATES);
 
-  const [banking, setBanking] = useState<BankingAccount[]>(INITIAL_BANKING);
-  const [tickets, setTickets] = useState<SupportTicket[]>(INITIAL_TICKETS);
-  const [staff, setStaff] = useState<StaffMember[]>(INITIAL_STAFF);
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(INITIAL_AUDIT_LOGS);
+  const [banking, setBanking] = useState<BankingAccount[]>([]);
+  const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [staff, setStaff] = useState<StaffMember[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [requestDocuments, setRequestDocuments] = useState<RequestDocumentMeta[]>([]);
   const [creditLedger, setCreditLedger] = useState<CreditLedgerItem[]>([]);
@@ -496,10 +498,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [integrationsStatus, setIntegrationsStatus] = useState<IntegrationsStatusResponse | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  const [subscription, setSubscription] = useState<UserSubscription>(INITIAL_USER_SUBSCRIPTION);
-  const [invoices, setInvoices] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [commissions] = useState<CommissionRecord[]>(INITIAL_COMMISSIONS);
-  const [refunds, setRefunds] = useState<RefundRecord[]>(INITIAL_REFUNDS);
+  const [subscription, setSubscription] = useState<UserSubscription>({
+    planId: 'starter',
+    billingCycle: 'monthly',
+    renewalDate: '',
+    status: 'trial',
+    currentPrice: 0
+  });
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [commissions, setCommissions] = useState<CommissionRecord[]>([]);
+  const [refunds, setRefunds] = useState<RefundRecord[]>([]);
   const [aiHistory, setAiHistory] = useState<AICommandHistoryItem[]>([]);
   const [sectionSettings, setSectionSettings] = useState<WorkspaceSectionSettings>(() => ({
     overview: { ...DEFAULT_SECTION_SETTINGS.overview, ...(persisted.sectionSettings?.overview || {}) },
@@ -582,6 +590,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setInvoices(boot.invoices.map(mapDbInvoice));
     setCreditLedger(boot.creditLedger.map(mapDbCreditLedger));
     setRefunds((boot.refunds || []).map(mapDbRefund));
+    setBanking((boot.bankAccounts || []).map(mapDbBankAccount));
+    setCommissions(
+      mappedOrders.map(ord => {
+        const st = mappedStores.find(s => s.id === ord.storeId);
+        return {
+          id: `comm_${ord.id}`,
+          storeId: ord.storeId,
+          storeName: st?.name || 'Store',
+          orderNumber: ord.orderNumber,
+          grossAmount: ord.total,
+          commissionRate: 0,
+          commissionAmount: 0,
+          status: ord.status === 'paid' || ord.status === 'delivered' ? 'settled' : 'pending',
+          date: ord.date || ''
+        };
+      })
+    );
     if (boot.workspaceSettings && typeof boot.workspaceSettings === 'object') {
       const ws = boot.workspaceSettings as Partial<WorkspaceSectionSettings>;
       setSectionSettings({
@@ -621,15 +646,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuditLogs(boot.auditLogs.map(mapDbAuditLog));
   }, []);
 
+  const clearConnectedTenantState = useCallback(() => {
+    setIsAuthenticated(false);
+    setUser(INITIAL_USER);
+    setCompanies([]);
+    setStores([]);
+    setActiveStoreId('');
+    setStoreCategories([]);
+    setStoreTeamMembers([]);
+    setProducts([]);
+    setOrders([]);
+    setCustomers([]);
+    setDiscounts([]);
+    setShippingZones([]);
+    setStorePages([]);
+    setWorkspaceBackups([]);
+    setBanking([]);
+    setCommissions([]);
+    setCreditLedger([]);
+    setSubscriptionHistory([]);
+    setRequestDocuments([]);
+    setStaff([]);
+    setInvoices([]);
+    setRefunds([]);
+    setTickets([]);
+    setAuditLogs([]);
+    setSubmittedServiceOrders([]);
+    setNotifications([]);
+    setAiHistory([]);
+    setAdminOverview(null);
+  }, []);
+
   const refreshWorkspace = useCallback(async () => {
     if (backendStatus !== 'connected') return;
     try {
       const sess = await qabsApi.session();
       if (!sess.authenticated || !sess.user) {
-        setIsAuthenticated(false);
-        setUser(INITIAL_USER);
-        setAdminOverview(null);
-        setNotifications([]);
+        clearConnectedTenantState();
         return;
       }
       const boot = await qabsApi.bootstrap();
@@ -653,7 +706,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch {
       // Keep UI responsive on transient refresh errors
     }
-  }, [backendStatus, applyBootstrapPayload]);
+  }, [backendStatus, applyBootstrapPayload, clearConnectedTenantState]);
 
   // Initial server health + session detection
   useEffect(() => {
@@ -688,24 +741,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
         } else {
           setBackendStatus('connected');
-          // Connected server without active session: start strictly clean (no fake auth!)
-          setIsAuthenticated(false);
-          setUser(INITIAL_USER);
-          setCompanies([]);
-          setStores([]);
-          setProducts([]);
-          setOrders([]);
-          setCustomers([]);
-          setDiscounts([]);
-          setShippingZones([]);
-          setStorePages([]);
-          setWorkspaceBackups([]);
-          setInvoices([]);
-          setRefunds([]);
-          setTickets([]);
-          setAuditLogs([]);
-          setSubmittedServiceOrders([]);
-          setNotifications([]);
+          clearConnectedTenantState();
         }
       } catch {
         if (!active) return;
@@ -716,20 +752,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setUser(persisted.user);
           if (isWorkspaceUrl()) setMode('portal');
         }
-        if (persisted.companies) setCompanies(persisted.companies);
-        if (persisted.stores) setStores(persisted.stores);
-        if (persisted.activeStoreId) setActiveStoreId(persisted.activeStoreId);
-        if (persisted.products) setProducts(persisted.products);
-        if (persisted.orders) setOrders(persisted.orders);
-        if (persisted.customers) setCustomers(persisted.customers);
-        if (persisted.tickets) setTickets(persisted.tickets);
-        if (persisted.invoices) setInvoices(persisted.invoices);
+        setCompanies(persisted.companies || INITIAL_COMPANIES);
+        setStores(persisted.stores || INITIAL_STORES);
+        setActiveStoreId(persisted.activeStoreId || INITIAL_STORES[0]?.id || 'store_01');
+        setProducts(persisted.products || INITIAL_PRODUCTS);
+        setOrders(persisted.orders || INITIAL_ORDERS);
+        setCustomers(persisted.customers || INITIAL_CUSTOMERS);
+        setDiscounts(persisted.discounts || INITIAL_DISCOUNTS);
+        setShippingZones(persisted.shippingZones || INITIAL_SHIPPING_ZONES);
+        setStorePages(persisted.storePages || INITIAL_STORE_PAGES);
+        setBanking(persisted.banking || INITIAL_BANKING);
+        setTickets(persisted.tickets || INITIAL_TICKETS);
+        setStaff(persisted.staff || INITIAL_STAFF);
+        setAuditLogs(persisted.auditLogs || INITIAL_AUDIT_LOGS);
+        setSubscription(persisted.subscription || INITIAL_USER_SUBSCRIPTION);
+        setInvoices(persisted.invoices || INITIAL_INVOICES);
+        setCommissions(INITIAL_COMMISSIONS);
+        setRefunds(persisted.refunds || INITIAL_REFUNDS);
       }
     })();
     return () => {
       active = false;
     };
-  }, [applyBootstrapPayload]);
+  }, [applyBootstrapPayload, clearConnectedTenantState]);
 
   // Persist local fallback state ONLY when running in static preview_offline mode
   useEffect(() => {
@@ -1774,8 +1819,52 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'>) => {
-    setBanking(prev => [{ ...bank, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' }, ...prev]);
+  const addBankAccount = (bank: Omit<BankingAccount, 'id' | 'balance' | 'status'> & { accountNumber?: string }) => {
+    const acctInput = bank.accountNumber || bank.accountNumberMasked;
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.createBankAccount({
+            provider: bank.provider,
+            accountName: bank.accountName,
+            accountNumber: acctInput,
+            routingNumber: bank.routingNumber,
+            currency: bank.currency,
+            linkedCompany: bank.linkedCompany
+          });
+          await refreshWorkspace();
+          showToast(
+            language === 'ar'
+              ? `تم حفظ الحساب البنكي (${bank.provider}) في قاعدة البيانات بانتظار التحقق ✓`
+              : `Bank account (${bank.provider}) saved on server pending verification ✓`
+          );
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حفظ الحساب البنكي', 'Failed to save bank account');
+        }
+      })();
+      return;
+    }
+    const last4 = acctInput.replace(/\s+/g, '').slice(-4);
+    setBanking(prev => [
+      { ...bank, accountNumberMasked: `•••• ${last4}`, id: `bnk_${Date.now()}`, balance: 0, status: 'pending_verification' },
+      ...prev
+    ]);
+  };
+
+  const deleteBankAccount = (id: string) => {
+    if (backendStatus === 'connected') {
+      void (async () => {
+        try {
+          await qabsApi.deleteBankAccount(id);
+          await refreshWorkspace();
+          showToast(language === 'ar' ? 'تم حذف الحساب البنكي من السجل' : 'Bank account removed');
+        } catch (err) {
+          handleApiFailure(err, 'تعذر حذف الحساب البنكي', 'Failed to remove bank account');
+        }
+      })();
+      return;
+    }
+    setBanking(prev => prev.filter(b => b.id !== id));
   };
 
   // --- SUPPORT TICKETS ---
@@ -2550,25 +2639,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } catch {
         // clear local state anyway
       }
-      setCompanies([]);
-      setStores([]);
-      setProducts([]);
-      setOrders([]);
-      setCustomers([]);
-      setDiscounts([]);
-      setShippingZones([]);
-      setStorePages([]);
-      setWorkspaceBackups([]);
-      setInvoices([]);
-      setRefunds([]);
-      setTickets([]);
-      setAuditLogs([]);
-      setSubmittedServiceOrders([]);
-      setNotifications([]);
-      setAdminOverview(null);
+      clearConnectedTenantState();
+    } else {
+      setIsAuthenticated(false);
+      setUser(INITIAL_USER);
     }
-    setIsAuthenticated(false);
-    setUser(INITIAL_USER);
     setPendingServiceOrder(null);
     setCheckoutModalOpen(false);
     setMode('landing');
@@ -2810,6 +2885,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         downloadServerBackup,
         banking,
         addBankAccount,
+        deleteBankAccount,
         tickets,
         addTicket,
         resolveTicket,

@@ -473,7 +473,7 @@ export const AuthModal: React.FC = () => {
                   {backendStatus === 'connected' && (
                     <div className="p-3 rounded-xl bg-[#051724] border border-cyan-950/60 text-[11px] flex items-center justify-between gap-2">
                       <span className="text-slate-400">
-                        {isAr ? 'بريد عميل المعاينة التجريبي:' : 'Preview client email hint:'}
+                        {isAr ? 'بريد حساب التاجر المسجل:' : 'Seeded merchant account:'}
                       </span>
                       <button
                         type="button"

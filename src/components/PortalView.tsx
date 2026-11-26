@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { SUBSCRIPTION_PLANS } from '../data/mockData.ts';
-import { CompanyFormation, Invoice, StoreOrder, StoreProduct } from '../types/index.ts';
+import { BankingAccount, CompanyFormation, Invoice, StoreOrder, StoreProduct } from '../types/index.ts';
 import { ServiceOrderStatus } from '../types/pages.ts';
 import { qabsApi } from '../services/qabsApi.ts';
 import {
@@ -165,6 +165,8 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
     addTicket,
     resolveTicket,
     banking,
+    addBankAccount,
+    deleteBankAccount,
     subscription,
     changeSubscriptionPlan,
     topUpCredits,
@@ -378,6 +380,14 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
   const [orderStatusFilter, setOrderStatusFilter] = useState<'all' | 'paid' | 'shipped' | 'processing' | 'delivered' | 'refunded'>('all');
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrder, setSelectedOrder] = useState<StoreOrder | null>(null);
+
+  // Business Bank Account Form state
+  const [bankProvider, setBankProvider] = useState<BankingAccount['provider']>('Mercury');
+  const [bankHolderName, setBankHolderName] = useState('');
+  const [bankAccountNum, setBankAccountNum] = useState('');
+  const [bankRoutingNum, setBankRoutingNum] = useState('');
+  const [bankCurrency, setBankCurrency] = useState('USD');
+  const [bankLinkedCompany, setBankLinkedCompany] = useState('');
   const [orderTrackingInput, setOrderTrackingInput] = useState('');
   const [newOrderModalOpen, setNewOrderModalOpen] = useState(false);
   const [newOrdCustomerName, setNewOrdCustomerName] = useState('');
@@ -1232,9 +1242,13 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                 ? isAr
                   ? 'مساحة عمل قبس — وضع الإنتاج'
                   : 'QABS Workspace — Production'
+                : backendStatus === 'connected'
+                ? isAr
+                  ? 'بيئة العمل الفعلية — متصلة بقاعدة البيانات'
+                  : 'Live Workspace — Server & DB Connected'
                 : isAr
-                ? 'مساحة عمل تجريبية'
-                : 'Workspace Preview'}
+                ? 'مساحة عمل محلية (بدون خادم)'
+                : 'Offline Local Workspace'}
             </span>
             <span className="h-px w-8 bg-[#D5B46B]" />
             <span className="px-2 py-0.5 rounded bg-[#F5F1E6] text-[#14243E] font-mono text-[10px]">
@@ -1353,7 +1367,17 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     {isAr ? 'مساحة العمل' : 'Workspace'}
                   </span>
                   <span className="text-[11px] font-bold text-[#92743A] dark:text-[#D5B46B]">
-                    {isProductionMode ? (isAr ? 'إنتاج' : 'Live') : isAr ? 'تجريبي' : 'Preview'}
+                    {isProductionMode
+                      ? isAr
+                        ? 'إنتاج'
+                        : 'Live'
+                      : backendStatus === 'connected'
+                      ? isAr
+                        ? 'فعلي'
+                        : 'Live DB'
+                      : isAr
+                      ? 'محلي'
+                      : 'Offline'}
                   </span>
                 </div>
                 <button
@@ -2477,7 +2501,7 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                     type="submit"
                     className="px-4 py-2 rounded-xl bg-[#004457] text-white text-xs font-bold cursor-pointer"
                   >
-                    {isAr ? 'حفظ مسودة تجريبية' : 'Save Preview Draft'}
+                    {isAr ? 'حفظ ونشر الصفحة في المتجر' : 'Save & Publish Store Page'}
                   </button>
                 </form>
               </div>
@@ -4782,20 +4806,160 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
 
           {activeTab === 'bank_accounts' && (
             <section className="space-y-4">
-              <div className="rounded-2xl border border-[#EAE6DC] bg-white dark:bg-[#071D2B] p-6">
-                <h2 className="text-lg font-black text-[#14243E] dark:text-white">{isAr ? 'الحسابات البنكية والتجارية' : 'Business Bank Accounts'}</h2>
-                <div className="grid gap-3 sm:grid-cols-2 mt-4">
-                  {banking.map(account => (
-                    <div key={account.id} className="rounded-xl border border-[#EAE6DC] bg-[#FBFAF6] dark:bg-slate-900 p-4 text-xs">
-                      <div className="flex items-center justify-between">
-                        <span className="font-black text-[#14243E] dark:text-white">{account.provider}</span>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">{account.status}</span>
-                      </div>
-                      <div className="mt-2 text-slate-500">{account.accountName}</div>
-                      <div className="mt-1 font-mono font-bold text-[#14243E] dark:text-[#D5B46B]">{account.accountNumberMasked}</div>
-                    </div>
-                  ))}
+              <div className="rounded-2xl border border-[#EAE6DC] bg-white dark:bg-[#071D2B] p-6 space-y-5">
+                <div>
+                  <h2 className="text-lg font-black text-[#14243E] dark:text-white">
+                    {isAr ? 'الحسابات البنكية والتجارية المسجلة' : 'Registered Business Bank Accounts'}
+                  </h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {isAr
+                      ? 'تسجيل وحفظ الحسابات البنكية المرتبطة بشركتك (يُحفظ آخر 4 أرقام فقط في قاعدة البيانات بحالة بانتظار التحقق).'
+                      : 'Register corporate payout accounts linked to your entity (only last 4 digits are stored in DB, pending verification).'}
+                  </p>
                 </div>
+
+                <form
+                  onSubmit={e => {
+                    e.preventDefault();
+                    if (!bankHolderName.trim() || !bankAccountNum.trim()) return;
+                    addBankAccount({
+                      provider: bankProvider,
+                      accountName: bankHolderName.trim(),
+                      accountNumberMasked: bankAccountNum.trim(),
+                      accountNumber: bankAccountNum.trim(),
+                      routingNumber: bankRoutingNum.trim(),
+                      currency: bankCurrency,
+                      linkedCompany: bankLinkedCompany.trim() || companies[0]?.companyName || user.companyName || ''
+                    });
+                    setBankHolderName('');
+                    setBankAccountNum('');
+                    setBankRoutingNum('');
+                    setBankLinkedCompany('');
+                  }}
+                  className="rounded-xl border border-[#EAE6DC] dark:border-slate-800 bg-[#FBFAF6] dark:bg-slate-900 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs"
+                >
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {isAr ? 'المزود المالي' : 'Banking Provider'}
+                    </label>
+                    <select
+                      value={bankProvider}
+                      onChange={e => setBankProvider(e.target.value as BankingAccount['provider'])}
+                      className="w-full rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 font-bold"
+                    >
+                      <option value="Mercury">Mercury</option>
+                      <option value="Wise Business">Wise Business</option>
+                      <option value="Relay">Relay</option>
+                      <option value="Payoneer">Payoneer</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {isAr ? 'اسم الحساب / الشركة *' : 'Account Holder Name *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder={isAr ? 'مثال: Atlas Global Commerce LLC' : 'e.g. Atlas Global Commerce LLC'}
+                      value={bankHolderName}
+                      onChange={e => setBankHolderName(e.target.value)}
+                      className="w-full rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {isAr ? 'رقم الحساب / IBAN *' : 'Account Number / IBAN *'}
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="•••• 8842"
+                      value={bankAccountNum}
+                      onChange={e => setBankAccountNum(e.target.value)}
+                      className="w-full rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {isAr ? 'Routing / SWIFT (اختياري)' : 'Routing / SWIFT (Optional)'}
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="021000021"
+                      value={bankRoutingNum}
+                      onChange={e => setBankRoutingNum(e.target.value)}
+                      className="w-full rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-slate-600 dark:text-slate-300 mb-1">
+                      {isAr ? 'العملة' : 'Currency'}
+                    </label>
+                    <select
+                      value={bankCurrency}
+                      onChange={e => setBankCurrency(e.target.value)}
+                      className="w-full rounded-lg border border-[#EAE6DC] dark:border-slate-700 bg-white dark:bg-[#071D2B] px-3 py-2 font-bold"
+                    >
+                      <option value="USD">USD</option>
+                      <option value="SAR">SAR</option>
+                      <option value="AED">AED</option>
+                      <option value="GBP">GBP</option>
+                      <option value="EUR">EUR</option>
+                    </select>
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      type="submit"
+                      className="w-full py-2.5 px-4 rounded-xl bg-[#14243E] hover:bg-[#1d3559] text-white font-black cursor-pointer"
+                    >
+                      {isAr ? '+ تسجيل حساب بنكي' : '+ Register Bank Account'}
+                    </button>
+                  </div>
+                </form>
+
+                {banking.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#EAE6DC] dark:border-slate-700 p-6 text-center text-xs text-slate-500">
+                    {isAr
+                      ? 'لا توجد حسابات بنكية مسجلة لهذا الحساب بعد. استخدم النموذج أعلاه لإضافة حسابك البنكي التجاري.'
+                      : 'No business bank accounts registered for this tenant yet. Use the form above to register one.'}
+                  </div>
+                ) : (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {banking.map(account => (
+                      <div key={account.id} className="rounded-xl border border-[#EAE6DC] bg-[#FBFAF6] dark:bg-slate-900 p-4 text-xs space-y-2">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-black text-[#14243E] dark:text-white">{account.provider} ({account.currency})</span>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              account.status === 'verified'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {account.status === 'verified'
+                              ? isAr ? 'موثق' : 'Verified'
+                              : isAr ? 'بانتظار التحقق' : 'Pending Verification'}
+                          </span>
+                        </div>
+                        <div className="font-bold text-slate-700 dark:text-slate-200">{account.accountName}</div>
+                        <div className="flex items-center justify-between font-mono text-[#14243E] dark:text-[#D5B46B]">
+                          <span className="font-bold">{account.accountNumberMasked}</span>
+                          {account.routingNumber && <span className="text-[11px] text-slate-500">RTN: {account.routingNumber}</span>}
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-[#EAE6DC]/70 dark:border-slate-800">
+                          <span className="text-[11px] text-slate-500">{account.linkedCompany || user.companyName || '—'}</span>
+                          <button
+                            type="button"
+                            onClick={() => deleteBankAccount(account.id)}
+                            className="text-[11px] font-bold text-rose-600 hover:underline cursor-pointer"
+                          >
+                            {isAr ? 'إزالة' : 'Remove'}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -5670,7 +5834,9 @@ export const PortalView: React.FC<PortalViewProps> = ({ onOpenStoreModal, onOpen
                       <div className="text-xs text-slate-500 font-bold">{isAr ? 'الحسابات البنكية وبوابات الدفع' : 'Banking & Payment Gateways'}</div>
                       <div className="text-2xl font-black text-[#14243E] dark:text-[#D5B46B] font-mono mt-1">{readyGatewaysCount}</div>
                       <div className="text-[11px] text-emerald-700 font-bold mt-1">
-                        {isAr ? `${banking.length} حساب Mercury/Wise • Stripe جاهز` : `${banking.length} Bank Accounts • Stripe Ready`}
+                        {isAr
+                          ? `${banking.length} حساب بنكي مسجل • ${currentStore.gatewayType} (${currentStore.paymentApprovalStatus || 'unconfigured'})`
+                          : `${banking.length} Bank Account(s) • ${currentStore.gatewayType}`}
                       </div>
                     </div>
                   </div>

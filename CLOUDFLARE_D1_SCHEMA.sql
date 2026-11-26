@@ -401,6 +401,20 @@ CREATE TABLE IF NOT EXISTS refund_requests (
   updated_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS bank_accounts (
+  id TEXT PRIMARY KEY,
+  tenant_id TEXT NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  account_name TEXT NOT NULL,
+  account_number_masked TEXT NOT NULL,
+  routing_number TEXT NOT NULL DEFAULT '',
+  currency TEXT NOT NULL DEFAULT 'USD',
+  status TEXT NOT NULL DEFAULT 'pending_verification'
+    CHECK (status IN ('pending_verification', 'verified', 'needs_ein')),
+  linked_company TEXT NOT NULL DEFAULT '',
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_requests_tenant ON service_requests(tenant_id, status);
@@ -414,6 +428,7 @@ CREATE INDEX IF NOT EXISTS idx_pages_store ON store_pages(store_id, tenant_id);
 CREATE INDEX IF NOT EXISTS idx_backups_tenant ON workspace_backups(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_invoices_tenant ON billing_invoices(tenant_id, status);
 CREATE INDEX IF NOT EXISTS idx_refunds_tenant ON refund_requests(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_tenant ON bank_accounts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_ledger_tenant ON credit_ledger(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_tickets_tenant ON support_tickets(tenant_id, status);

@@ -274,6 +274,20 @@ CREATE TABLE IF NOT EXISTS refund_requests (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS bank_accounts (
+    id VARCHAR(64) PRIMARY KEY,
+    tenant_id VARCHAR(64) NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    provider VARCHAR(64) NOT NULL,
+    account_name VARCHAR(160) NOT NULL,
+    account_number_masked VARCHAR(32) NOT NULL,
+    routing_number VARCHAR(32) NOT NULL DEFAULT '',
+    currency VARCHAR(8) NOT NULL DEFAULT 'USD',
+    status VARCHAR(32) NOT NULL DEFAULT 'pending_verification'
+        CHECK (status IN ('pending_verification', 'verified', 'needs_ein')),
+    linked_company VARCHAR(160) NOT NULL DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 11. Non-Destructive Tenant & Integrity Indexes
 ALTER TABLE billing_invoices ALTER COLUMN status SET DEFAULT 'unpaid';
 CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
@@ -285,6 +299,7 @@ CREATE INDEX IF NOT EXISTS idx_shipping_store ON store_shipping_zones(store_id, 
 CREATE INDEX IF NOT EXISTS idx_pages_store ON store_pages(store_id, tenant_id);
 CREATE INDEX IF NOT EXISTS idx_backups_tenant ON workspace_backups(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_refunds_tenant ON refund_requests(tenant_id, status);
+CREATE INDEX IF NOT EXISTS idx_bank_accounts_tenant ON bank_accounts(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_credit_ledger_tenant ON credit_ledger(tenant_id, created_at);
 CREATE INDEX IF NOT EXISTS idx_notifications_tenant ON notifications(tenant_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_tickets_tenant ON support_tickets(tenant_id, status);

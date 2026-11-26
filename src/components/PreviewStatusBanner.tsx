@@ -49,15 +49,19 @@ export const PreviewStatusBanner: React.FC = () => {
                 </span>
               </div>
               <p className="mt-1 text-sm font-bold text-white">
-                {isAr
-                  ? 'بيئة معاينة معزولة بهوية قبس الكحلية والذهبية'
-                  : 'Isolated Preview Environment in the QABS Navy & Gold System'}
+                {isConnected
+                  ? isAr
+                    ? 'بيئة العمل الفعلية لقبس — خادم API وقاعدة البيانات متصلان'
+                    : 'QABS Live Workspace — API & Database Connected'
+                  : isAr
+                  ? 'نسخة معاينة محلية (بدون خادم خلفي)'
+                  : 'Local Static Preview (Offline Fallback)'}
               </p>
               <p className="mt-1 text-[11px] leading-relaxed text-slate-300">
                 {isConnected
                   ? isAr
-                    ? 'المصادقة عبر جلسات HttpOnly وCSRF وحسابات العملاء والمتاجر معزولة بالخادم — بوابات الدفع الحية والنشر التلقائي مقيدة أماناً.'
-                    : 'HttpOnly sessions, CSRF protection, and tenant-isolated storage active — live payments and auto-publishing remain safely gated.'
+                    ? 'جميع الحسابات والمتاجر والمنتجات والطلبات والفواتير والتذاكر محفوظة ومعزولة فعلياً بالخادم — بوابات الدفع المباشرة مقيدة أماناً.'
+                    : 'Accounts, stores, products, orders, invoices, and tickets are persisted and tenant-isolated on the server — live card charging remains safely gated.'
                   : isAr
                   ? 'الحالة المعروضة صادقة: لا يتوفر خادم API على هذه الاستضافة الثابتة، وتُحفظ التجربة محلياً دون أي سداد مالي حقيقي.'
                   : 'Explicit static fallback: no live API server reachable here; preview state runs locally without financial settlement.'}
@@ -76,8 +80,8 @@ export const PreviewStatusBanner: React.FC = () => {
               <Database className="w-3.5 h-3.5" aria-hidden="true" />
               {isConnected
                 ? isAr
-                  ? 'Backend API متصل'
-                  : 'Backend Connected'
+                  ? 'قاعدة البيانات متصلة'
+                  : 'Live DB Connected'
                 : isAr
                 ? 'وضع معاينة محلي'
                 : 'Offline Preview'}
